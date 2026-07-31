@@ -129,6 +129,7 @@
             height: 124px;
             box-sizing: border-box;
             touch-action: none;
+            position: relative;
         }
 
         /* Base Code Card */
@@ -140,17 +141,16 @@
             cursor: grab;
             box-shadow: 0 6px 14px rgba(0,0,0,0.45);
             user-select: none;
-            transition: transform 0.15s ease, border-color 0.15s, opacity 0.15s, background-color 0.15s;
+            transition: border-color 0.15s, opacity 0.15s, background-color 0.15s;
             flex-shrink: 0;
             box-sizing: border-box;
             touch-action: none;
         }
-        .code-card:active { cursor: grabbing; transform: scale(1.08); }
+        .code-card:active { cursor: grabbing; }
         .code-card.dragging {
-            opacity: 0.45;
-            transform: scale(0.92);
-            border-style: dashed !important;
-            z-index: 20;
+            opacity: 0.9;
+            z-index: 100;
+            box-shadow: 0 14px 28px rgba(0,0,0,0.6);
         }
 
         /* Directional Color Coding */
@@ -1354,7 +1354,7 @@
             solution.push(allDirs[Math.floor(Math.random() * allDirs.length)]);
         }
 
-        return { W, H, map, generatedBridges, gapCount, hoseCount, solution };
+        return { W, H, map, generatedBridges, gapCount, hoseCount, solution, usedCoords };
     }
 
     // ==========================================
@@ -1445,7 +1445,11 @@
                     mesh = new THREE.Mesh(geoHalfBox, matWater);
                     mesh.position.set(x, -0.15, z);
                     type = 'water';
-                    if (char === '~' || char === 'T') waterTiles.push({x, z});
+                    
+                    // SAFE TURTLE FILTER: Only consider open water NOT required by the solution path!
+                    if (char === '~' && !levelData.usedCoords.has(`${x},${z}`)) {
+                        waterTiles.push({x, z});
+                    }
                 } else {
                     mesh = new THREE.Mesh(geoBox, matGrass);
                     mesh.position.set(x, 0, z);
@@ -1582,7 +1586,7 @@
 
         commands.forEach((cmd, idx) => {
             const card = document.createElement('div');
-            card.className = 'code-card ' + cardClasses[cmd] + (idx === draggedCardIdx ? ' dragging' : '');
+            card.className = 'code-card ' + cardClasses[cmd];
             card.dataset.index = idx;
 
             card.style.width = cardSize + 'px';
@@ -1600,46 +1604,59 @@
                 activeCardPointerId = e.pointerId;
                 draggedCardIdx = idx;
 
+                const startPointerX = e.clientX;
+                const startPointerY = e.clientY;
+
+                const cardElems = Array.from(container.children);
+                const initialRects = cardElems.map(el => el.getBoundingClientRect());
+                const slotDistance = cardElems.length > 1 ? (initialRects[1].left - initialRects[0].left) : 0;
+
+                let targetSlotIdx = idx;
+
+                card.classList.add('dragging');
+
                 const onCardPointerMove = (moveEvt) => {
                     if (moveEvt.pointerId !== activeCardPointerId || draggedCardIdx === null) return;
                     moveEvt.preventDefault();
 
-                    const cardElems = Array.from(container.children);
-                    const pointerX = moveEvt.clientX;
+                    const deltaX = moveEvt.clientX - startPointerX;
+                    const deltaY = moveEvt.clientY - startPointerY;
 
-                    let targetIdx = draggedCardIdx;
-                    for (let i = 0; i < cardElems.length; i++) {
-                        const r = cardElems[i].getBoundingClientRect();
-                        const midX = r.left + r.width / 2;
-                        if (pointerX < midX) {
-                            targetIdx = i;
-                            break;
-                        }
-                        if (i === cardElems.length - 1 && pointerX >= midX) {
-                            targetIdx = i;
-                        }
-                    }
+                    // Move dragged card directly under finger
+                    card.style.transition = 'none';
+                    card.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.08)`;
 
-                    if (draggedCardIdx !== targetIdx) {
-                        const movedItem = commands[draggedCardIdx];
-                        commands.splice(draggedCardIdx, 1);
-                        commands.splice(targetIdx, 0, movedItem);
-                        draggedCardIdx = targetIdx;
+                    // Find closest slot
+                    const currentCenterX = initialRects[draggedCardIdx].left + initialRects[draggedCardIdx].width / 2 + deltaX;
 
-                        // Reorder DOM nodes in place
-                        const draggedNode = cardElems.find(el => parseInt(el.dataset.index, 10) === draggedCardIdx);
-                        const targetNode = cardElems[targetIdx];
-                        if (draggedNode && targetNode) {
-                            if (draggedCardIdx < targetIdx) {
-                                container.insertBefore(draggedNode, targetNode.nextSibling);
-                            } else {
-                                container.insertBefore(draggedNode, targetNode);
-                            }
-                            Array.from(container.children).forEach((el, index) => {
-                                el.dataset.index = index;
-                            });
+                    let closestIdx = 0;
+                    let minDistance = Infinity;
+
+                    for (let i = 0; i < initialRects.length; i++) {
+                        const slotCenterX = initialRects[i].left + initialRects[i].width / 2;
+                        const dist = Math.abs(currentCenterX - slotCenterX);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            closestIdx = i;
                         }
                     }
+
+                    targetSlotIdx = closestIdx;
+
+                    // Scoot other cards smoothly to make room
+                    cardElems.forEach((otherCard, j) => {
+                        if (j === draggedCardIdx) return;
+
+                        let shiftX = 0;
+                        if (j > draggedCardIdx && j <= targetSlotIdx) {
+                            shiftX = -slotDistance;
+                        } else if (j < draggedCardIdx && j >= targetSlotIdx) {
+                            shiftX = slotDistance;
+                        }
+
+                        otherCard.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)';
+                        otherCard.style.transform = shiftX ? `translate(${shiftX}px, 0)` : 'none';
+                    });
                 };
 
                 const onCardPointerUp = (upEvt) => {
@@ -1648,6 +1665,12 @@
                         window.removeEventListener('pointermove', onCardPointerMove);
                         window.removeEventListener('pointerup', onCardPointerUp);
                         window.removeEventListener('pointercancel', onCardPointerUp);
+
+                        if (draggedCardIdx !== null && targetSlotIdx !== draggedCardIdx) {
+                            const [movedItem] = commands.splice(draggedCardIdx, 1);
+                            commands.splice(targetSlotIdx, 0, movedItem);
+                        }
+
                         activeCardPointerId = null;
                         draggedCardIdx = null;
                         renderCards();
@@ -1657,8 +1680,6 @@
                 window.addEventListener('pointermove', onCardPointerMove, { passive: false });
                 window.addEventListener('pointerup', onCardPointerUp, { passive: false });
                 window.addEventListener('pointercancel', onCardPointerUp, { passive: false });
-
-                renderCards();
             });
 
             container.appendChild(card);
