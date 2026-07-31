@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kid-Friendly Grid Synth</title>
+    <style>
+        :root {
+            --bg-color: #0f111a;
+            --panel-bg: #181b28;
+            --text-color: #ffffff;
+            --grid-line: #262a3d;
+            --cell-off: #202436;
+            --cell-playing: #ffffff;
+            
+            /* Kid-Friendly Bright Instrument Colors */
+            --sine-color: #00d2ff;
+            --square-color: #00ff7f;
+            --saw-color: #ff3366;
+            --tri-color: #b100ff;
+            --bell-color: #ffd700;
+            --organ-color: #ff8c00;
+            --bass-color: #ff00d4;
+
+            /* Percussion Instrument Colors */
+            --kick-color: #ff3b30;
+            --snare-color: #ff9500;
+            --hihat-color: #34c759;
+            --clap-color: #007aff;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top Control Bar aligned with 32-column grid */
+        .control-bar {
+            display: grid;
+            grid-template-columns: repeat(32, 1fr);
+            gap: 3px;
+            background-color: var(--panel-bg);
+            padding: 4px 4px 2px 4px;
+            width: 100%;
+            flex-shrink: 0;
+        }
+
+        /* Integrated Grid Button Base Styling */
+        .grid-btn {
+            background-color: var(--cell-off);
+            border-radius: 6px;
+            border: 2px solid transparent;
+            min-height: 96px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+            position: relative;
+        }
+
+        .grid-btn:hover {
+            filter: brightness(1.3);
+        }
+
+        .grid-btn:active {
+            transform: scale(0.96);
+        }
+
+        .grid-btn.span-2 {
+            grid-column: span 2;
+        }
+
+        .grid-btn.span-4 {
+            grid-column: span 4;
+        }
+
+        .grid-btn.span-6 {
+            grid-column: span 6;
+        }
+
+        /* Action Buttons */
+        .grid-btn.play-btn {
+            background: linear-gradient(135deg, #ff007b, #ff5500);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 0, 123, 0.4);
+        }
+
+        .grid-btn.play-btn.playing {
+            background: linear-gradient(135deg, #00d2ff, #0055ff);
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+        }
+
+        .grid-btn.clear-btn {
+            background-color: var(--cell-off);
+            color: #888;
+        }
+        .grid-btn.clear-btn:hover {
+            color: #ff3366;
+            border-color: rgba(255, 51, 102, 0.5);
+        }
+
+        /* Instrument Brush Palette Grid Elements */
+        .brush-btn {
+            opacity: 0.5;
+        }
+
+        .brush-btn:hover { opacity: 0.85; }
+        .brush-btn.active { opacity: 1; transform: scale(1.05); }
+
+        .brush-btn[data-inst="sine"] { color: var(--sine-color); }
+        .brush-btn[data-inst="sine"].active { border-color: var(--sine-color); background: rgba(0, 210, 255, 0.25); box-shadow: 0 0 10px var(--sine-color); }
+
+        .brush-btn[data-inst="square"] { color: var(--square-color); }
+        .brush-btn[data-inst="square"].active { border-color: var(--square-color); background: rgba(0, 255, 127, 0.25); box-shadow: 0 0 10px var(--square-color); }
+
+        .brush-btn[data-inst="sawtooth"] { color: var(--saw-color); }
+        .brush-btn[data-inst="sawtooth"].active { border-color: var(--saw-color); background: rgba(255, 51, 102, 0.25); box-shadow: 0 0 10px var(--saw-color); }
+
+        .brush-btn[data-inst="triangle"] { color: var(--tri-color); }
+        .brush-btn[data-inst="triangle"].active { border-color: var(--tri-color); background: rgba(177, 0, 255, 0.25); box-shadow: 0 0 10px var(--tri-color); }
+
+        .brush-btn[data-inst="bell"] { color: var(--bell-color); }
+        .brush-btn[data-inst="bell"].active { border-color: var(--bell-color); background: rgba(255, 215, 0, 0.25); box-shadow: 0 0 10px var(--bell-color); }
+
+        .brush-btn[data-inst="organ"] { color: var(--organ-color); }
+        .brush-btn[data-inst="organ"].active { border-color: var(--organ-color); background: rgba(255, 140, 0, 0.25); box-shadow: 0 0 10px var(--organ-color); }
+
+        .brush-btn[data-inst="bass"] { color: var(--bass-color); }
+        .brush-btn[data-inst="bass"].active { border-color: var(--bass-color); background: rgba(255, 0, 212, 0.25); box-shadow: 0 0 10px var(--bass-color); }
+
+        .brush-btn[data-inst="kick"] { color: var(--kick-color); }
+        .brush-btn[data-inst="kick"].active { border-color: var(--kick-color); background: rgba(255, 59, 48, 0.25); box-shadow: 0 0 10px var(--kick-color); }
+
+        .brush-btn[data-inst="snare"] { color: var(--snare-color); }
+        .brush-btn[data-inst="snare"].active { border-color: var(--snare-color); background: rgba(255, 149, 0, 0.25); box-shadow: 0 0 10px var(--snare-color); }
+
+        .brush-btn[data-inst="hihat"] { color: var(--hihat-color); }
+        .brush-btn[data-inst="hihat"].active { border-color: var(--hihat-color); background: rgba(52, 199, 89, 0.25); box-shadow: 0 0 10px var(--hihat-color); }
+
+        .brush-btn[data-inst="clap"] { color: var(--clap-color); }
+        .brush-btn[data-inst="clap"].active { border-color: var(--clap-color); background: rgba(0, 122, 255, 0.25); box-shadow: 0 0 10px var(--clap-color); }
+
+        /* Integrated Tempo Grid Control - Full Box Interactive Slider */
+        .tempo-container {
+            position: relative;
+            background: var(--cell-off);
+            border-radius: 6px;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .tempo-container:hover {
+            border-color: rgba(0, 210, 255, 0.4);
+        }
+
+        .tempo-container input[type="range"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: ew-resize;
+            z-index: 3;
+            margin: 0;
+            padding: 0;
+        }
+
+        .tempo-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 60%;
+            background: rgba(0, 210, 255, 0.22);
+            border-right: 3px solid #00d2ff;
+            box-shadow: 2px 0 12px rgba(0, 210, 255, 0.6);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .tempo-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            pointer-events: none;
+            z-index: 2;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .tempo-overlay svg {
+            color: #00d2ff;
+            filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.6));
+            flex-shrink: 0;
+        }
+
+        .tempo-value {
+            font-weight: bold;
+            font-size: 1.8rem;
+            font-family: monospace, sans-serif;
+            color: #ffffff;
+            line-height: 1;
+            letter-spacing: 1px;
+        }
+
+        /* Full Bleed Grid Styling */
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            background-color: var(--panel-bg);
+            padding: 2px 4px 4px 4px;
+            width: 100%;
+            flex: 1;
+            box-sizing: border-box;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .grid-row {
+            display: grid;
+            grid-template-columns: repeat(32, 1fr);
+            gap: 3px;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            min-height: 18px;
+            background-color: var(--cell-off);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: filter 0.1s;
+            position: relative;
+        }
+
+        .cell:hover { filter: brightness(1.5); }
+
+        /* Rhythmic Grid Shading: Lighter backgrounds every 4th and 8th beat column */
+        .cell:nth-child(4n+1) {
+            background-color: #292e44;
+        }
+        .cell:nth-child(8n+1) {
+            background-color: #353c58;
+        }
+
+        /* Center Dark Tone Circle Indicator for Percussion Instruments */
+        .cell[data-wave="kick"]::before,
+        .cell[data-wave="snare"]::before,
+        .cell[data-wave="hihat"]::before,
+        .cell[data-wave="clap"]::before,
+        .brush-btn[data-inst="kick"]::before,
+        .brush-btn[data-inst="snare"]::before,
+        .brush-btn[data-inst="hihat"]::before,
+        .brush-btn[data-inst="clap"]::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 38%;
+            height: 38%;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            z-index: 2;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+        }
+
+        .cell[data-wave="sine"] { background-color: var(--sine-color); box-shadow: 0 0 8px var(--sine-color); }
+        .cell[data-wave="square"] { background-color: var(--square-color); box-shadow: 0 0 8px var(--square-color); }
+        .cell[data-wave="sawtooth"] { background-color: var(--saw-color); box-shadow: 0 0 8px var(--saw-color); }
+        .cell[data-wave="triangle"] { background-color: var(--tri-color); box-shadow: 0 0 8px var(--tri-color); }
+        .cell[data-wave="bell"] { background-color: var(--bell-color); box-shadow: 0 0 8px var(--bell-color); }
+        .cell[data-wave="organ"] { background-color: var(--organ-color); box-shadow: 0 0 8px var(--organ-color); }
+        .cell[data-wave="bass"] { background-color: var(--bass-color); box-shadow: 0 0 8px var(--bass-color); }
+        .cell[data-wave="kick"] { background-color: var(--kick-color); box-shadow: 0 0 8px var(--kick-color); }
+        .cell[data-wave="snare"] { background-color: var(--snare-color); box-shadow: 0 0 8px var(--snare-color); }
+        .cell[data-wave="hihat"] { background-color: var(--hihat-color); box-shadow: 0 0 8px var(--hihat-color); }
+        .cell[data-wave="clap"] { background-color: var(--clap-color); box-shadow: 0 0 8px var(--clap-color); }
+
+        /* Tied Note Connections */
+        .cell.tied-left {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+        .cell.tied-right {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .cell.tied-right::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            z-index: 5;
+        }
+        .cell[data-wave="sine"].tied-right::after { background-color: var(--sine-color); box-shadow: 0 0 8px var(--sine-color); }
+        .cell[data-wave="square"].tied-right::after { background-color: var(--square-color); box-shadow: 0 0 8px var(--square-color); }
+        .cell[data-wave="sawtooth"].tied-right::after { background-color: var(--saw-color); box-shadow: 0 0 8px var(--saw-color); }
+        .cell[data-wave="triangle"].tied-right::after { background-color: var(--tri-color); box-shadow: 0 0 8px var(--tri-color); }
+        .cell[data-wave="bell"].tied-right::after { background-color: var(--bell-color); box-shadow: 0 0 8px var(--bell-color); }
+        .cell[data-wave="organ"].tied-right::after { background-color: var(--organ-color); box-shadow: 0 0 8px var(--organ-color); }
+        .cell[data-wave="bass"].tied-right::after { background-color: var(--bass-color); box-shadow: 0 0 8px var(--bass-color); }
+        .cell[data-wave="kick"].tied-right::after { background-color: var(--kick-color); box-shadow: 0 0 8px var(--kick-color); }
+        .cell[data-wave="snare"].tied-right::after { background-color: var(--snare-color); box-shadow: 0 0 8px var(--snare-color); }
+        .cell[data-wave="hihat"].tied-right::after { background-color: var(--hihat-color); box-shadow: 0 0 8px var(--hihat-color); }
+        .cell[data-wave="clap"].tied-right::after { background-color: var(--clap-color); box-shadow: 0 0 8px var(--clap-color); }
+
+        /* Column Playhead Highlight */
+        .cell.playhead {
+            outline: 1px solid rgba(255, 255, 255, 0.4);
+            z-index: 6;
+        }
+
+        .cell[data-wave=""].playhead,
+        .cell:not([data-wave]).playhead {
+            background-color: #4b5578 !important;
+            box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.35);
+        }
+
+        .cell.playing {
+            filter: brightness(2) contrast(1.5);
+            outline: 2px solid var(--cell-playing);
+            box-shadow: 0 0 12px var(--cell-playing);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="control-bar">
+        <!-- Play / Stop (2-Grid Span) -->
+        <button id="playBtn" class="grid-btn play-btn span-2" aria-label="Play">
+            <svg id="playIcon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+        </button>
+
+        <!-- Clear (2-Grid Span) -->
+        <button id="clearBtn" class="grid-btn clear-btn span-2" aria-label="Clear">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+        </button>
+
+        <!-- 12 Instrument Brushes (Each 2-Grid Span = 24 Grid Columns Total) -->
+        <!-- Sine Wave -->
+        <button class="grid-btn brush-btn active span-2" data-inst="sine" aria-label="Sine Wave">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12c2.5-6 5.5-6 8 0s5.5 6 8 0 5.5-6 8 0"/>
+            </svg>
+        </button>
+        <!-- Square Wave -->
+        <button class="grid-btn brush-btn span-2" data-inst="square" aria-label="Square Wave">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 16h4V8h8v8h8"/>
+            </svg>
+        </button>
+        <!-- Sawtooth Wave -->
+        <button class="grid-btn brush-btn span-2" data-inst="sawtooth" aria-label="Sawtooth Wave">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 16l8-8v8l8-8v8h4"/>
+            </svg>
+        </button>
+        <!-- Triangle Wave -->
+        <button class="grid-btn brush-btn span-2" data-inst="triangle" aria-label="Triangle Wave">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 16l5-8 5 8 5-8 5 8"/>
+            </svg>
+        </button>
+        <!-- Magic Bell -->
+        <button class="grid-btn brush-btn span-2" data-inst="bell" aria-label="Magic Bell">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+            </svg>
+        </button>
+        <!-- Party Organ -->
+        <button class="grid-btn brush-btn span-2" data-inst="organ" aria-label="Party Organ">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="6" width="4" height="14" rx="1"/>
+                <rect x="10" y="3" width="4" height="17" rx="1"/>
+                <rect x="17" y="9" width="4" height="11" rx="1"/>
+            </svg>
+        </button>
+        <!-- Deep Bass (Pink Star) -->
+        <button class="grid-btn brush-btn span-2" data-inst="bass" aria-label="Deep Bass">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+        </button>
+
+        <!-- Percussion Instruments (With dark center tone circles) -->
+        <!-- Kick Drum -->
+        <button class="grid-btn brush-btn span-2" data-inst="kick" aria-label="Kick Drum">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="z-index: 3;">
+                <circle cx="12" cy="12" r="9"/>
+            </svg>
+        </button>
+        <!-- Snare Drum -->
+        <button class="grid-btn brush-btn span-2" data-inst="snare" aria-label="Snare Drum">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="z-index: 3;">
+                <ellipse cx="12" cy="12" rx="9" ry="5"/>
+            </svg>
+        </button>
+        <!-- Hi-Hat -->
+        <button class="grid-btn brush-btn span-2" data-inst="hihat" aria-label="Hi-Hat">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="z-index: 3;">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+        </button>
+        <!-- Hand Clap -->
+        <button class="grid-btn brush-btn span-2" data-inst="clap" aria-label="Clap">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="z-index: 3;">
+                <!-- Single Raised Hand -->
+                <path d="M18 11V6a2 2 0 0 0-4 0v5"/>
+                <path d="M14 10V4a2 2 0 0 0-4 0v6"/>
+                <path d="M10 10.5V6a2 2 0 0 0-4 0v8"/>
+                <path d="M18 8a2 2 0 1 1 4 0v6a10 10 0 0 1-10 10A10 10 0 0 1 2 14V11a2 2 0 1 1 4 0v2"/>
+            </svg>
+        </button>
+
+        <!-- Tempo Slider & Display (6-Grid Span - Full Surface Interactive Slider) -->
+        <div class="grid-btn tempo-container span-6">
+            <input type="range" id="bpm" min="60" max="160" value="120">
+            <div class="tempo-fill" id="tempoFill"></div>
+            <div class="tempo-overlay">
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <polyline points="12 7 12 12 15 15"/>
+                </svg>
+                <span id="bpmValue" class="tempo-value">120</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-container" id="grid"></div>
+
+    <script>
+        const ROWS = 16;
+        const COLS = 32;
+        // 3-octave Major Pentatonic scale frequencies (C6 down to C3)
+        const scale = [
+            1046.50, 880.00, 783.99, 659.25, // C6, A5, G5, E5
+            587.33, 523.25, 440.00, 392.00,  // D5, C5, A4, G4
+            329.63, 293.66, 261.63, 220.00,  // E4, D4, C4, A3
+            196.00, 164.81, 146.83, 130.81   // G3, E3, D3, C3
+        ]; 
+        
+        let audioCtx = null;
+        let masterGain = null;
+        let compressor = null;
+        let noiseBuffer = null;
+
+        let isPlaying = false;
+        let currentStep = 0;
+        let nextNoteTime = 0;
+        let timerID;
+
+        let isMouseDown = false;
+        let activeDragGroup = null;
+        let currentInstrument = 'sine'; 
+
+        // Grid Data State: holds object { wave: string, groupId: number } or null
+        let gridData = Array.from({ length: COLS }, () => Array(ROWS).fill(null));
+
+        const gridEl = document.getElementById('grid');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const clearBtn = document.getElementById('clearBtn');
+        const bpmSlider = document.getElementById('bpm');
+        const bpmValue = document.getElementById('bpmValue');
+        const tempoFill = document.getElementById('tempoFill');
+        const brushBtns = document.querySelectorAll('.brush-btn');
+
+        function updateTempoFill(val) {
+            const min = parseInt(bpmSlider.min, 10);
+            const max = parseInt(bpmSlider.max, 10);
+            const pct = ((val - min) / (max - min)) * 100;
+            if (tempoFill) tempoFill.style.width = `${pct}%`;
+        }
+
+        function initAudioEngine() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Dynamics Compressor to handle polyphonic summation cleanly
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.setValueAtTime(-24, audioCtx.currentTime);
+            compressor.knee.setValueAtTime(30, audioCtx.currentTime);
+            compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+            compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+            compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+
+            compressor.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+        }
+
+        brushBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                brushBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentInstrument = btn.dataset.inst;
+            });
+        });
+
+        window.addEventListener('mousedown', () => isMouseDown = true);
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            activeDragGroup = null;
+        });
+
+        // Touch drag-and-paint support for tablets / touch screens
+        let lastTouchedCell = null;
+
+        gridEl.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('cell')) {
+                e.preventDefault(); // Prevents touch scrolling while painting notes
+                isMouseDown = true;
+                lastTouchedCell = target;
+                const c = parseInt(target.dataset.col, 10);
+                const r = parseInt(target.dataset.row, 10);
+                handleCellInteraction(c, r, true);
+            }
+        }, { passive: false });
+
+        gridEl.addEventListener('touchmove', (e) => {
+            if (!isMouseDown || !activeDragGroup) return;
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('cell') && target !== lastTouchedCell) {
+                e.preventDefault();
+                lastTouchedCell = target;
+                const c = parseInt(target.dataset.col, 10);
+                const r = parseInt(target.dataset.row, 10);
+                handleCellInteraction(c, r, false);
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            isMouseDown = false;
+            activeDragGroup = null;
+            lastTouchedCell = null;
+        });
+
+        window.addEventListener('touchcancel', () => {
+            isMouseDown = false;
+            activeDragGroup = null;
+            lastTouchedCell = null;
+        });
+
+        function initGrid() {
+            gridEl.innerHTML = '';
+            for (let r = 0; r < ROWS; r++) {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'grid-row';
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.col = c;
+                    cell.dataset.row = r;
+                    
+                    cell.addEventListener('mousedown', () => handleCellInteraction(c, r, true));
+                    cell.addEventListener('mouseenter', () => {
+                        if (isMouseDown && activeDragGroup) {
+                            handleCellInteraction(c, r, false);
+                        }
+                    });
+
+                    rowEl.appendChild(cell);
+                }
+                gridEl.appendChild(rowEl);
+            }
+        }
+
+        function handleCellInteraction(col, row, isMouseDownClick) {
+            if (isMouseDownClick) {
+                // Toggle off if clicking an existing note with the same instrument
+                if (gridData[col][row] && gridData[col][row].wave === currentInstrument) {
+                    gridData[col][row] = null;
+                    activeDragGroup = null;
+                } else {
+                    // Create a unique group ID for this click/drag session
+                    activeDragGroup = Date.now() + Math.random();
+                    gridData[col][row] = { wave: currentInstrument, groupId: activeDragGroup };
+                    previewSound(row, currentInstrument);
+                }
+            } else {
+                // Dragging into a new cell ties it to the active drag session
+                gridData[col][row] = { wave: currentInstrument, groupId: activeDragGroup };
+            }
+
+            renderGridUI();
+        }
+
+        function previewSound(row, wave) {
+            initAudioEngine();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            playTone(scale[row], audioCtx.currentTime, 0.15, wave);
+        }
+
+        function renderGridUI() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.querySelector(`.cell[data-col="${c}"][data-row="${r}"]`);
+                    const data = gridData[c][r];
+
+                    cell.classList.remove('tied-left', 'tied-right');
+                    
+                    if (data) {
+                        cell.dataset.wave = data.wave;
+                        
+                        if (c > 0 && gridData[c-1][r] && gridData[c-1][r].groupId === data.groupId) {
+                            cell.classList.add('tied-left');
+                        }
+                        if (c < COLS - 1 && gridData[c+1][r] && gridData[c+1][r].groupId === data.groupId) {
+                            cell.classList.add('tied-right');
+                        }
+                    } else {
+                        cell.dataset.wave = "";
+                    }
+                }
+            }
+        }
+
+        function clearGrid() {
+            gridData = Array.from({ length: COLS }, () => Array(ROWS).fill(null));
+            renderGridUI();
+        }
+
+        function getNoiseBuffer() {
+            if (!noiseBuffer && audioCtx) {
+                const bufferSize = audioCtx.sampleRate * 0.5;
+                noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+            }
+            return noiseBuffer;
+        }
+
+        function playTone(frequency, startTime, duration, waveform) {
+            initAudioEngine();
+            if (!audioCtx) return;
+
+            const attackTime = 0.01;
+            const releaseTime = 0.02;
+            const actualDuration = Math.max(duration, attackTime + releaseTime + 0.01);
+
+            if (waveform === 'kick') {
+                // Punchy Kick Drum: Pitch drop oscillator + transient click
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+
+                // Pitch envelope drop
+                const startFreq = Math.min(frequency * 0.75 + 60, 220);
+                osc.frequency.setValueAtTime(startFreq, startTime);
+                osc.frequency.exponentialRampToValueAtTime(30, startTime + 0.09);
+
+                g.gain.setValueAtTime(1.15, startTime);
+                g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+
+                osc.connect(g);
+                g.connect(compressor);
+
+                osc.start(startTime);
+                osc.stop(startTime + 0.23);
+
+            } else if (waveform === 'snare') {
+                // Snare Drum: Tonal pitch drop + filtered white noise burst
+                const osc = audioCtx.createOscillator();
+                const noise = audioCtx.createBufferSource();
+                const noiseFilter = audioCtx.createBiquadFilter();
+                const gTone = audioCtx.createGain();
+                const gNoise = audioCtx.createGain();
+
+                // Drum body pitch drop
+                osc.frequency.setValueAtTime(180, startTime);
+                osc.frequency.exponentialRampToValueAtTime(60, startTime + 0.08);
+
+                gTone.gain.setValueAtTime(0.72, startTime);
+                gTone.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12);
+
+                // Snare wires noise
+                noise.buffer = getNoiseBuffer();
+                noiseFilter.type = 'highpass';
+                noiseFilter.frequency.setValueAtTime(1000, startTime);
+
+                gNoise.gain.setValueAtTime(0.58, startTime);
+                gNoise.gain.exponentialRampToValueAtTime(0.001, startTime + 0.18);
+
+                osc.connect(gTone);
+                noise.connect(noiseFilter);
+                noiseFilter.connect(gNoise);
+
+                gTone.connect(compressor);
+                gNoise.connect(compressor);
+
+                osc.start(startTime);
+                noise.start(startTime);
+                osc.stop(startTime + 0.13);
+                noise.stop(startTime + 0.19);
+
+            } else if (waveform === 'hihat') {
+                // Hi-Hat: Crisp highpassed noise tick
+                const noise = audioCtx.createBufferSource();
+                const filter = audioCtx.createBiquadFilter();
+                const g = audioCtx.createGain();
+
+                noise.buffer = getNoiseBuffer();
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(7000, startTime);
+
+                g.gain.setValueAtTime(0.50, startTime);
+                g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.06);
+
+                noise.connect(filter);
+                filter.connect(g);
+                g.connect(compressor);
+
+                noise.start(startTime);
+                noise.stop(startTime + 0.07);
+
+            } else if (waveform === 'clap') {
+                // Hand Clap / Tom: Multi-burst snap + resonant body
+                const noise = audioCtx.createBufferSource();
+                const filter = audioCtx.createBiquadFilter();
+                const g = audioCtx.createGain();
+
+                noise.buffer = getNoiseBuffer();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1200, startTime);
+                filter.Q.setValueAtTime(1.5, startTime);
+
+                g.gain.setValueAtTime(0.84, startTime);
+                g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.15);
+
+                noise.connect(filter);
+                filter.connect(g);
+                g.connect(compressor);
+
+                noise.start(startTime);
+                noise.stop(startTime + 0.16);
+
+            } else if (waveform === 'bell') {
+                // Bell Synth: Fundamental + Inharmonic Metallic Sine harmonic
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(frequency, startTime);
+
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(frequency * 2.75, startTime); // Bell ratio
+
+                g.gain.setValueAtTime(0, startTime);
+                g.gain.linearRampToValueAtTime(0.35, startTime + 0.005);
+                g.gain.exponentialRampToValueAtTime(0.001, startTime + actualDuration * 1.2);
+
+                osc1.connect(g);
+                osc2.connect(g);
+                g.connect(compressor);
+
+                osc1.start(startTime);
+                osc2.start(startTime);
+                osc1.stop(startTime + actualDuration * 1.2);
+                osc2.stop(startTime + actualDuration * 1.2);
+
+            } else if (waveform === 'organ') {
+                // Party Organ: Dual Sine/Square octave combo
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(frequency, startTime);
+
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(frequency * 2, startTime); // Octave up
+
+                g.gain.setValueAtTime(0, startTime);
+                g.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+                g.gain.setValueAtTime(0.2, startTime + actualDuration - releaseTime);
+                g.gain.linearRampToValueAtTime(0.001, startTime + actualDuration);
+
+                osc1.connect(g);
+                osc2.connect(g);
+                g.connect(compressor);
+
+                osc1.start(startTime);
+                osc2.start(startTime);
+                osc1.stop(startTime + actualDuration);
+                osc2.stop(startTime + actualDuration);
+
+            } else if (waveform === 'bass') {
+                // Deep Bass: Lowpass filtered sawtooth node
+                const osc = audioCtx.createOscillator();
+                const filter = audioCtx.createBiquadFilter();
+                const g = audioCtx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(frequency / 2, startTime); // Octave lower bass
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(450, startTime);
+
+                g.gain.setValueAtTime(0, startTime);
+                g.gain.linearRampToValueAtTime(0.35, startTime + 0.015);
+                g.gain.setValueAtTime(0.35, startTime + actualDuration - releaseTime);
+                g.gain.linearRampToValueAtTime(0.001, startTime + actualDuration);
+
+                osc.connect(filter);
+                filter.connect(g);
+                g.connect(compressor);
+
+                osc.start(startTime);
+                osc.stop(startTime + actualDuration);
+
+            } else {
+                // Standard Waveforms (sine, square, sawtooth, triangle)
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                osc.type = waveform;
+                osc.frequency.setValueAtTime(frequency, startTime);
+
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + attackTime);
+                gainNode.gain.setValueAtTime(0.3, startTime + actualDuration - releaseTime);
+                gainNode.gain.linearRampToValueAtTime(0.001, startTime + actualDuration);
+
+                osc.connect(gainNode);
+                gainNode.connect(compressor);
+
+                osc.start(startTime);
+                osc.stop(startTime + actualDuration);
+            }
+        }
+
+        function nextNote() {
+            const secondsPerBeat = 60.0 / bpmSlider.value;
+            const stepDuration = secondsPerBeat / 4;
+            
+            nextNoteTime += stepDuration;
+            currentStep++;
+            if (currentStep === COLS) currentStep = 0;
+        }
+
+        function scheduleNote() {
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                playColumn(currentStep, nextNoteTime);
+                nextNote();
+            }
+            timerID = requestAnimationFrame(scheduleNote);
+        }
+
+        function playColumn(step, time) {
+            const stepDuration = (60.0 / bpmSlider.value) / 4;
+            const activeNotes = [];
+            
+            // Gather ALL active notes in the current column
+            for (let r = 0; r < ROWS; r++) {
+                if (gridData[step][r]) {
+                    activeNotes.push({ row: r, data: gridData[step][r] });
+                }
+            }
+
+            // Visual playhead highlight across full column
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing', 'playhead'));
+                document.querySelectorAll(`.cell[data-col="${step}"]`).forEach(c => {
+                    c.classList.add('playhead');
+                    if (gridData[step][c.dataset.row]) c.classList.add('playing');
+                });
+            });
+
+            // Play active column notes simultaneously
+            activeNotes.forEach(note => {
+                const currentGroup = note.data.groupId;
+                const prevCell = step > 0 ? gridData[step - 1][note.row] : null;
+                
+                // Trigger if this cell is the start of a note block, or if wrapping at step 0
+                const isStartOfGroup = (step === 0) || !prevCell || prevCell.groupId !== currentGroup;
+                
+                if (isStartOfGroup) {
+                    let len = 1;
+                    while (step + len < COLS && gridData[step + len][note.row] && gridData[step + len][note.row].groupId === currentGroup) {
+                        len++;
+                    }
+                    
+                    const holdDuration = (stepDuration * len) - 0.02;
+                    playTone(scale[note.row], time, holdDuration, note.data.wave);
+                }
+            });
+        }
+
+        playBtn.addEventListener('click', () => {
+            initAudioEngine();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            isPlaying = !isPlaying;
+            
+            if (isPlaying) {
+                playBtn.classList.add('playing');
+                // Replace Play icon (triangle) with Stop icon (square)
+                playIcon.innerHTML = '<path d="M6 6h12v12H6z"/>';
+                currentStep = 0;
+                nextNoteTime = audioCtx.currentTime + 0.05;
+                scheduleNote();
+            } else {
+                playBtn.classList.remove('playing');
+                // Replace Stop icon (square) with Play icon (triangle)
+                playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                cancelAnimationFrame(timerID);
+                document.querySelectorAll('.cell').forEach(c => c.classList.remove('playing', 'playhead'));
+            }
+        });
+
+        clearBtn.addEventListener('click', clearGrid);
+        bpmSlider.addEventListener('input', (e) => {
+            bpmValue.textContent = e.target.value;
+            updateTempoFill(e.target.value);
+        });
+
+        initGrid();
+        updateTempoFill(bpmSlider.value);
+    </script>
+</body>
+</html>
