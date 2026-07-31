@@ -917,20 +917,25 @@
 
             // Play active column notes simultaneously
             activeNotes.forEach(note => {
+                const isPercussion = ['kick', 'snare', 'hihat', 'clap'].includes(note.data.wave);
                 const currentGroup = note.data.groupId;
                 const prevCell = step > 0 ? gridData[step - 1][note.row] : null;
                 
-                // Trigger if this cell is the start of a note block, or if wrapping at step 0
-                const isStartOfGroup = (step === 0) || !prevCell || prevCell.groupId !== currentGroup;
+                // Trigger if percussion (re-hit every step), or start of melodic group, or wrapping at step 0
+                const isStartOfGroup = isPercussion || (step === 0) || !prevCell || prevCell.groupId !== currentGroup;
                 
                 if (isStartOfGroup) {
-                    let len = 1;
-                    while (step + len < COLS && gridData[step + len][note.row] && gridData[step + len][note.row].groupId === currentGroup) {
-                        len++;
+                    if (isPercussion) {
+                        playTone(scale[note.row], time, stepDuration, note.data.wave);
+                    } else {
+                        let len = 1;
+                        while (step + len < COLS && gridData[step + len][note.row] && gridData[step + len][note.row].groupId === currentGroup) {
+                            len++;
+                        }
+                        
+                        const holdDuration = (stepDuration * len) - 0.02;
+                        playTone(scale[note.row], time, holdDuration, note.data.wave);
                     }
-                    
-                    const holdDuration = (stepDuration * len) - 0.02;
-                    playTone(scale[note.row], time, holdDuration, note.data.wave);
                 }
             });
         }
