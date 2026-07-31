@@ -1,0 +1,2022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cody Frog</title>
+    <style>
+        :root {
+            --ui-bg: rgba(26, 37, 47, 0.94);
+            --text-color: #ecf0f1;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b0f19;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            touch-action: none;
+        }
+
+        /* Enforce 16:9 Aspect Ratio Container */
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: calc(100vh * 16 / 9);
+            aspect-ratio: 16 / 9;
+            background: #1a252f;
+            box-shadow: 0 0 35px rgba(0,0,0,0.9);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* UI Overlays */
+        .ui-panel {
+            position: absolute;
+            background: var(--ui-bg);
+            border: 3px solid #34495e;
+            border-radius: 14px;
+            color: var(--text-color);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px);
+            z-index: 10;
+        }
+
+        /* LARGE TOP RESOURCE BAR */
+        #inventory-panel {
+            top: 12px; 
+            left: 16px; 
+            right: 16px;
+            height: 125px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        #level-badge {
+            background: #e67e22;
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 14px;
+            font-weight: bold;
+            font-size: 28px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        #level-badge:hover {
+            transform: scale(1.05);
+        }
+
+        .inventory { display: flex; gap: 16px; align-items: center; }
+        .item {
+            width: 116px; height: 116px;
+            background: #2c3e50; border-radius: 20px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: grab;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+            border: 4px solid #34495e;
+            transition: transform 0.15s, border-color 0.15s;
+            padding: 6px;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        .item:hover {
+            border-color: #f39c12;
+        }
+        .item:active { cursor: grabbing; transform: scale(1.12); }
+
+        /* LARGE BOTTOM CARD SORTING BAR */
+        #coding-panel {
+            bottom: 12px; 
+            left: 16px; 
+            right: 16px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 20px;
+        }
+
+        /* Non-scrollable Cards Bar */
+        #card-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 4px 12px;
+            flex: 1;
+            background: rgba(0,0,0,0.45);
+            border: 3px inset #34495e;
+            border-radius: 16px;
+            height: 124px;
+            box-sizing: border-box;
+        }
+
+        /* Base Code Card */
+        .code-card {
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.45);
+            user-select: none;
+            transition: transform 0.2s ease, border-color 0.15s, opacity 0.15s, background-color 0.15s;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        .code-card:active { cursor: grabbing; transform: scale(1.08); }
+        .code-card.dragging {
+            opacity: 0.35;
+            transform: scale(0.92);
+            border-style: dashed !important;
+        }
+
+        /* Directional Color Coding */
+        .code-card.card-up {
+            background: #3498db;
+            border: 4px solid #1f618d;
+            color: #ffffff;
+        }
+        .code-card.card-down {
+            background: #e67e22;
+            border: 4px solid #a04000;
+            color: #ffffff;
+        }
+        .code-card.card-left {
+            background: #e74c3c;
+            border: 4px solid #922b21;
+            color: #ffffff;
+        }
+        .code-card.card-right {
+            background: #2ecc71;
+            border: 4px solid #1e8449;
+            color: #ffffff;
+        }
+
+        .card-arrow {
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            width: 100%;
+            height: 100%;
+        }
+
+        .action-side {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .action-btns { display: flex; gap: 12px; }
+        .action-btns button {
+            width: 116px;
+            height: 116px;
+            font-size: 50px;
+            font-weight: bold;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+        .btn-play { background: #27ae60; box-shadow: 0 5px 0 #1e8449; }
+        .btn-play:active { transform: translateY(5px); box-shadow: none; }
+
+        #status-message {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Modal Overlay for Victory & Menus */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            background: #1a252f;
+            border: 3px solid #2ecc71;
+            border-radius: 20px;
+            padding: 28px 36px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+            max-width: 380px;
+            width: 85%;
+        }
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-top: 10px;
+        }
+        .icon-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            color: #ecf0f1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            transition: transform 0.15s, background 0.15s, border-color 0.15s;
+        }
+        .icon-btn:hover {
+            transform: translateY(-3px);
+            background: #34495e;
+            border-color: #f39c12;
+        }
+        .icon-btn.primary {
+            background: #27ae60;
+            border-color: #2ecc71;
+        }
+        .icon-btn.primary:hover {
+            background: #2ea059;
+            border-color: #58d68d;
+        }
+
+        /* Start Menu Modal Specifics */
+        #start-menu-modal .modal-card {
+            max-width: 340px;
+            padding: 36px;
+            border-color: #2ecc71;
+        }
+        #start-menu-modal h1 {
+            margin: 12px 0 24px 0;
+            font-size: 34px;
+            color: #2ecc71;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 2px 10px rgba(46, 204, 113, 0.4);
+        }
+        .btn-start-game {
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 16px 32px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #1e8449, 0 8px 20px rgba(0,0,0,0.4);
+            transition: transform 0.15s, background 0.15s;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .btn-start-game:hover {
+            background: #2ecc71;
+            transform: translateY(-2px);
+        }
+        .btn-start-game:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #1e8449;
+        }
+
+        /* Level Grid Modal Styles */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            padding: 6px;
+            overflow: hidden;
+        }
+
+        .level-btn {
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            color: white;
+            border-radius: 12px;
+            padding: 12px 0;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.15s, background 0.15s, border-color 0.15s;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        .level-btn:hover {
+            background: #34495e;
+            border-color: #f39c12;
+            transform: translateY(-2px);
+        }
+        .level-btn.active-level {
+            background: #27ae60;
+            border-color: #2ecc71;
+        }
+        .close-modal-btn {
+            background: none;
+            border: none;
+            color: #bdc3c7;
+            font-size: 28px;
+            cursor: pointer;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+        .close-modal-btn:hover { color: #e74c3c; }
+    </style>
+    <!-- Load Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <div id="canvas-container"></div>
+
+        <!-- Top Resource Bar -->
+        <div id="inventory-panel" class="ui-panel">
+            <div id="level-badge" onclick="openLevelSelectModal()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+                <span id="level-number-text">1</span>
+            </div>
+            <div class="inventory" id="inventory"></div>
+            <div id="status-message"></div>
+        </div>
+
+        <!-- Card-Sorting Bottom Bar -->
+        <div id="coding-panel" class="ui-panel">
+            <!-- Non-scrollable Cards Bar -->
+            <div id="card-container"></div>
+
+            <div class="action-side">
+                <div class="action-btns">
+                    <button class="btn-play" title="Play" onclick="executeCode()">
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Menu Modal -->
+        <div id="start-menu-modal" class="modal-overlay active">
+            <div class="modal-card">
+                <svg width="72" height="72" viewBox="0 0 40 40" fill="none">
+                    <circle cx="12" cy="12" r="7" fill="#2ecc71"/>
+                    <circle cx="28" cy="12" r="7" fill="#2ecc71"/>
+                    <circle cx="12" cy="11" r="3" fill="#ffffff"/>
+                    <circle cx="28" cy="11" r="3" fill="#ffffff"/>
+                    <circle cx="12" cy="11" r="1.5" fill="#1a252f"/>
+                    <circle cx="28" cy="11" r="1.5" fill="#1a252f"/>
+                    <path d="M8 20 C8 32 32 32 32 20 Z" fill="#27ae60"/>
+                    <path d="M14 24 Q20 28 26 24" stroke="#1e8449" stroke-width="2" stroke-linecap="round" fill="none"/>
+                </svg>
+                <h1>Cody Frog</h1>
+                <button class="btn-start-game" onclick="startGame()">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5v14l11-7z"/></svg>
+                    PLAY
+                </button>
+            </div>
+        </div>
+
+        <!-- 3-Icon Victory Modal -->
+        <div id="next-level-modal" class="modal-overlay">
+            <div class="modal-card">
+                <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 16px;">
+                    <svg width="90" height="90" viewBox="0 0 64 64" fill="none">
+                        <circle cx="32" cy="32" r="28" fill="#27ae60" opacity="0.25"/>
+                        <circle cx="18" cy="20" r="7" fill="#2ecc71"/>
+                        <circle cx="46" cy="20" r="7" fill="#2ecc71"/>
+                        <circle cx="18" cy="19" r="3" fill="#ffffff"/>
+                        <circle cx="46" cy="19" r="3" fill="#ffffff"/>
+                        <circle cx="18" cy="19" r="1.5" fill="#1a252f"/>
+                        <circle cx="46" cy="19" r="1.5" fill="#1a252f"/>
+                        <path d="M14 28 C14 44 50 44 50 28 Z" fill="#27ae60"/>
+                        <path d="M22 33 Q32 39 42 33" stroke="#1e8449" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                        <polygon points="32,2 35,10 43,11 37,17 39,25 32,21 25,25 27,17 21,11 29,10" fill="#f1c40f"/>
+                    </svg>
+                </div>
+                <div class="modal-actions">
+                    <button class="icon-btn" title="Select Level" onclick="openLevelSelectModal()">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                    </button>
+                    <button class="icon-btn" title="Replay Level" onclick="replayCurrentLevel()">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    </button>
+                    <button class="icon-btn primary" title="Next Level" onclick="loadNextLevel()">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Level Select Grid Modal -->
+        <div id="level-select-modal" class="modal-overlay">
+            <div class="modal-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h2 style="margin: 0; color: #2ecc71; font-size: 26px; display: flex; align-items: center; gap: 8px;">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="#2ecc71"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+                        LEVELS
+                    </h2>
+                    <button class="close-modal-btn" onclick="hideLevelSelectModal()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="level-grid" id="level-grid-container"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // BESPOKE VECTOR GRAPHICS FOR UI & STATUS
+    // ==========================================
+    const PLANK_SVG = `
+        <svg width="86%" height="85%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="pointer-events:none;">
+            <rect x="6" y="4" width="14" height="92" rx="3" fill="#4a2e16" stroke="#2d1a0c" stroke-width="2"/>
+            <rect x="80" y="4" width="14" height="92" rx="3" fill="#4a2e16" stroke="#2d1a0c" stroke-width="2"/>
+            <rect x="3" y="6" width="94" height="15" rx="3" fill="#8b5a2b" stroke="#5c3818" stroke-width="1.5"/>
+            <rect x="3" y="25" width="94" height="15" rx="3" fill="#9c6430" stroke="#5c3818" stroke-width="1.5"/>
+            <rect x="3" y="44" width="94" height="15" rx="3" fill="#8b5a2b" stroke="#5c3818" stroke-width="1.5"/>
+            <rect x="3" y="63" width="94" height="15" rx="3" fill="#9c6430" stroke="#5c3818" stroke-width="1.5"/>
+            <rect x="3" y="82" width="94" height="15" rx="3" fill="#8b5a2b" stroke="#5c3818" stroke-width="1.5"/>
+            <circle cx="13" cy="13.5" r="2.5" fill="#222"/>
+            <circle cx="87" cy="13.5" r="2.5" fill="#222"/>
+            <circle cx="13" cy="32.5" r="2.5" fill="#222"/>
+            <circle cx="87" cy="32.5" r="2.5" fill="#222"/>
+            <circle cx="13" cy="51.5" r="2.5" fill="#222"/>
+            <circle cx="87" cy="51.5" r="2.5" fill="#222"/>
+            <circle cx="13" cy="70.5" r="2.5" fill="#222"/>
+            <circle cx="87" cy="70.5" r="2.5" fill="#222"/>
+            <circle cx="13" cy="89.5" r="2.5" fill="#222"/>
+            <circle cx="87" cy="89.5" r="2.5" fill="#222"/>
+        </svg>
+    `;
+
+    const BOULDER_SVG = `
+        <svg width="86%" height="85%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="pointer-events:none;">
+            <polygon points="30,8 70,6 92,30 88,76 56,94 18,82 8,44" fill="#7f8c8d" stroke="#525e60" stroke-width="2"/>
+            <polygon points="30,8 70,6 60,38 34,32" fill="#b0c4de"/>
+            <polygon points="34,32 60,38 68,70 38,74" fill="#95a5a6"/>
+            <polygon points="70,6 92,30 68,70 60,38" fill="#6c7a7c"/>
+            <polygon points="38,74 68,70 88,76 56,94 18,82" fill="#4b5556"/>
+            <polygon points="30,8 34,32 38,74 18,82 8,44" fill="#788688"/>
+        </svg>
+    `;
+
+    const STATUS_ICONS = {
+        'frog': `
+            <svg width="52" height="52" viewBox="0 0 40 40" fill="none">
+                <circle cx="12" cy="12" r="7" fill="#2ecc71"/>
+                <circle cx="28" cy="12" r="7" fill="#2ecc71"/>
+                <circle cx="12" cy="11" r="3" fill="#ffffff"/>
+                <circle cx="28" cy="11" r="3" fill="#ffffff"/>
+                <circle cx="12" cy="11" r="1.5" fill="#1a252f"/>
+                <circle cx="28" cy="11" r="1.5" fill="#1a252f"/>
+                <path d="M8 20 C8 32 32 32 32 20 Z" fill="#27ae60"/>
+                <path d="M14 24 Q20 28 26 24" stroke="#1e8449" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+        `,
+        'rocket': `
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-3.05 11a22.35 22.35 0 0 1-3.95 2z"/>
+            </svg>
+        `,
+        'crash': `
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="#e74c3c">
+                <polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9"/>
+            </svg>
+        `,
+        'splash': `
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="#3498db">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+        `,
+        'stop': `
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="#e74c3c">
+                <rect x="4" y="4" width="16" height="16" rx="4"/>
+            </svg>
+        `,
+        'star': `
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="#f1c40f">
+                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+            </svg>
+        `,
+        'win': `
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="#2ecc71">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+        `
+    };
+
+    // ==========================================
+    // 0. WEB AUDIO API SOUND EFFECTS
+    // ==========================================
+    let audioCtx = null;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playJumpSound() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(450, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    }
+
+    function playBridgeSound() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(280, audioCtx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    }
+
+    function playWinSound() {
+        if (!audioCtx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const startTime = audioCtx.currentTime + idx * 0.1;
+            gain.gain.setValueAtTime(0.3, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.25);
+        });
+    }
+
+    function playTrophySound() {
+        if (!audioCtx) return;
+        const notes = [523.25, 659.25, 783.99, 987.77, 1046.50, 1318.51];
+        notes.forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            const startTime = audioCtx.currentTime + idx * 0.06;
+            gain.gain.setValueAtTime(0.35, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.22);
+        });
+    }
+
+    function playSplashSound() {
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+
+        const bufferSize = audioCtx.sampleRate * 0.35;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, now);
+        filter.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.4, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noise.start(now);
+
+        const osc = audioCtx.createOscillator();
+        const oscGain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(350, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.25);
+
+        oscGain.gain.setValueAtTime(0.35, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+        osc.connect(oscGain);
+        oscGain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+    }
+
+    function startGame() {
+        initAudio();
+        document.getElementById('start-menu-modal').classList.remove('active');
+    }
+
+    // ==========================================
+    // 1. GAME STATE & VARIABLES
+    // ==========================================
+    let currentLevel = 1;
+    let GRID_WIDTH = 6;
+    let GRID_HEIGHT = 5;
+
+    let gridLogic = [];
+    let frogPos = {x: 0, z: 0};
+    let startPos = {x: 0, z: 0};
+    let commands = [];
+    let initialShuffledCommands = [];
+    let isExecuting = false;
+
+    let buttonBridges = [];
+    let sceneObjects = [];
+    let streamMeshes = [];
+    let fountainObjects = [];
+    let trophyObjects = [];
+    let interactiveTiles = [];
+
+    const PAIR_COLORS = [
+        0xe74c3c, // Crimson Red
+        0x9b59b6, // Royal Purple
+        0xf1c40f, // Gold Yellow
+        0x1abc9c, // Cyan Teal
+        0xe67e22  // Vivid Orange
+    ];
+
+    // Drag tracking for 3D items & cards
+    let dragged3DObject = null;
+    let dragged3DType = null;
+    let dragged3DSourceElem = null;
+    let draggedPlankSourceCell = null;
+    let draggedCardIdx = null;
+
+    // Horizontal plane at y = 0.5 for 3D dragging
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.5);
+
+    // ==========================================
+    // 2. THREE.JS SETUP & AUTO-FIT CAMERA
+    // ==========================================
+    const wrapper = document.getElementById('game-wrapper');
+    const container = document.getElementById('canvas-container');
+    
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#0b101d');
+
+    const camera = new THREE.PerspectiveCamera(40, wrapper.clientWidth / wrapper.clientHeight, 0.1, 250);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    scene.add(dirLight);
+
+    function adjustCameraToFitMap(w, h) {
+        const mapCenterX = (w - 1) / 2;
+        const mapCenterZ = (h - 1) / 2;
+        
+        const totalW = w + 5.5;
+        const totalH = h + 6.2;
+
+        const aspect = wrapper.clientWidth / wrapper.clientHeight;
+        const vFovRad = THREE.MathUtils.degToRad(camera.fov);
+
+        const distH = (totalH / 2) / Math.tan(vFovRad / 2);
+        const distW = (totalW / (2 * aspect)) / Math.tan(vFovRad / 2);
+
+        const dist = Math.max(distH, distW);
+
+        camera.position.set(mapCenterX, dist, mapCenterZ + 0.001);
+        camera.lookAt(mapCenterX, 0, mapCenterZ);
+        camera.aspect = aspect;
+        camera.updateProjectionMatrix();
+
+        dirLight.position.set(mapCenterX + 6, dist * 0.8, mapCenterZ + 6);
+    }
+
+    // ==========================================
+    // 3. MATERIALS & 3D MODELS
+    // ==========================================
+    const matGrass = new THREE.MeshStandardMaterial({ color: 0x2ecc71 });
+    const matDirt = new THREE.MeshStandardMaterial({ color: 0x5d4037 });
+    const matWater = new THREE.MeshStandardMaterial({ color: 0x3498db, transparent: true, opacity: 0.85 });
+    const matBoulder = new THREE.MeshStandardMaterial({ color: 0x7f8c8d });
+    const matButtonGreen = new THREE.MeshStandardMaterial({ color: 0x2ecc71 });
+    
+    // Frog Materials
+    const matFrog = new THREE.MeshStandardMaterial({ color: 0x2ecc71 });
+    const matFrogDark = new THREE.MeshStandardMaterial({ color: 0x1e8449 });
+
+    // Turtle NPC Materials
+    const matTurtleShell = new THREE.MeshStandardMaterial({ color: 0x1e4620 });
+    const matTurtleSkin = new THREE.MeshStandardMaterial({ color: 0x2e7d32 });
+
+    const geoBox = new THREE.BoxGeometry(0.94, 0.5, 0.94);
+    const geoHalfBox = new THREE.BoxGeometry(0.94, 0.2, 0.94);
+
+    // --- GOLDEN 3D STAR MODEL GENERATOR ---
+    function createStarMesh() {
+        const group = new THREE.Group();
+        const goldMat = new THREE.MeshStandardMaterial({ 
+            color: 0xffdb00, 
+            roughness: 0.3, 
+            metalness: 0.1,
+            flatShading: true
+        });
+
+        const shape = new THREE.Shape();
+        const points = 5;
+        const outerRadius = 0.28;
+        const innerRadius = 0.13;
+
+        for (let i = 0; i < points * 2; i++) {
+            const r = (i % 2 === 0) ? outerRadius : innerRadius;
+            const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r;
+            if (i === 0) shape.moveTo(x, y);
+            else shape.lineTo(x, y);
+        }
+        shape.closePath();
+
+        const extrudeSettings = {
+            depth: 0.06,
+            bevelEnabled: true,
+            bevelSegments: 1,
+            steps: 1,
+            bevelSize: 0.04,
+            bevelThickness: 0.06
+        };
+
+        const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        geo.center();
+        const starMesh = new THREE.Mesh(geo, goldMat);
+        starMesh.castShadow = true;
+        starMesh.receiveShadow = true;
+        starMesh.rotation.x = -Math.PI / 2; // Face points upward towards top camera
+        starMesh.position.y = 0.35;
+
+        group.add(starMesh);
+        return group;
+    }
+
+    // --- COLOR-CODED 3D WOODEN BRIDGE MODEL GENERATOR ---
+    function createBridgeMesh(accentColor = 0x4a2e16) {
+        const bridge = new THREE.Group();
+        
+        const matBeam = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.6 });
+        const matSlat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
+        const matNail = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 });
+
+        const beamGeo = new THREE.BoxGeometry(0.12, 0.16, 0.92);
+        const beamL = new THREE.Mesh(beamGeo, matBeam);
+        beamL.position.set(-0.36, 0.08, 0);
+        beamL.castShadow = true; beamL.receiveShadow = true;
+
+        const beamR = new THREE.Mesh(beamGeo, matBeam);
+        beamR.position.set(0.36, 0.08, 0);
+        beamR.castShadow = true; beamR.receiveShadow = true;
+
+        bridge.add(beamL, beamR);
+
+        const slatGeo = new THREE.BoxGeometry(0.92, 0.08, 0.15);
+        const nailGeo = new THREE.BoxGeometry(0.04, 0.09, 0.04);
+
+        for (let i = 0; i < 5; i++) {
+            const zPos = -0.36 + i * 0.18;
+            const slat = new THREE.Mesh(slatGeo, matSlat);
+            slat.position.set(0, 0.14, zPos);
+            slat.castShadow = true; slat.receiveShadow = true;
+            bridge.add(slat);
+
+            const nail1 = new THREE.Mesh(nailGeo, matNail);
+            nail1.position.set(-0.36, 0.15, zPos);
+            bridge.add(nail1);
+
+            const nail2 = new THREE.Mesh(nailGeo, matNail);
+            nail2.position.set(0.36, 0.15, zPos);
+            bridge.add(nail2);
+        }
+
+        return bridge;
+    }
+
+    // --- ANIMATED SPLASHY FOUNTAIN GENERATOR ---
+    function createSplashFountain(x, z) {
+        const group = new THREE.Group();
+        
+        const matFountainCore = new THREE.MeshStandardMaterial({ 
+            color: 0x74b9ff, transparent: true, opacity: 0.8, roughness: 0.1 
+        });
+        const matFoam = new THREE.MeshStandardMaterial({ 
+            color: 0xe0f7fa, transparent: true, opacity: 0.9, roughness: 0.2 
+        });
+
+        const jetGeo = new THREE.CylinderGeometry(0.15, 0.35, 0.7, 12);
+        const jet = new THREE.Mesh(jetGeo, matFountainCore);
+        jet.position.y = 0.35;
+        jet.name = "jet";
+        group.add(jet);
+
+        const ringGeo = new THREE.TorusGeometry(0.32, 0.06, 8, 16);
+        const ring = new THREE.Mesh(ringGeo, matFoam);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.1;
+        ring.name = "ring";
+        group.add(ring);
+
+        const dropGeo = new THREE.DodecahedronGeometry(0.06, 0);
+        const droplets = [];
+        for (let i = 0; i < 6; i++) {
+            const drop = new THREE.Mesh(dropGeo, matFoam);
+            const angle = (i / 6) * Math.PI * 2;
+            drop.userData = {
+                baseAngle: angle,
+                radius: 0.2 + Math.random() * 0.12,
+                speed: 3 + Math.random() * 2,
+                offsetY: Math.random() * Math.PI * 2
+            };
+            group.add(drop);
+            droplets.push(drop);
+        }
+        group.userData = { droplets };
+
+        group.position.set(x, 0, z);
+        return group;
+    }
+
+    // --- REFINED NARROW FROG MODEL ---
+    const frogGroup = new THREE.Group();
+    const frogBody = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.38, 0.52), matFrog);
+    frogBody.position.y = 0.41; frogBody.castShadow = true;
+    
+    const eyeGeo = new THREE.SphereGeometry(0.09, 8, 8);
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.15, 0.58, 0.16);
+    const pupilL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), pupilMat); pupilL.position.set(0, 0, 0.07);
+    eyeL.add(pupilL);
+    
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.15, 0.58, 0.16);
+    const pupilR = pupilL.clone(); eyeR.add(pupilR);
+
+    const legGeo = new THREE.BoxGeometry(0.08, 0.16, 0.12);
+    const backLegGeo = new THREE.BoxGeometry(0.09, 0.2, 0.28);
+    const footGeo = new THREE.BoxGeometry(0.1, 0.04, 0.14);
+
+    const frontLegL = new THREE.Mesh(legGeo, matFrogDark); frontLegL.position.set(-0.27, 0.28, 0.14);
+    const frontFootL = new THREE.Mesh(footGeo, matFrogDark); frontFootL.position.set(-0.27, 0.21, 0.17);
+
+    const frontLegR = new THREE.Mesh(legGeo, matFrogDark); frontLegR.position.set(0.27, 0.28, 0.14);
+    const frontFootR = new THREE.Mesh(footGeo, matFrogDark); frontFootR.position.set(0.27, 0.21, 0.17);
+
+    const backLegL = new THREE.Mesh(backLegGeo, matFrogDark); backLegL.position.set(-0.27, 0.3, -0.08);
+    const backFootL = new THREE.Mesh(footGeo, matFrogDark); backFootL.position.set(-0.28, 0.21, -0.12);
+
+    const backLegR = new THREE.Mesh(backLegGeo, matFrogDark); backLegR.position.set(0.27, 0.3, -0.08);
+    const backFootR = new THREE.Mesh(footGeo, matFrogDark); backFootR.position.set(0.28, 0.21, -0.12);
+
+    frogGroup.add(frogBody, eyeL, eyeR, frontLegL, frontFootL, frontLegR, frontFootR, backLegL, backFootL, backLegR, backFootR);
+    scene.add(frogGroup);
+
+    // Fly Model
+    const flyGroup = new THREE.Group();
+    const flyBody = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), new THREE.MeshStandardMaterial({color: 0x111111}));
+    const wingMat = new THREE.MeshStandardMaterial({color: 0xffffff, transparent: true, opacity: 0.6});
+    const wing1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.12), wingMat); wing1.position.set(0.16, 0.1, 0);
+    const wing2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.12), wingMat); wing2.position.set(-0.16, 0.1, 0);
+    flyGroup.add(flyBody, wing1, wing2);
+    scene.add(flyGroup);
+
+    // Turtle NPC Set Piece Builder
+    function createTurtle(x, z) {
+        const group = new THREE.Group();
+        
+        const rockGeo = new THREE.DodecahedronGeometry(0.35);
+        const rock = new THREE.Mesh(rockGeo, matBoulder);
+        rock.scale.set(1.1, 0.5, 1.1);
+        rock.position.y = 0.08;
+        group.add(rock);
+
+        const shellGeo = new THREE.SphereGeometry(0.22, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+        const shell = new THREE.Mesh(shellGeo, matTurtleShell);
+        shell.position.y = 0.22;
+        shell.scale.set(1, 0.65, 1.2);
+        group.add(shell);
+
+        const headGeo = new THREE.SphereGeometry(0.09, 8, 8);
+        const head = new THREE.Mesh(headGeo, matTurtleSkin);
+        head.position.set(0, 0.28, 0.28);
+        group.add(head);
+
+        const legGeo = new THREE.BoxGeometry(0.08, 0.04, 0.14);
+        [[-0.18, 0.18, 0.12], [0.18, 0.18, 0.12], [-0.18, 0.18, -0.12], [0.18, 0.18, -0.12]].forEach(pos => {
+            const leg = new THREE.Mesh(legGeo, matTurtleSkin);
+            leg.position.set(...pos);
+            group.add(leg);
+        });
+
+        group.position.set(x, 0, z);
+        group.rotation.y = Math.random() * Math.PI * 2;
+        scene.add(group);
+        sceneObjects.push(group);
+    }
+
+    // --- HELPER: Calculate grid cells passed through by a line ---
+    function getLineCells(p1, p2) {
+        let lineCells = new Set();
+        let steps = Math.max(Math.abs(p2.x - p1.x), Math.abs(p2.z - p1.z)) * 10 || 10;
+        for (let i = 0; i <= steps; i++) {
+            let t = i / steps;
+            let x = Math.round(p1.x + t * (p2.x - p1.x));
+            let z = Math.round(p1.z + t * (p2.z - p1.z));
+            lineCells.add(`${x},${z}`);
+        }
+        let arr = [];
+        lineCells.forEach(key => {
+            let [x, z] = key.split(',').map(Number);
+            arr.push({x, z});
+        });
+        return arr;
+    }
+
+    // ==========================================
+    // 4. HIGH-VARIETY MAP & TIGHT CARD GENERATOR
+    // ==========================================
+    function findPathBetween(p1, p2, visitedSet, W, H) {
+        let queue = [{ pos: p1, path: [p1] }];
+        let visitedInSearch = new Set();
+        visitedInSearch.add(`${p1.x},${p1.z}`);
+
+        while (queue.length > 0) {
+            queue.sort((a, b) => {
+                let distA = Math.abs(a.pos.x - p2.x) + Math.abs(a.pos.z - p2.z) + Math.random() * 2;
+                let distB = Math.abs(b.pos.x - p2.x) + Math.abs(b.pos.z - p2.z) + Math.random() * 2;
+                return distA - distB;
+            });
+
+            let curr = queue.shift();
+            if (curr.pos.x === p2.x && curr.pos.z === p2.z) return curr.path;
+
+            let dirs = [
+                {x: 1, z: 0}, {x: -1, z: 0},
+                {x: 0, z: 1}, {x: 0, z: -1}
+            ].sort(() => Math.random() - 0.5);
+
+            for (let d of dirs) {
+                let nx = curr.pos.x + d.x, nz = curr.pos.z + d.z;
+                let key = `${nx},${nz}`;
+                if (nx >= 0 && nx < W && nz >= 0 && nz < H && !visitedSet.has(key) && !visitedInSearch.has(key)) {
+                    visitedInSearch.add(key);
+                    queue.push({ pos: {x: nx, z: nz}, path: [...curr.path, {x: nx, z: nz}] });
+                }
+            }
+        }
+        return null;
+    }
+
+    function generateLevelData(level) {
+        const W = level > 10 ? Math.max(7, Math.min(6 + Math.floor((level - 1) * 0.25), 8)) : Math.min(6 + Math.floor((level - 1) * 0.25), 8);
+        const H = level > 10 ? Math.max(6, Math.min(5 + Math.floor((level - 1) * 0.2), 6)) : Math.min(5 + Math.floor((level - 1) * 0.2), 6);
+
+        let map, fullPath, success = false;
+        let attempts = 0;
+        let startP, flyP;
+
+        while (!success && attempts < 100) {
+            attempts++;
+            map = Array.from({ length: H }, () => Array(W).fill('~'));
+
+            // ROLL A RANDOM ARCHETYPE FOR MAXIMUM VISUAL VARIETY!
+            let archetype = Math.floor(Math.random() * 5);
+
+            if (archetype === 0) { // Bottom-Left -> Top-Right
+                startP = { x: Math.floor(Math.random() * 2), z: H - 1 - Math.floor(Math.random() * 2) };
+                flyP   = { x: W - 1 - Math.floor(Math.random() * 2), z: Math.floor(Math.random() * 2) };
+            } else if (archetype === 1) { // Bottom-Right -> Top-Left
+                startP = { x: W - 1 - Math.floor(Math.random() * 2), z: H - 1 - Math.floor(Math.random() * 2) };
+                flyP   = { x: Math.floor(Math.random() * 2), z: Math.floor(Math.random() * 2) };
+            } else if (archetype === 2) { // Top-Right -> Bottom-Left
+                startP = { x: W - 1 - Math.floor(Math.random() * 2), z: Math.floor(Math.random() * 2) };
+                flyP   = { x: Math.floor(Math.random() * 2), z: H - 1 - Math.floor(Math.random() * 2) };
+            } else if (archetype === 3) { // Center -> Outer Corner
+                startP = { x: Math.floor(W / 2), z: Math.floor(H / 2) };
+                let corners = [{x:0, z:0}, {x:W-1, z:0}, {x:0, z:H-1}, {x:W-1, z:H-1}];
+                flyP   = corners[Math.floor(Math.random() * corners.length)];
+            } else { // Top-Left -> Bottom-Right
+                startP = { x: Math.floor(Math.random() * 2), z: Math.floor(Math.random() * 2) };
+                flyP   = { x: W - 1 - Math.floor(Math.random() * 2), z: H - 1 - Math.floor(Math.random() * 2) };
+            }
+
+            // FLY ROW OFFSET CONSTRAINT: Fly must be >= 2 grid rows away from Frog
+            if (Math.abs(startP.z - flyP.z) < 2) continue;
+
+            // Pick 1 or 2 detours to make the path loop/curve
+            let mid1 = {
+                x: (Math.random() < 0.5) ? 0 : W - 1,
+                z: (Math.random() < 0.5) ? 0 : H - 1
+            };
+            let mid2 = {
+                x: Math.floor(Math.random() * W),
+                z: Math.floor(Math.random() * H)
+            };
+
+            let waypoints = [startP, mid1, mid2, flyP];
+            // Filter consecutive duplicate waypoints
+            waypoints = waypoints.filter((wp, idx, arr) => idx === 0 || wp.x !== arr[idx-1].x || wp.z !== arr[idx-1].z);
+
+            let visitedSet = new Set();
+            fullPath = [];
+            let failed = false;
+
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                let subPath = findPathBetween(waypoints[i], waypoints[i+1], visitedSet, W, H);
+                if (!subPath || subPath.length < 2) {
+                    failed = true;
+                    break;
+                }
+                for (let pt of subPath) {
+                    let key = `${pt.x},${pt.z}`;
+                    if (!visitedSet.has(key)) {
+                        visitedSet.add(key);
+                        fullPath.push(pt);
+                    }
+                }
+            }
+
+            // Accept path if between 6 and 12 steps
+            if (!failed && fullPath.length >= 6 && fullPath.length <= 12) {
+                success = true;
+            }
+        }
+
+        // RANDOMIZED DYNAMIC FALLBACK (Never static top-left to bottom-right!)
+        if (!success || fullPath.length < 5) {
+            let sZ = Math.floor(Math.random() * 2);
+            let fZ = H - 1 - Math.floor(Math.random() * 2);
+            if (Math.random() < 0.5) { let temp = sZ; sZ = fZ; fZ = temp; }
+
+            let startX = Math.random() < 0.5 ? 0 : W - 1;
+            let flyX = startX === 0 ? W - 1 : 0;
+
+            startP = { x: startX, z: sZ };
+            flyP   = { x: flyX, z: fZ };
+
+            fullPath = [];
+            let curX = startP.x, curZ = startP.z;
+            fullPath.push({ x: curX, z: curZ });
+
+            while (curX !== flyP.x) {
+                curX += (flyP.x > curX ? 1 : -1);
+                fullPath.push({ x: curX, z: curZ });
+            }
+            while (curZ !== flyP.z) {
+                curZ += (flyP.z > curZ ? 1 : -1);
+                fullPath.push({ x: curX, z: curZ });
+            }
+        }
+
+        let path = fullPath;
+        start = path[0];
+        fly = path[path.length - 1];
+
+        map[start.z][start.x] = 'S';
+        for (let i = 1; i < path.length - 1; i++) {
+            map[path[i].z][path[i].x] = '.';
+        }
+        map[fly.z][fly.x] = 'F';
+
+        for (let z = 0; z < H; z++) {
+            for (let x = 0; x < W; x++) {
+                if (map[z][x] === '~' && Math.random() < 0.05) {
+                    map[z][x] = '.';
+                }
+            }
+        }
+
+        let candidates = [];
+        for (let i = 2; i < path.length - 2; i++) candidates.push(i);
+        candidates.sort(() => Math.random() - 0.5);
+
+        let generatedBridges = [];
+        let numBridges = Math.min(Math.floor((level - 1) / 3), 2);
+        let numHoses = Math.min(Math.floor(level / 4), 1);
+        let numGaps = Math.min(1 + Math.floor(level / 4), 2);
+
+        let bridgeChars = ['=', '#', '$', '%'];
+        let btnChars = ['O', 'P', 'Q', 'R'];
+
+        let gapCount = 0;
+        let hoseCount = 0;
+
+        let usedCoords = new Set(path.map(p => `${p.x},${p.z}`));
+        let anchorSpurs = {};
+
+        // LEVEL 11+: Place Bonus Star off the main path
+        let starExtraMoves = [];
+        if (level > 10 && path.length > 3) {
+            let lineCells = getLineCells(startP, flyP);
+            let candidatesForStar = [];
+
+            for (let z = 0; z < H; z++) {
+                for (let x = 0; x < W; x++) {
+                    let key = `${x},${z}`;
+                    if (!usedCoords.has(key) && map[z][x] === '~') {
+                        let minDistToLine = Infinity;
+                        for (let lc of lineCells) {
+                            let dist = Math.max(Math.abs(x - lc.x), Math.abs(z - lc.z));
+                            if (dist < minDistToLine) minDistToLine = dist;
+                        }
+
+                        for (let i = 1; i < path.length - 1; i++) {
+                            let pt = path[i];
+                            let d = Math.abs(pt.x - x) + Math.abs(pt.z - z);
+                            if (d === 1) {
+                                candidatesForStar.push({ x, z, anchor: pt, minDistToLine, anchorIdx: i });
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let validStarCandidates = candidatesForStar.filter(c => c.minDistToLine >= 2);
+            if (validStarCandidates.length === 0) validStarCandidates = candidatesForStar;
+
+            if (validStarCandidates.length > 0) {
+                validStarCandidates.sort((a, b) => b.minDistToLine - a.minDistToLine || Math.random() - 0.5);
+                let chosen = validStarCandidates[0];
+                map[chosen.z][chosen.x] = 'T';
+                usedCoords.add(`${chosen.x},${chosen.z}`);
+                gapCount++;
+
+                anchorSpurs[chosen.anchorIdx] = (anchorSpurs[chosen.anchorIdx] || []).concat([{ x: chosen.x, z: chosen.z }]);
+            }
+        }
+
+        // Place Bridges & Detour Buttons
+        for (let b = 0; b < numBridges && candidates.length > 0; b++) {
+            let bridgeIdx = candidates.pop();
+            let brPos = path[bridgeIdx];
+
+            let availablePrevIdxs = [];
+            for (let i = 1; i < bridgeIdx; i++) availablePrevIdxs.push(i);
+
+            let btnPlaced = false;
+            let pairColor = PAIR_COLORS[b % PAIR_COLORS.length];
+
+            if (availablePrevIdxs.length > 0) {
+                availablePrevIdxs.sort(() => Math.random() - 0.5);
+
+                for (let anchorIdx of availablePrevIdxs) {
+                    let anchor = path[anchorIdx];
+                    let dirs = [
+                        {x: 0, z: -1}, {x: 0, z: 1},
+                        {x: -1, z: 0}, {x: 1, z: 0}
+                    ].sort(() => Math.random() - 0.5);
+
+                    for (let d of dirs) {
+                        let buttonTile = { x: anchor.x + d.x, z: anchor.z + d.z };
+                        let key = `${buttonTile.x},${buttonTile.z}`;
+
+                        if (buttonTile.x >= 0 && buttonTile.x < W && buttonTile.z >= 0 && buttonTile.z < H && !usedCoords.has(key)) {
+                            usedCoords.add(key);
+                            map[buttonTile.z][buttonTile.x] = btnChars[b];
+                            map[brPos.z][brPos.x] = bridgeChars[b];
+
+                            anchorSpurs[anchorIdx] = (anchorSpurs[anchorIdx] || []).concat([buttonTile]);
+
+                            generatedBridges.push({
+                                id: b,
+                                color: pairColor,
+                                btnChar: btnChars[b],
+                                bridgeChar: bridgeChars[b],
+                                btnPos: { x: buttonTile.x, z: buttonTile.z },
+                                bridgePos: { x: brPos.x, z: brPos.z },
+                                open: false,
+                                btnMesh: null,
+                                bridgeMesh: null,
+                                btnMat: null
+                            });
+
+                            btnPlaced = true;
+                            break;
+                        }
+                    }
+                    if (btnPlaced) break;
+                }
+            }
+
+            if (!btnPlaced && availablePrevIdxs.length > 0) {
+                let fallbackIdx = availablePrevIdxs[0];
+                let btPos = path[fallbackIdx];
+                map[brPos.z][brPos.x] = bridgeChars[b];
+                map[btPos.z][btPos.x] = btnChars[b];
+
+                generatedBridges.push({
+                    id: b,
+                    color: pairColor,
+                    btnChar: btnChars[b],
+                    bridgeChar: bridgeChars[b],
+                    btnPos: { x: btPos.x, z: btPos.z },
+                    bridgePos: { x: brPos.x, z: brPos.z },
+                    open: false,
+                    btnMesh: null,
+                    bridgeMesh: null,
+                    btnMat: null
+                });
+            }
+        }
+
+        for (let h = 0; h < numHoses && candidates.length > 0; h++) {
+            let streamIdx = candidates.pop();
+            let streamPos = path[streamIdx];
+            map[streamPos.z][streamPos.x] = '|';
+            hoseCount++;
+        }
+
+        for (let g = 0; g < numGaps && candidates.length > 0; g++) {
+            let gapIdx = candidates.pop();
+            let gapPos = path[gapIdx];
+            map[gapPos.z][gapPos.x] = '~';
+            gapCount++;
+        }
+
+        // --- CONSTRUCT SOLUTION PATH DIRECTLY FROM ROUTE ---
+        let routeCoords = [];
+        for (let i = 0; i < path.length; i++) {
+            let pt = path[i];
+            routeCoords.push(pt);
+
+            if (anchorSpurs[i]) {
+                let spurList = anchorSpurs[i];
+                for (let spur of spurList) {
+                    routeCoords.push(spur);
+                    routeCoords.push(pt);
+                }
+            }
+        }
+
+        let solution = [];
+        for (let i = 0; i < routeCoords.length - 1; i++) {
+            let c1 = routeCoords[i], c2 = routeCoords[i + 1];
+            let dx = c2.x - c1.x, dz = c2.z - c1.z;
+            if (dx === 1) solution.push('RIGHT');
+            else if (dx === -1) solution.push('LEFT');
+            else if (dz === 1) solution.push('DOWN');
+            else if (dz === -1) solution.push('UP');
+        }
+
+        let numDecoys = level <= 5 ? 1 : 2;
+        const allDirs = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
+        for (let d = 0; d < numDecoys; d++) {
+            solution.push(allDirs[Math.floor(Math.random() * allDirs.length)]);
+        }
+
+        return { W, H, map, generatedBridges, gapCount, hoseCount, solution };
+    }
+
+    // ==========================================
+    // 5. SCENE GENERATION & BORDER FILL
+    // ==========================================
+    function createTree(x, z) {
+        const tree = new THREE.Group();
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+        const leafColor = [0x1e8449, 0x27ae60, 0x145a32][Math.floor(Math.random() * 3)];
+        const leafMat = new THREE.MeshStandardMaterial({ color: leafColor });
+        
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.7, 8), trunkMat);
+        trunk.position.y = 0.35; trunk.castShadow = true;
+        
+        const leaves = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.1, 6), leafMat);
+        leaves.position.y = 1.0; leaves.castShadow = true;
+        
+        tree.add(trunk, leaves);
+        tree.position.set(x + (Math.random()*0.2 - 0.1), 0, z + (Math.random()*0.2 - 0.1));
+        const scale = 0.85 + Math.random() * 0.35;
+        tree.scale.set(scale, scale, scale);
+        scene.add(tree);
+        sceneObjects.push(tree);
+    }
+
+    function initLevel() {
+        sceneObjects.forEach(obj => scene.remove(obj));
+        sceneObjects = [];
+        interactiveTiles = [];
+        streamMeshes = [];
+        fountainObjects = [];
+        trophyObjects = [];
+        gridLogic = [];
+        draggedPlankSourceCell = null;
+        dragged3DObject = null;
+        dragged3DType = null;
+        dragged3DSourceElem = null;
+
+        document.getElementById('level-number-text').innerText = currentLevel;
+        setStatus('frog');
+
+        const levelData = generateLevelData(currentLevel);
+        GRID_WIDTH = levelData.W;
+        GRID_HEIGHT = levelData.H;
+        buttonBridges = levelData.generatedBridges;
+
+        // Populate and shuffle cards
+        let solution = levelData.solution;
+        initialShuffledCommands = [...solution];
+        if (initialShuffledCommands.length > 1) {
+            let attempts = 0;
+            while (attempts < 10) {
+                initialShuffledCommands.sort(() => Math.random() - 0.5);
+                if (initialShuffledCommands.some((cmd, idx) => cmd !== solution[idx])) break;
+                attempts++;
+            }
+        }
+        commands = [...initialShuffledCommands];
+        renderCards();
+
+        adjustCameraToFitMap(GRID_WIDTH, GRID_HEIGHT);
+
+        const MARGIN = 12;
+        for (let z = -MARGIN; z < GRID_HEIGHT + MARGIN; z++) {
+            for (let x = -MARGIN; x < GRID_WIDTH + MARGIN; x++) {
+                if (x < 0 || x >= GRID_WIDTH || z < 0 || z >= GRID_HEIGHT) {
+                    const dirtTile = new THREE.Mesh(geoBox, matDirt);
+                    dirtTile.position.set(x, 0, z);
+                    dirtTile.receiveShadow = true;
+                    scene.add(dirtTile);
+                    sceneObjects.push(dirtTile);
+
+                    createTree(x, z);
+                }
+            }
+        }
+
+        let waterTiles = [];
+
+        for (let z = 0; z < GRID_HEIGHT; z++) {
+            let row = [];
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                const char = levelData.map[z][x];
+                let type = 'grass';
+                let mesh;
+
+                if (char === '~' || ['=','#','$','%'].includes(char) || char === '|' || char === 'T') {
+                    mesh = new THREE.Mesh(geoHalfBox, matWater);
+                    mesh.position.set(x, -0.15, z);
+                    type = 'water';
+                    if (char === '~' || char === 'T') waterTiles.push({x, z});
+                } else {
+                    mesh = new THREE.Mesh(geoBox, matGrass);
+                    mesh.position.set(x, 0, z);
+                }
+                
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                sceneObjects.push(mesh);
+
+                const hitBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({visible: false}));
+                hitBox.position.set(x, 0.25, z);
+                hitBox.userData = { x, z, char, type, accepts: '' };
+                scene.add(hitBox);
+                sceneObjects.push(hitBox);
+                interactiveTiles.push(hitBox);
+
+                if (char === 'S') { frogPos = {x, z}; startPos = {x, z}; setFrogPos(x, z); }
+                if (char === 'F') { flyGroup.position.set(x, 0.6, z); }
+                
+                let trophyMesh = null;
+                if (char === 'T') {
+                    trophyMesh = createStarMesh();
+                    trophyMesh.position.set(x, 0.15, z);
+                    scene.add(trophyMesh);
+                    sceneObjects.push(trophyMesh);
+                    trophyObjects.push(trophyMesh);
+                }
+
+                buttonBridges.forEach(bb => {
+                    if (bb.btnPos.x === x && bb.btnPos.z === z) {
+                        bb.btnMat = new THREE.MeshStandardMaterial({ color: bb.color });
+                        bb.btnMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16), bb.btnMat);
+                        bb.btnMesh.position.set(x, 0.3, z);
+                        scene.add(bb.btnMesh); sceneObjects.push(bb.btnMesh);
+                    }
+                    if (bb.bridgePos.x === x && bb.bridgePos.z === z) {
+                        bb.bridgeMesh = createBridgeMesh(bb.color);
+                        bb.bridgeMesh.position.set(x, -0.3, z);
+                        scene.add(bb.bridgeMesh); sceneObjects.push(bb.bridgeMesh);
+                    }
+                });
+
+                if (char === '~' || char === 'T') { hitBox.userData.accepts = 'plank'; }
+                if (char === '|') { hitBox.userData.accepts = 'boulder'; }
+
+                row.push({ char, type, hasPlank: false, hasBoulder: false, hasTurtle: false, x, z, plankMesh: null, hitBox, trophyMesh, trophyCollected: false });
+            }
+            gridLogic.push(row);
+        }
+
+        if (waterTiles.length > 0 && Math.random() < 0.7) {
+            const spot = waterTiles[Math.floor(Math.random() * waterTiles.length)];
+            createTurtle(spot.x, spot.z);
+            gridLogic[spot.z][spot.x].hasTurtle = true;
+        }
+
+        const inventoryEl = document.getElementById('inventory');
+        inventoryEl.innerHTML = '';
+        for (let p = 0; p < levelData.gapCount; p++) {
+            inventoryEl.innerHTML += `<div class="item" onpointerdown="startInventoryDrag(event, 'plank', 'plank${p}')" id="plank${p}">${PLANK_SVG}</div>`;
+        }
+        for (let b = 0; b < levelData.hoseCount; b++) {
+            inventoryEl.innerHTML += `<div class="item" onpointerdown="startInventoryDrag(event, 'boulder', 'boulder${b}')" id="boulder${b}">${BOULDER_SVG}</div>`;
+        }
+
+        updateHoseStream();
+    }
+
+    function setFrogPos(x, z) {
+        frogGroup.position.set(x, 0, z);
+    }
+
+    function updateHoseStream() {
+        streamMeshes.forEach(m => { scene.remove(m); });
+        streamMeshes = [];
+        fountainObjects = [];
+
+        for (let z = 0; z < GRID_HEIGHT; z++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (gridLogic[z][x].char === '|') {
+                    if (!gridLogic[z][x].hasBoulder) {
+                        const fountain = createSplashFountain(x, z);
+                        scene.add(fountain);
+                        sceneObjects.push(fountain);
+                        streamMeshes.push(fountain);
+                        fountainObjects.push(fountain);
+                    }
+                }
+            }
+        }
+    }
+
+    // --- PLANK PLACEMENT HELPERS ---
+    function placePlankOnCell(cell) {
+        cell.hasPlank = true;
+        if (cell.hitBox) cell.hitBox.userData.accepts = '';
+
+        const bridgeMesh = createBridgeMesh();
+        bridgeMesh.position.set(cell.x, 0.05, cell.z);
+        scene.add(bridgeMesh);
+        sceneObjects.push(bridgeMesh);
+        cell.plankMesh = bridgeMesh;
+    }
+
+    // ==========================================
+    // 6. PROPORTIONAL CARD RENDERER WITH LIVE DRAG SHIFTING
+    // ==========================================
+    function renderCards() {
+        const container = document.getElementById('card-container');
+        container.innerHTML = '';
+
+        const cardIcons = {
+            'UP': `<svg width="55%" height="55%" viewBox="0 0 24 24" fill="currentColor"><polygon points="12,4 4,20 20,20"/></svg>`,
+            'DOWN': `<svg width="55%" height="55%" viewBox="0 0 24 24" fill="currentColor"><polygon points="12,20 4,4 20,4"/></svg>`,
+            'LEFT': `<svg width="55%" height="55%" viewBox="0 0 24 24" fill="currentColor"><polygon points="4,12 20,4 20,20"/></svg>`,
+            'RIGHT': `<svg width="55%" height="55%" viewBox="0 0 24 24" fill="currentColor"><polygon points="20,12 4,4 4,20"/></svg>`
+        };
+
+        const cardClasses = { 'UP': 'card-up', 'DOWN': 'card-down', 'LEFT': 'card-left', 'RIGHT': 'card-right' };
+        const numCards = commands.length;
+        if (numCards === 0) return;
+
+        const containerW = container.clientWidth || (wrapper.clientWidth - 200);
+        const padding = 32;
+        const gap = Math.max(6, Math.min(16, Math.floor(120 / numCards)));
+        const availableW = containerW - padding - (gap * (numCards - 1));
+
+        let cardSize = Math.min(120, Math.floor(availableW / numCards));
+        cardSize = Math.max(28, cardSize);
+
+        let borderRadius = Math.max(6, Math.floor(cardSize * 0.16));
+
+        container.style.gap = gap + 'px';
+
+        commands.forEach((cmd, idx) => {
+            const card = document.createElement('div');
+            card.className = 'code-card ' + cardClasses[cmd] + (idx === draggedCardIdx ? ' dragging' : '');
+            card.draggable = !isExecuting;
+            card.dataset.index = idx;
+
+            card.style.width = cardSize + 'px';
+            card.style.height = cardSize + 'px';
+            card.style.borderRadius = borderRadius + 'px';
+
+            card.innerHTML = `<span class="card-arrow">${cardIcons[cmd]}</span>`;
+
+            card.addEventListener('dragstart', (e) => {
+                if (isExecuting) return;
+                draggedCardIdx = idx;
+                card.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', idx);
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            card.addEventListener('dragend', () => {
+                draggedCardIdx = null;
+                renderCards();
+            });
+
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (isExecuting || draggedCardIdx === null) return;
+
+                const targetIdx = parseInt(card.dataset.index, 10);
+                if (draggedCardIdx !== targetIdx) {
+                    const movedItem = commands[draggedCardIdx];
+                    commands.splice(draggedCardIdx, 1);
+                    commands.splice(targetIdx, 0, movedItem);
+                    draggedCardIdx = targetIdx;
+                    renderCards();
+                }
+            });
+
+            container.appendChild(card);
+        });
+    }
+
+    // ==========================================
+    // 7. INSTANT 3D POINTER DRAG & DROP ENGINE
+    // ==========================================
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    function startInventoryDrag(e, itemType, itemId) {
+        if (isExecuting || dragged3DObject) return;
+        e.preventDefault();
+        initAudio();
+
+        const elem = document.getElementById(itemId);
+        if (!elem) return;
+
+        elem.style.display = 'none';
+
+        if (itemType === 'plank') {
+            dragged3DObject = createBridgeMesh();
+        } else if (itemType === 'boulder') {
+            dragged3DObject = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35), matBoulder);
+            dragged3DObject.castShadow = true;
+        }
+
+        dragged3DType = itemType;
+        dragged3DSourceElem = elem;
+        draggedPlankSourceCell = null;
+
+        scene.add(dragged3DObject);
+
+        const rect = wrapper.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const targetPos = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(dragPlane, targetPos)) {
+            dragged3DObject.position.set(targetPos.x, 0.6, targetPos.z);
+        } else {
+            dragged3DObject.position.set(0, 0.6, 0);
+        }
+
+        playJumpSound();
+    }
+
+    wrapper.addEventListener('pointerdown', (e) => {
+        if (isExecuting || dragged3DObject) return;
+
+        const rect = wrapper.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(interactiveTiles);
+
+        if (intersects.length > 0) {
+            const hit = intersects[0].object.userData;
+            const cell = gridLogic[hit.z][hit.x];
+
+            if (cell && cell.hasPlank) {
+                cell.hasPlank = false;
+                if (cell.hitBox) cell.hitBox.userData.accepts = 'plank';
+                
+                dragged3DObject = cell.plankMesh;
+                cell.plankMesh = null;
+                
+                dragged3DType = 'plank';
+                dragged3DSourceElem = null;
+                draggedPlankSourceCell = { x: hit.x, z: hit.z };
+                
+                if (dragged3DObject) {
+                    dragged3DObject.position.y = 0.6;
+                }
+
+                playJumpSound();
+            }
+        }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+        if (dragged3DObject && !isExecuting) {
+            const rect = wrapper.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const targetPos = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(dragPlane, targetPos)) {
+                dragged3DObject.position.set(targetPos.x, 0.6, targetPos.z);
+            }
+        }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+        if (dragged3DObject && !isExecuting) {
+            const rect = wrapper.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveTiles);
+
+            let droppedSuccessfully = false;
+
+            if (intersects.length > 0) {
+                const hit = intersects[0].object.userData;
+                const targetCell = gridLogic[hit.z][hit.x];
+
+                if (dragged3DType === 'plank') {
+                    if (targetCell && targetCell.type === 'water' && !targetCell.hasPlank && !targetCell.hasBoulder && !targetCell.hasTurtle) {
+                        targetCell.hasPlank = true;
+                        targetCell.plankMesh = dragged3DObject;
+                        dragged3DObject.position.set(targetCell.x, 0.05, targetCell.z);
+                        if (targetCell.hitBox) targetCell.hitBox.userData.accepts = '';
+                        sceneObjects.push(dragged3DObject);
+                        playBridgeSound();
+                        droppedSuccessfully = true;
+                    }
+                } else if (dragged3DType === 'boulder') {
+                    if (hit.accepts === 'boulder' && targetCell && !targetCell.hasBoulder) {
+                        targetCell.hasBoulder = true;
+                        dragged3DObject.position.set(targetCell.x, 0.4, targetCell.z);
+                        sceneObjects.push(dragged3DObject);
+                        updateHoseStream();
+                        playBridgeSound();
+                        droppedSuccessfully = true;
+                    }
+                }
+            }
+
+            if (!droppedSuccessfully) {
+                if (dragged3DSourceElem) {
+                    dragged3DSourceElem.style.display = 'flex';
+                    scene.remove(dragged3DObject);
+                } else if (draggedPlankSourceCell) {
+                    const sourceCell = gridLogic[draggedPlankSourceCell.z][draggedPlankSourceCell.x];
+                    sourceCell.hasPlank = true;
+                    sourceCell.plankMesh = dragged3DObject;
+                    dragged3DObject.position.set(sourceCell.x, 0.05, sourceCell.z);
+                    if (sourceCell.hitBox) sourceCell.hitBox.userData.accepts = '';
+                } else {
+                    scene.remove(dragged3DObject);
+                }
+            }
+
+            dragged3DObject = null;
+            dragged3DType = null;
+            dragged3DSourceElem = null;
+            draggedPlankSourceCell = null;
+        }
+    });
+
+    // ==========================================
+    // 8. EXECUTION ENGINE
+    // ==========================================
+    function setStatus(type) {
+        const el = document.getElementById('status-message');
+        if (STATUS_ICONS[type]) {
+            el.innerHTML = STATUS_ICONS[type];
+        } else {
+            el.innerText = type;
+        }
+    }
+
+    let animState = { active: false, startX: 0, startZ: 0, endX: 0, endZ: 0, progress: 0, dead: false };
+
+    async function executeCode() {
+        initAudio();
+        if (isExecuting || commands.length === 0) return;
+        isExecuting = true;
+        setStatus('rocket');
+
+        frogPos = {x: startPos.x, z: startPos.z};
+        setFrogPos(frogPos.x, frogPos.z);
+        frogGroup.position.y = 0;
+        animState.dead = false;
+
+        buttonBridges.forEach(bb => {
+            bb.open = false;
+            if (bb.btnMesh) bb.btnMesh.material = bb.btnMat;
+            if (bb.bridgeMesh) bb.bridgeMesh.position.y = -0.3;
+        });
+
+        for (let i = 0; i < commands.length; i++) {
+            let cmd = commands[i];
+            let nextX = frogPos.x;
+            let nextZ = frogPos.z;
+
+            if (cmd === 'UP') { nextZ--; frogGroup.rotation.y = Math.PI; }
+            if (cmd === 'DOWN') { nextZ++; frogGroup.rotation.y = 0; }
+            if (cmd === 'LEFT') { nextX--; frogGroup.rotation.y = -Math.PI/2; }
+            if (cmd === 'RIGHT') { nextX++; frogGroup.rotation.y = Math.PI/2; }
+
+            playJumpSound();
+            await playJumpAnimation(frogPos.x, frogPos.z, nextX, nextZ);
+            frogPos = {x: nextX, z: nextZ};
+
+            if (frogPos.x < 0 || frogPos.x >= GRID_WIDTH || frogPos.z < 0 || frogPos.z >= GRID_HEIGHT) {
+                setStatus('crash');
+                animState.dead = true;
+                break;
+            }
+
+            const cell = gridLogic[frogPos.z][frogPos.x];
+
+            buttonBridges.forEach(bb => {
+                if (bb.btnPos.x === frogPos.x && bb.btnPos.z === frogPos.z && !bb.open) {
+                    bb.open = true;
+                    bb.btnMesh.material = matButtonGreen;
+                    bb.bridgeMesh.position.y = 0.05;
+                    playBridgeSound();
+                }
+            });
+
+            // STRICT WATER COLLISION CHECK
+            let dead = false;
+            if (cell.type === 'water') {
+                let isSafe = false;
+
+                if (cell.hasPlank) {
+                    isSafe = true;
+                } else if (cell.hasBoulder && cell.char === '|') {
+                    isSafe = true;
+                } else {
+                    buttonBridges.forEach(bb => {
+                        if (cell.char === bb.bridgeChar && bb.open) {
+                            isSafe = true;
+                        }
+                    });
+                }
+
+                if (!isSafe) dead = true;
+            }
+
+            if (dead) {
+                setStatus('splash');
+                playSplashSound();
+                animState.dead = true;
+                break;
+            }
+
+            // STAR COLLECTION
+            if (cell.char === 'T' && cell.trophyMesh && !cell.trophyCollected) {
+                cell.trophyCollected = true;
+                scene.remove(cell.trophyMesh);
+                let idx = trophyObjects.indexOf(cell.trophyMesh);
+                if (idx > -1) trophyObjects.splice(idx, 1);
+                playTrophySound();
+                setStatus('star');
+            }
+
+            if (cell.char === 'F') {
+                setStatus('win');
+                playWinSound();
+                showNextLevelModal();
+                isExecuting = false;
+                return;
+            }
+        }
+
+        if (!animState.dead && gridLogic[frogPos.z][frogPos.x].char !== 'F') {
+            setStatus('stop');
+        }
+        isExecuting = false;
+    }
+
+    function playJumpAnimation(sx, sz, ex, ez) {
+        return new Promise(resolve => {
+            animState = { active: true, startX: sx, startZ: sz, endX: ex, endZ: ez, progress: 0, dead: false };
+            const check = setInterval(() => {
+                if (!animState.active) {
+                    clearInterval(check);
+                    resolve();
+                }
+            }, 50);
+        });
+    }
+
+    // ==========================================
+    // 9. MODAL & LEVEL PROGRESSION CONTROLS
+    // ==========================================
+    function showNextLevelModal() {
+        document.getElementById('next-level-modal').classList.add('active');
+    }
+
+    function hideNextLevelModal() {
+        document.getElementById('next-level-modal').classList.remove('active');
+    }
+
+    function openLevelSelectModal() {
+        hideNextLevelModal();
+        renderLevelGrid();
+        document.getElementById('level-select-modal').classList.add('active');
+    }
+
+    function hideLevelSelectModal() {
+        document.getElementById('level-select-modal').classList.remove('active');
+    }
+
+    function selectLevel(lvl) {
+        currentLevel = lvl;
+        hideLevelSelectModal();
+        initLevel();
+    }
+
+    function renderLevelGrid() {
+        const gridContainer = document.getElementById('level-grid-container');
+        gridContainer.innerHTML = '';
+        for (let i = 1; i <= 20; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'level-btn' + (i === currentLevel ? ' active-level' : '');
+            btn.innerText = i;
+            btn.onclick = () => selectLevel(i);
+            gridContainer.appendChild(btn);
+        }
+    }
+
+    function replayCurrentLevel() {
+        hideNextLevelModal();
+        initLevel();
+    }
+
+    function loadNextLevel() {
+        hideNextLevelModal();
+        currentLevel++;
+        initLevel();
+    }
+
+    // ==========================================
+    // 10. ANIMATION LOOP & RESIZE HANDLER
+    // ==========================================
+    const clock = new THREE.Clock();
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+        const time = clock.getElapsedTime();
+
+        flyGroup.position.y = 0.6 + Math.sin(time * 5) * 0.08;
+        flyGroup.children[1].rotation.x = Math.sin(time * 35) * 0.5;
+        flyGroup.children[2].rotation.x = -Math.sin(time * 35) * 0.5;
+
+        // Animate Floating Spinning Golden Stars
+        trophyObjects.forEach(t => {
+            t.rotation.y += dt * 2.5; // Rotate purely around world Y-axis
+            t.position.y = 0.15 + Math.sin(time * 4) * 0.05;
+        });
+
+        fountainObjects.forEach(fountain => {
+            const jet = fountain.getObjectByName("jet");
+            if (jet) {
+                jet.scale.set(1 + Math.sin(time * 8) * 0.08, 1 + Math.cos(time * 10) * 0.12, 1 + Math.sin(time * 8) * 0.08);
+            }
+            const ring = fountain.getObjectByName("ring");
+            if (ring) {
+                ring.scale.set(1 + Math.sin(time * 6) * 0.1, 1 + Math.sin(time * 6) * 0.1, 1);
+            }
+            if (fountain.userData.droplets) {
+                fountain.userData.droplets.forEach(d => {
+                    const t = time * d.userData.speed + d.userData.offsetY;
+                    const r = d.userData.radius + Math.sin(t * 2) * 0.05;
+                    d.position.x = Math.cos(d.userData.baseAngle + time) * r;
+                    d.position.z = Math.sin(d.userData.baseAngle + time) * r;
+                    d.position.y = 0.3 + Math.abs(Math.sin(t)) * 0.35;
+                });
+            }
+        });
+
+        if (animState.active) {
+            animState.progress += dt * 3.2;
+            if (animState.progress >= 1) {
+                animState.progress = 1;
+                animState.active = false;
+            }
+            frogGroup.position.x = THREE.MathUtils.lerp(animState.startX, animState.endX, animState.progress);
+            frogGroup.position.z = THREE.MathUtils.lerp(animState.startZ, animState.endZ, animState.progress);
+            frogGroup.position.y = Math.sin(animState.progress * Math.PI) * 0.8;
+        }
+
+        if (animState.dead && !animState.active) {
+            frogGroup.position.y -= dt * 2;
+            if (frogGroup.position.y < -2) {
+                animState.dead = false;
+                frogPos = { x: startPos.x, z: startPos.z };
+                setFrogPos(startPos.x, startPos.z);
+                frogGroup.position.y = 0;
+                frogGroup.rotation.y = 0;
+                setStatus('frog');
+            }
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        adjustCameraToFitMap(GRID_WIDTH, GRID_HEIGHT);
+        renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+        renderCards();
+    });
+
+    // Boot First Level
+    initLevel();
+    animate();
+</script>
+
+</body>
+</html>
