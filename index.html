@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cody Frog</title>
     <style>
         :root {
@@ -128,6 +128,7 @@
             border-radius: 16px;
             height: 124px;
             box-sizing: border-box;
+            touch-action: none;
         }
 
         /* Base Code Card */
@@ -139,16 +140,17 @@
             cursor: grab;
             box-shadow: 0 6px 14px rgba(0,0,0,0.45);
             user-select: none;
-            transition: transform 0.2s ease, border-color 0.15s, opacity 0.15s, background-color 0.15s;
+            transition: transform 0.15s ease, border-color 0.15s, opacity 0.15s, background-color 0.15s;
             flex-shrink: 0;
             box-sizing: border-box;
             touch-action: none;
         }
         .code-card:active { cursor: grabbing; transform: scale(1.08); }
         .code-card.dragging {
-            opacity: 0.35;
+            opacity: 0.45;
             transform: scale(0.92);
             border-style: dashed !important;
+            z-index: 20;
         }
 
         /* Directional Color Coding */
@@ -181,6 +183,7 @@
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
             width: 100%;
             height: 100%;
+            pointer-events: none;
         }
 
         .action-side {
@@ -204,6 +207,7 @@
             justify-content: center;
             box-shadow: 0 6px 12px rgba(0,0,0,0.4);
             transition: transform 0.1s;
+            touch-action: manipulation;
         }
         .btn-play { background: #27ae60; box-shadow: 0 5px 0 #1e8449; }
         .btn-play:active { transform: translateY(5px); box-shadow: none; }
@@ -271,6 +275,7 @@
             justify-content: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
             transition: transform 0.15s, background 0.15s, border-color 0.15s;
+            touch-action: manipulation;
         }
         .icon-btn:hover {
             transform: translateY(-3px);
@@ -316,6 +321,7 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
+            touch-action: manipulation;
         }
         .btn-start-game:hover {
             background: #2ecc71;
@@ -346,6 +352,7 @@
             cursor: pointer;
             transition: transform 0.15s, background 0.15s, border-color 0.15s;
             box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            touch-action: manipulation;
         }
         .level-btn:hover {
             background: #34495e;
@@ -367,6 +374,7 @@
             align-items: center;
             justify-content: center;
             padding: 4px;
+            touch-action: manipulation;
         }
         .close-modal-btn:hover { color: #e74c3c; }
     </style>
@@ -704,11 +712,14 @@
         0xe67e22  // Vivid Orange
     ];
 
-    // Drag tracking for 3D items & cards
+    // Pointer ID tracking for multi-touch robustness
+    let active3DPointerId = null;
     let dragged3DObject = null;
     let dragged3DType = null;
     let dragged3DSourceElem = null;
     let draggedPlankSourceCell = null;
+    
+    let activeCardPointerId = null;
     let draggedCardIdx = null;
 
     // Horizontal plane at y = 0.5 for 3D dragging
@@ -1093,7 +1104,6 @@
             };
 
             let waypoints = [startP, mid1, mid2, flyP];
-            // Filter consecutive duplicate waypoints
             waypoints = waypoints.filter((wp, idx, arr) => idx === 0 || wp.x !== arr[idx-1].x || wp.z !== arr[idx-1].z);
 
             let visitedSet = new Set();
@@ -1541,7 +1551,7 @@
     }
 
     // ==========================================
-    // 6. PROPORTIONAL CARD RENDERER WITH LIVE DRAG SHIFTING
+    // 6. PROPORTIONAL CARD RENDERER WITH TOUCH DRAG
     // ==========================================
     function renderCards() {
         const container = document.getElementById('card-container');
@@ -1573,7 +1583,6 @@
         commands.forEach((cmd, idx) => {
             const card = document.createElement('div');
             card.className = 'code-card ' + cardClasses[cmd] + (idx === draggedCardIdx ? ' dragging' : '');
-            card.draggable = !isExecuting;
             card.dataset.index = idx;
 
             card.style.width = cardSize + 'px';
@@ -1582,32 +1591,74 @@
 
             card.innerHTML = `<span class="card-arrow">${cardIcons[cmd]}</span>`;
 
-            card.addEventListener('dragstart', (e) => {
-                if (isExecuting) return;
-                draggedCardIdx = idx;
-                card.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', idx);
-                e.dataTransfer.effectAllowed = 'move';
-            });
-
-            card.addEventListener('dragend', () => {
-                draggedCardIdx = null;
-                renderCards();
-            });
-
-            card.addEventListener('dragover', (e) => {
+            card.addEventListener('pointerdown', (e) => {
+                if (isExecuting || activeCardPointerId !== null || active3DPointerId !== null) return;
                 e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                if (isExecuting || draggedCardIdx === null) return;
+                e.stopPropagation();
+                initAudio();
 
-                const targetIdx = parseInt(card.dataset.index, 10);
-                if (draggedCardIdx !== targetIdx) {
-                    const movedItem = commands[draggedCardIdx];
-                    commands.splice(draggedCardIdx, 1);
-                    commands.splice(targetIdx, 0, movedItem);
-                    draggedCardIdx = targetIdx;
-                    renderCards();
-                }
+                activeCardPointerId = e.pointerId;
+                draggedCardIdx = idx;
+
+                const onCardPointerMove = (moveEvt) => {
+                    if (moveEvt.pointerId !== activeCardPointerId || draggedCardIdx === null) return;
+                    moveEvt.preventDefault();
+
+                    const cardElems = Array.from(container.children);
+                    const pointerX = moveEvt.clientX;
+
+                    let targetIdx = draggedCardIdx;
+                    for (let i = 0; i < cardElems.length; i++) {
+                        const r = cardElems[i].getBoundingClientRect();
+                        const midX = r.left + r.width / 2;
+                        if (pointerX < midX) {
+                            targetIdx = i;
+                            break;
+                        }
+                        if (i === cardElems.length - 1 && pointerX >= midX) {
+                            targetIdx = i;
+                        }
+                    }
+
+                    if (draggedCardIdx !== targetIdx) {
+                        const movedItem = commands[draggedCardIdx];
+                        commands.splice(draggedCardIdx, 1);
+                        commands.splice(targetIdx, 0, movedItem);
+                        draggedCardIdx = targetIdx;
+
+                        // Reorder DOM nodes in place
+                        const draggedNode = cardElems.find(el => parseInt(el.dataset.index, 10) === draggedCardIdx);
+                        const targetNode = cardElems[targetIdx];
+                        if (draggedNode && targetNode) {
+                            if (draggedCardIdx < targetIdx) {
+                                container.insertBefore(draggedNode, targetNode.nextSibling);
+                            } else {
+                                container.insertBefore(draggedNode, targetNode);
+                            }
+                            Array.from(container.children).forEach((el, index) => {
+                                el.dataset.index = index;
+                            });
+                        }
+                    }
+                };
+
+                const onCardPointerUp = (upEvt) => {
+                    if (upEvt.pointerId === activeCardPointerId) {
+                        upEvt.preventDefault();
+                        window.removeEventListener('pointermove', onCardPointerMove);
+                        window.removeEventListener('pointerup', onCardPointerUp);
+                        window.removeEventListener('pointercancel', onCardPointerUp);
+                        activeCardPointerId = null;
+                        draggedCardIdx = null;
+                        renderCards();
+                    }
+                };
+
+                window.addEventListener('pointermove', onCardPointerMove, { passive: false });
+                window.addEventListener('pointerup', onCardPointerUp, { passive: false });
+                window.addEventListener('pointercancel', onCardPointerUp, { passive: false });
+
+                renderCards();
             });
 
             container.appendChild(card);
@@ -1621,7 +1672,7 @@
     const mouse = new THREE.Vector2();
 
     function startInventoryDrag(e, itemType, itemId) {
-        if (isExecuting || dragged3DObject) return;
+        if (isExecuting || active3DPointerId !== null || activeCardPointerId !== null) return;
         e.preventDefault();
         initAudio();
 
@@ -1637,6 +1688,7 @@
             dragged3DObject.castShadow = true;
         }
 
+        active3DPointerId = e.pointerId;
         dragged3DType = itemType;
         dragged3DSourceElem = elem;
         draggedPlankSourceCell = null;
@@ -1659,7 +1711,7 @@
     }
 
     wrapper.addEventListener('pointerdown', (e) => {
-        if (isExecuting || dragged3DObject) return;
+        if (isExecuting || active3DPointerId !== null || activeCardPointerId !== null) return;
 
         const rect = wrapper.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1676,6 +1728,7 @@
                 cell.hasPlank = false;
                 if (cell.hitBox) cell.hitBox.userData.accepts = 'plank';
                 
+                active3DPointerId = e.pointerId;
                 dragged3DObject = cell.plankMesh;
                 cell.plankMesh = null;
                 
@@ -1693,7 +1746,7 @@
     });
 
     window.addEventListener('pointermove', (e) => {
-        if (dragged3DObject && !isExecuting) {
+        if (dragged3DObject && !isExecuting && e.pointerId === active3DPointerId) {
             const rect = wrapper.getBoundingClientRect();
             mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1706,8 +1759,8 @@
         }
     });
 
-    window.addEventListener('pointerup', (e) => {
-        if (dragged3DObject && !isExecuting) {
+    const handlePointerRelease = (e) => {
+        if (dragged3DObject && !isExecuting && e.pointerId === active3DPointerId) {
             const rect = wrapper.getBoundingClientRect();
             mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1758,12 +1811,16 @@
                 }
             }
 
+            active3DPointerId = null;
             dragged3DObject = null;
             dragged3DType = null;
             dragged3DSourceElem = null;
             draggedPlankSourceCell = null;
         }
-    });
+    };
+
+    window.addEventListener('pointerup', handlePointerRelease);
+    window.addEventListener('pointercancel', handlePointerRelease);
 
     // ==========================================
     // 8. EXECUTION ENGINE
