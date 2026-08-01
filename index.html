@@ -102,6 +102,101 @@
         }
         .item:active { cursor: grabbing; transform: scale(1.12); }
 
+        /* CENTER-LEFT ARROW BUILDER PANEL */
+        #arrow-controls-panel {
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 16px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 16px;
+            z-index: 15;
+        }
+
+        /* DOUBLED DPAD GRID SIZE */
+        .dpad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 112px);
+            grid-template-rows: repeat(3, 112px);
+            gap: 10px;
+        }
+
+        .dpad-btn {
+            width: 112px;
+            height: 112px;
+            border-radius: 22px;
+            border: 4px solid #34495e;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            transition: transform 0.1s, background-color 0.15s, border-color 0.15s;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active {
+            transform: scale(0.92);
+        }
+
+        .dpad-btn.btn-up {
+            grid-column: 2; grid-row: 1;
+            background: #3498db; border-color: #1f618d;
+        }
+        .dpad-btn.btn-left {
+            grid-column: 1; grid-row: 2;
+            background: #e74c3c; border-color: #922b21;
+        }
+        .dpad-btn.btn-del {
+            grid-column: 2; grid-row: 2;
+            background: #34495e; border-color: #2c3e50;
+        }
+        .dpad-btn.btn-right {
+            grid-column: 3; grid-row: 2;
+            background: #2ecc71; border-color: #1e8449;
+        }
+        .dpad-btn.btn-down {
+            grid-column: 2; grid-row: 3;
+            background: #e67e22; border-color: #a04000;
+        }
+
+        /* CLEAR BUTTON MOVED TO LEFT OF CLUSTER */
+        .clear-btn-wrapper {
+            width: 56px;
+            height: 356px; /* 3 * 112px + 2 * 10px gap */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .btn-clear-all {
+            width: 356px;
+            height: 56px;
+            border-radius: 16px;
+            background: #7f8c8d;
+            border: 3px solid #525e60;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            transition: transform 0.1s, background 0.15s;
+            touch-action: manipulation;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            flex-shrink: 0;
+        }
+        .btn-clear-all:active { transform: rotate(-90deg) scale(0.95); }
+
         /* LARGE BOTTOM CARD SORTING BAR */
         #coding-panel {
             bottom: 12px; 
@@ -141,7 +236,7 @@
             cursor: grab;
             box-shadow: 0 6px 14px rgba(0,0,0,0.45);
             user-select: none;
-            transition: border-color 0.15s, opacity 0.15s, background-color 0.15s;
+            transition: border-color 0.15s, opacity 0.15s, background-color 0.15s, transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s;
             flex-shrink: 0;
             box-sizing: border-box;
             touch-action: none;
@@ -151,6 +246,14 @@
             opacity: 0.9;
             z-index: 100;
             box-shadow: 0 14px 28px rgba(0,0,0,0.6);
+        }
+
+        /* EXECUTING CARD HIGHLIGHT */
+        .code-card.executing {
+            transform: scale(1.18) !important;
+            box-shadow: 0 0 22px 6px #f1c40f, 0 8px 25px rgba(0,0,0,0.6) !important;
+            border-color: #f1c40f !important;
+            z-index: 50 !important;
         }
 
         /* Directional Color Coding */
@@ -396,11 +499,36 @@
             <div id="status-message"></div>
         </div>
 
-        <!-- Card-Sorting Bottom Bar -->
-        <div id="coding-panel" class="ui-panel">
-            <!-- Non-scrollable Cards Bar -->
-            <div id="card-container"></div>
+        <!-- CENTER-LEFT ARROW BUILDER PANEL WITH CLEAR BUTTON ON LEFT -->
+        <div id="arrow-controls-panel" class="ui-panel">
+            <div class="clear-btn-wrapper">
+                <button class="btn-clear-all" onclick="clearAllCards()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    CLEAR
+                </button>
+            </div>
+            <div class="dpad-grid">
+                <button class="dpad-btn btn-up" title="Add UP Card" onclick="addCard('UP')">
+                    <svg width="52" height="52" viewBox="0 0 24 24" fill="#ffffff"><polygon points="12,4 4,20 20,20"/></svg>
+                </button>
+                <button class="dpad-btn btn-left" title="Add LEFT Card" onclick="addCard('LEFT')">
+                    <svg width="52" height="52" viewBox="0 0 24 24" fill="#ffffff"><polygon points="4,12 20,4 20,20"/></svg>
+                </button>
+                <button class="dpad-btn btn-del" title="Delete Last Card" onclick="deleteLastCard()">
+                    <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 7h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+                </button>
+                <button class="dpad-btn btn-right" title="Add RIGHT Card" onclick="addCard('RIGHT')">
+                    <svg width="52" height="52" viewBox="0 0 24 24" fill="#ffffff"><polygon points="20,12 4,4 4,20"/></svg>
+                </button>
+                <button class="dpad-btn btn-down" title="Add DOWN Card" onclick="addCard('DOWN')">
+                    <svg width="52" height="52" viewBox="0 0 24 24" fill="#ffffff"><polygon points="12,20 4,4 20,4"/></svg>
+                </button>
+            </div>
+        </div>
 
+        <!-- LARGE BOTTOM CARD SORTING BAR -->
+        <div id="coding-panel" class="ui-panel">
+            <!-- Play Button on Left Side -->
             <div class="action-side">
                 <div class="action-btns">
                     <button class="btn-play" title="Play" onclick="executeCode()">
@@ -408,6 +536,9 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Non-scrollable Cards Bar -->
+            <div id="card-container"></div>
         </div>
 
         <!-- Start Menu Modal -->
@@ -694,7 +825,6 @@
     let frogPos = {x: 0, z: 0};
     let startPos = {x: 0, z: 0};
     let commands = [];
-    let initialShuffledCommands = [];
     let isExecuting = false;
 
     let buttonBridges = [];
@@ -726,7 +856,7 @@
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.5);
 
     // ==========================================
-    // 2. THREE.JS SETUP & AUTO-FIT CAMERA
+    // 2. THREE.JS SETUP & AUTO-FIT CAMERA (SCOOTED RIGHT)
     // ==========================================
     const wrapper = document.getElementById('game-wrapper');
     const container = document.getElementById('canvas-container');
@@ -756,7 +886,10 @@
         const mapCenterX = (w - 1) / 2;
         const mapCenterZ = (h - 1) / 2;
         
-        const totalW = w + 5.5;
+        // SCOOT MAP TO RIGHT: Shift camera target to the left so pond sits cleanly to the right of the D-Pad panel!
+        const shiftedCenterX = mapCenterX - 1.4;
+
+        const totalW = w + 7.8;
         const totalH = h + 6.2;
 
         const aspect = wrapper.clientWidth / wrapper.clientHeight;
@@ -767,8 +900,8 @@
 
         const dist = Math.max(distH, distW);
 
-        camera.position.set(mapCenterX, dist, mapCenterZ + 0.001);
-        camera.lookAt(mapCenterX, 0, mapCenterZ);
+        camera.position.set(shiftedCenterX, dist, mapCenterZ + 0.001);
+        camera.lookAt(shiftedCenterX, 0, mapCenterZ);
         camera.aspect = aspect;
         camera.updateProjectionMatrix();
 
@@ -1131,7 +1264,7 @@
             }
         }
 
-        // RANDOMIZED DYNAMIC FALLBACK (Never static top-left to bottom-right!)
+        // RANDOMIZED DYNAMIC FALLBACK
         if (!success || fullPath.length < 5) {
             let sZ = Math.floor(Math.random() * 2);
             let fZ = H - 1 - Math.floor(Math.random() * 2);
@@ -1194,7 +1327,6 @@
         let anchorSpurs = {};
 
         // LEVEL 11+: Place Bonus Star off the main path
-        let starExtraMoves = [];
         if (level > 10 && path.length > 3) {
             let lineCells = getLineCells(startP, flyP);
             let candidatesForStar = [];
@@ -1323,38 +1455,7 @@
             gapCount++;
         }
 
-        // --- CONSTRUCT SOLUTION PATH DIRECTLY FROM ROUTE ---
-        let routeCoords = [];
-        for (let i = 0; i < path.length; i++) {
-            let pt = path[i];
-            routeCoords.push(pt);
-
-            if (anchorSpurs[i]) {
-                let spurList = anchorSpurs[i];
-                for (let spur of spurList) {
-                    routeCoords.push(spur);
-                    routeCoords.push(pt);
-                }
-            }
-        }
-
-        let solution = [];
-        for (let i = 0; i < routeCoords.length - 1; i++) {
-            let c1 = routeCoords[i], c2 = routeCoords[i + 1];
-            let dx = c2.x - c1.x, dz = c2.z - c1.z;
-            if (dx === 1) solution.push('RIGHT');
-            else if (dx === -1) solution.push('LEFT');
-            else if (dz === 1) solution.push('DOWN');
-            else if (dz === -1) solution.push('UP');
-        }
-
-        let numDecoys = level <= 5 ? 1 : 2;
-        const allDirs = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-        for (let d = 0; d < numDecoys; d++) {
-            solution.push(allDirs[Math.floor(Math.random() * allDirs.length)]);
-        }
-
-        return { W, H, map, generatedBridges, gapCount, hoseCount, solution, usedCoords };
+        return { W, H, map, generatedBridges, gapCount, hoseCount, usedCoords };
     }
 
     // ==========================================
@@ -1401,18 +1502,8 @@
         GRID_HEIGHT = levelData.H;
         buttonBridges = levelData.generatedBridges;
 
-        // Populate and shuffle cards
-        let solution = levelData.solution;
-        initialShuffledCommands = [...solution];
-        if (initialShuffledCommands.length > 1) {
-            let attempts = 0;
-            while (attempts < 10) {
-                initialShuffledCommands.sort(() => Math.random() - 0.5);
-                if (initialShuffledCommands.some((cmd, idx) => cmd !== solution[idx])) break;
-                attempts++;
-            }
-        }
-        commands = [...initialShuffledCommands];
+        // Player builds code sequence from scratch
+        commands = [];
         renderCards();
 
         adjustCameraToFitMap(GRID_WIDTH, GRID_HEIGHT);
@@ -1542,16 +1633,29 @@
         }
     }
 
-    // --- PLANK PLACEMENT HELPERS ---
-    function placePlankOnCell(cell) {
-        cell.hasPlank = true;
-        if (cell.hitBox) cell.hitBox.userData.accepts = '';
+    // --- ARROW BUILDER PANEL CONTROLS ---
+    function addCard(dir) {
+        if (isExecuting) return;
+        initAudio();
+        commands.push(dir);
+        playJumpSound();
+        renderCards();
+    }
 
-        const bridgeMesh = createBridgeMesh();
-        bridgeMesh.position.set(cell.x, 0.05, cell.z);
-        scene.add(bridgeMesh);
-        sceneObjects.push(bridgeMesh);
-        cell.plankMesh = bridgeMesh;
+    function deleteLastCard() {
+        if (isExecuting || commands.length === 0) return;
+        initAudio();
+        commands.pop();
+        playJumpSound();
+        renderCards();
+    }
+
+    function clearAllCards() {
+        if (isExecuting || commands.length === 0) return;
+        initAudio();
+        commands = [];
+        playJumpSound();
+        renderCards();
     }
 
     // ==========================================
@@ -1622,11 +1726,9 @@
                     const deltaX = moveEvt.clientX - startPointerX;
                     const deltaY = moveEvt.clientY - startPointerY;
 
-                    // Move dragged card directly under finger
                     card.style.transition = 'none';
                     card.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.08)`;
 
-                    // Find closest slot
                     const currentCenterX = initialRects[draggedCardIdx].left + initialRects[draggedCardIdx].width / 2 + deltaX;
 
                     let closestIdx = 0;
@@ -1643,7 +1745,6 @@
 
                     targetSlotIdx = closestIdx;
 
-                    // Scoot other cards smoothly to make room
                     cardElems.forEach((otherCard, j) => {
                         if (j === draggedCardIdx) return;
 
@@ -1874,7 +1975,16 @@
             if (bb.bridgeMesh) bb.bridgeMesh.position.y = -0.3;
         });
 
+        const cardContainer = document.getElementById('card-container');
+
         for (let i = 0; i < commands.length; i++) {
+            // HIGHLIGHT EXECUTING CARD
+            const cardElems = Array.from(cardContainer.children);
+            cardElems.forEach(el => el.classList.remove('executing'));
+            if (cardElems[i]) {
+                cardElems[i].classList.add('executing');
+            }
+
             let cmd = commands[i];
             let nextX = frogPos.x;
             let nextZ = frogPos.z;
@@ -1947,9 +2057,12 @@
                 playWinSound();
                 showNextLevelModal();
                 isExecuting = false;
+                Array.from(cardContainer.children).forEach(el => el.classList.remove('executing'));
                 return;
             }
         }
+
+        Array.from(cardContainer.children).forEach(el => el.classList.remove('executing'));
 
         if (!animState.dead && gridLogic[frogPos.z][frogPos.x].char !== 'F') {
             setStatus('stop');
