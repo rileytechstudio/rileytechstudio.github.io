@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Children's Museum Multi-Touch Water Table</title>
+  <style>
+    * {
+      touch-action: none;
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #233142;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Fredoka', sans-serif, Arial;
+      user-select: none;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+
+    /* Multi-User Bottom Palette Bar */
+    #ui-palette {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      padding: 10px 24px;
+      border-radius: 35px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.35);
+      border: 4px solid #4dd0e1;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      z-index: 10;
+    }
+    .palette-section {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .palette-divider {
+      width: 3px;
+      height: 45px;
+      background: #cfd8dc;
+      border-radius: 2px;
+    }
+    .palette-label {
+      font-size: 13px;
+      font-weight: bold;
+      color: #546e7a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .draggable-card {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      background: #f0f4f8;
+      border: 3px solid #b0bec5;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 26px;
+      cursor: grab;
+      box-shadow: 0 4px 0 #90a4ae;
+      transition: transform 0.1s;
+    }
+    .draggable-card span {
+      font-size: 10px;
+      font-weight: bold;
+      color: #37474f;
+      margin-top: -2px;
+    }
+    .draggable-card:active {
+      cursor: grabbing;
+      transform: scale(1.12);
+    }
+    .tool-card {
+      background: #fff8e1;
+      border-color: #ffe082;
+      box-shadow: 0 4px 0 #ffb300;
+    }
+
+    #instruction-banner {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+      padding: 8px 22px;
+      border-radius: 20px;
+      font-size: 14px;
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div id="instruction-banner">
+    🖐️ <b>Step 1:</b> Drag tools/toys onto the sand. <b>Step 2:</b> Drag a placed tool around to dig or build!
+  </div>
+
+  <div id="ui-palette">
+    <span class="palette-label">Tools:</span>
+    <div class="palette-section">
+      <div class="draggable-card tool-card" data-type="shovel" title="Drag Shovel onto map to Dig">
+        🥄<span>Shovel</span>
+      </div>
+      <div class="draggable-card tool-card" data-type="bucket" title="Drag Bucket onto map to Build">
+        🪣<span>Bucket</span>
+      </div>
+    </div>
+
+    <div class="palette-divider"></div>
+
+    <span class="palette-label">Toys:</span>
+    <div class="palette-section">
+      <div class="draggable-card" data-type="duck" title="Rubber Duck">🦆</div>
+      <div class="draggable-card" data-type="boat" title="Paper Boat">⛵</div>
+      <div class="draggable-card" data-type="rock" title="Rolling Rock">🪨</div>
+    </div>
+  </div>
+
+  <script>
+    // --- SIMULATION PARAMETERS ---
+    const NX = 160;
+    const NY = 80;
+    const L = 0.18;
+    
+    const DT = 0.0195; 
+    const G = 9.81;
+    const PIPE_A = 0.12;       
+    const DAMPING = 0.992;      
+    const SOURCE_DEPTH = 1.16;  
+    const DRAIN_SPEED_MULT = 1.4;
+
+    const ITEM_SPEED_MULTIPLIER = 2.0;
+
+    const size = NX * NY;
+    const T = new Float32Array(size);
+    const TSmooth = new Float32Array(size);
+    const d = new Float32Array(size);
+    const H = new Float32Array(size);
+    
+    const fL = new Float32Array(size);
+    const fR = new Float32Array(size);
+    const fD = new Float32Array(size);
+    const fU = new Float32Array(size);
+
+    const Vx = new Float32Array(size);
+    const Vy = new Float32Array(size);
+
+    function idx(x, y) { return x + y * NX; }
+
+    function rollingHills(x, y) {
+      return (
+        Math.sin(x * 0.06 + y * 0.05) * 0.52 +
+        Math.cos(x * 0.035 - y * 0.07) * 0.38 +
+        Math.sin(x * 0.12 - y * 0.10) * 0.18
+      );
+    }
+
+    const defaultTerrainBase = 1.21;
+    const slopeMagnitude = 0.3;
+
+    // --- INITIALIZE TERRAIN & GRADUAL VALLEY SLOPE TOWARD RIVER ---
+    for (let x = 0; x < NX; x++) {
+      const progress = x / (NX - 1);
+      const centerY = (NY / 2) + Math.sin(progress * Math.PI * 2.5) * (NY * 0.22);
+      const channelWidth = 14.5;
+
+      for (let y = 0; y < NY; y++) {
+        const i = idx(x, y);
+        const dist = Math.abs(y - centerY);
+        
+        let globalSlope = defaultTerrainBase + (1.0 - progress) * slopeMagnitude;
+        let hillHeight = rollingHills(x, y);
+
+        if (progress > 0.8) {
+          const taper = (progress - 0.8) / 0.2;
+          globalSlope *= (1.0 - taper * 0.65);
+          hillHeight *= (1.0 - taper * 0.85);
+        }
+
+        const valleySlope = dist * 0.032; 
+        const landElevation = globalSlope + hillHeight + valleySlope;
+
+        if (dist < channelWidth) {
+          const depthFactor = Math.cos((dist / channelWidth) * (Math.PI / 2));
+          T[i] = landElevation - (depthFactor * 1.85);
+          d[i] = depthFactor * 0.95;
+        } else {
+          T[i] = landElevation;
+          d[i] = 0.0;
+        }
+      }
+    }
+
+    // --- THREE.JS TOP-DOWN SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x233142);
+
+    const aspect = window.innerWidth / window.innerHeight;
+    const worldWidth = NX * L;
+    const worldHeight = NY * L;
+    
+    const frustumSize = worldWidth;
+    const camera = new THREE.OrthographicCamera(
+      -frustumSize / 2, frustumSize / 2,
+      (frustumSize / aspect) / 2, -(frustumSize / aspect) / 2,
+      0.1, 100
+    );
+    camera.position.set(worldWidth / 2, 20, worldHeight / 2);
+    camera.lookAt(worldWidth / 2, 0, worldHeight / 2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfffaed, 0.6);
+    dirLight.position.set(worldWidth / 2 + 5, 20, worldHeight / 2 - 5);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // --- GROUND MESH ---
+    const groundGeo = new THREE.PlaneGeometry(worldWidth, worldHeight, NX - 1, NY - 1);
+    groundGeo.rotateX(-Math.PI / 2);
+    groundGeo.translate(worldWidth / 2, 0, worldHeight / 2);
+
+    const colorAttribute = new Float32Array(size * 3);
+    groundGeo.setAttribute('color', new THREE.BufferAttribute(colorAttribute, 3));
+
+    const groundMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.8,
+      metalness: 0.05,
+      flatShading: false
+    });
+    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+    groundMesh.receiveShadow = true;
+    groundMesh.castShadow = true;
+    scene.add(groundMesh);
+
+    // --- SHRUB & FLOWER FOLIAGE SYSTEM ---
+    const HIGH_PEAK_THRESHOLD = 1.79;
+
+    const shrubGeo = new THREE.DodecahedronGeometry(0.18, 1);
+    const shrubMat = new THREE.MeshStandardMaterial({ color: 0x419d26, roughness: 0.6, flatShading: true });
+
+    const flowerGeo = new THREE.SphereGeometry(0.08, 6, 6);
+    const pinkFlowerMat = new THREE.MeshStandardMaterial({ color: 0xff4081, roughness: 0.4 });
+    const yellowFlowerMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, roughness: 0.4 });
+
+    const foliageItems = [];
+    const dummyMatrix = new THREE.Matrix4();
+
+    for (let y = 3; y < NY - 3; y += 4) {
+      for (let x = 3; x < NX - 3; x += 4) {
+        const rand = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1;
+        if (rand > 0.45) {
+          foliageItems.push({
+            type: 'shrub',
+            x: x,
+            y: y,
+            offsetX: (Math.random() - 0.5) * 0.3,
+            offsetZ: (Math.random() - 0.5) * 0.3,
+            scale: 0.8 + Math.random() * 0.5
+          });
+
+          const flowerType = (Math.random() > 0.5) ? 'flower_pink' : 'flower_yellow';
+          foliageItems.push({
+            type: flowerType,
+            x: x,
+            y: y,
+            offsetX: (Math.random() - 0.5) * 0.5,
+            offsetZ: (Math.random() - 0.5) * 0.5,
+            scale: 0.7 + Math.random() * 0.4
+          });
+        }
+      }
+    }
+
+    const shrubCandidates = foliageItems.filter(f => f.type === 'shrub');
+    const pinkFlowerCandidates = foliageItems.filter(f => f.type === 'flower_pink');
+    const yellowFlowerCandidates = foliageItems.filter(f => f.type === 'flower_yellow');
+
+    const shrubInstanced = new THREE.InstancedMesh(shrubGeo, shrubMat, shrubCandidates.length || 1);
+    const pinkFlowerInstanced = new THREE.InstancedMesh(flowerGeo, pinkFlowerMat, pinkFlowerCandidates.length || 1);
+    const yellowFlowerInstanced = new THREE.InstancedMesh(flowerGeo, yellowFlowerMat, yellowFlowerCandidates.length || 1);
+
+    shrubInstanced.castShadow = true;
+    pinkFlowerInstanced.castShadow = true;
+    yellowFlowerInstanced.castShadow = true;
+
+    scene.add(shrubInstanced);
+    scene.add(pinkFlowerInstanced);
+    scene.add(yellowFlowerInstanced);
+
+    // --- MAIN WATER MESH ---
+    const waterGeo = new THREE.PlaneGeometry(worldWidth, worldHeight, NX - 1, NY - 1);
+    waterGeo.rotateX(-Math.PI / 2);
+    waterGeo.translate(worldWidth / 2, 0, worldHeight / 2);
+
+    const waterMat = new THREE.MeshPhysicalMaterial({
+      color: 0x29b6f6,
+      transparent: true,
+      opacity: 0.8,
+      roughness: 0.1,
+      metalness: 0.1,
+      transmission: 0.3,
+      flatShading: false
+    });
+    const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+    waterMesh.receiveShadow = true;
+    scene.add(waterMesh);
+
+    // Extended Water Outflow Mesh
+    const extWidth = 3.0;
+    const waterExtGeo = new THREE.PlaneGeometry(extWidth, worldHeight, 1, NY - 1);
+    waterExtGeo.rotateX(-Math.PI / 2);
+    waterExtGeo.translate(worldWidth + extWidth / 2, 0, worldHeight / 2);
+
+    const waterExtMesh = new THREE.Mesh(waterExtGeo, waterMat);
+    waterExtMesh.receiveShadow = true;
+    scene.add(waterExtMesh);
+
+    const sourceInlet = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.8, worldHeight),
+      new THREE.MeshStandardMaterial({ color: 0x4dd0e1, roughness: 0.3 })
+    );
+    sourceInlet.position.set(-0.15, 0.4, worldHeight / 2);
+    scene.add(sourceInlet);
+
+    const drainOutlet = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.8, worldHeight),
+      new THREE.MeshStandardMaterial({ color: 0xff7043, roughness: 0.3 })
+    );
+    drainOutlet.position.set(worldWidth + extWidth + 0.15, 0.4, worldHeight / 2);
+    scene.add(drainOutlet);
+
+    // --- CUSTOM ORIGAMI PAPER BOAT GEOMETRY ---
+    function createPaperBoatGeometry() {
+      const geo = new THREE.BufferGeometry();
+      
+      const positions = new Float32Array([
+        0.42, 0.08, 0.0,    0.0, -0.06, 0.12,   0.0, 0.08, 0.18,
+        0.42, 0.08, 0.0,    0.0, 0.08, -0.18,   0.0, -0.06, -0.12,
+        -0.42, 0.08, 0.0,   0.0, 0.08, 0.18,    0.0, -0.06, 0.12,
+        -0.42, 0.08, 0.0,   0.0, -0.06, -0.12,  0.0, 0.08, -0.18,
+
+        0.42, 0.08, 0.0,    0.0, -0.08, 0.0,    0.0, -0.06, 0.12,
+        0.42, 0.08, 0.0,    0.0, -0.06, -0.12,  0.0, -0.08, 0.0,
+        -0.42, 0.08, 0.0,   0.0, -0.06, 0.12,   0.0, -0.08, 0.0,
+        -0.42, 0.08, 0.0,   0.0, -0.08, 0.0,    0.0, -0.06, -0.12,
+
+        0.42, 0.08, 0.0,    0.0, 0.16, 0.12,    0.0, 0.08, 0.18,
+        -0.42, 0.08, 0.0,   0.0, 0.08, 0.18,    0.0, 0.16, 0.12,
+        0.42, 0.08, 0.0,    0.0, 0.08, -0.18,   0.0, 0.16, -0.12,
+        -0.42, 0.08, 0.0,   0.0, 0.16, -0.12,   0.0, 0.08, -0.18,
+
+        0.18, 0.08, 0.0,    0.0, 0.32, 0.0,     0.0, 0.08, 0.015,
+        0.18, 0.08, 0.0,    0.0, 0.08, -0.015,  0.0, 0.32, 0.0,
+        -0.18, 0.08, 0.0,   0.0, 0.08, 0.015,   0.0, 0.32, 0.0,
+        -0.18, 0.08, 0.0,   0.0, 0.32, 0.0,     0.0, 0.08, -0.015
+      ]);
+
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // --- DYNAMIC FLOATING ITEMS SETUP ---
+    const floatingObjects = [];
+
+    const duckGeo = new THREE.Group();
+    const duckBody = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffeb3b }));
+    const duckHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffeb3b }));
+    duckHead.position.set(0.15, 0.2, 0);
+    const duckBeak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 8), new THREE.MeshStandardMaterial({ color: 0xff9800 }));
+    duckBeak.rotation.z = -Math.PI / 2;
+    duckBeak.position.set(0.28, 0.18, 0);
+    duckGeo.add(duckBody, duckHead, duckBeak);
+
+    const paperBoatGeo = createPaperBoatGeometry();
+    const paperBoatMat = new THREE.MeshStandardMaterial({ 
+      color: 0xfcfcfc, 
+      roughness: 0.3, 
+      side: THREE.DoubleSide, 
+      flatShading: true 
+    });
+
+    const rockGeo = new THREE.DodecahedronGeometry(0.22, 1);
+
+    function spawnItem(type, worldX, worldZ) {
+      let mesh;
+      if (type === 'duck') {
+        mesh = duckGeo.clone();
+      } else if (type === 'boat') {
+        mesh = new THREE.Mesh(paperBoatGeo, paperBoatMat);
+      } else if (type === 'rock') {
+        mesh = new THREE.Mesh(rockGeo, new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.9 }));
+      }
+
+      mesh.castShadow = true;
+      scene.add(mesh);
+
+      const itemObj = {
+        type: type,
+        mesh: mesh,
+        x: worldX,
+        z: worldZ,
+        vx: 0,
+        vz: 0,
+        rotationAngle: 0,
+        isHeld: false
+      };
+
+      floatingObjects.push(itemObj);
+      return itemObj;
+    }
+
+    // --- PLACED TOOLS ON MAP ---
+    const placedTools = [];
+
+    function create3DToolMesh(type) {
+      const group = new THREE.Group();
+      if (type === 'shovel') {
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0xe53935, roughness: 0.3 });
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.2 });
+
+        const handle = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.04, 0.9),
+          handleMat
+        );
+        handle.position.set(0, 0, -0.45);
+        handle.rotation.x = Math.PI / 2;
+
+        const grip = new THREE.Mesh(
+          new THREE.TorusGeometry(0.08, 0.025, 8, 12, Math.PI),
+          handleMat
+        );
+        grip.position.set(0, 0, -0.9);
+        grip.rotation.x = Math.PI / 2;
+
+        const blade = new THREE.Mesh(
+          new THREE.BoxGeometry(0.35, 0.04, 0.45),
+          bladeMat
+        );
+        blade.position.set(0, 0, 0.15);
+
+        const tip = new THREE.Mesh(
+          new THREE.ConeGeometry(0.25, 0.25, 4),
+          bladeMat
+        );
+        tip.position.set(0, 0, 0.45);
+        tip.rotation.x = Math.PI / 2;
+        tip.rotation.y = Math.PI / 4;
+        tip.scale.set(1, 0.15, 1);
+
+        group.add(handle, grip, blade, tip);
+
+        group.scale.set(2.0, 2.0, 2.0);
+
+        group.rotation.x = Math.PI / 8;  
+        group.rotation.y = -Math.PI / 4; 
+      } else if (type === 'bucket') {
+        const bucket = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.20, 0.45, 16),
+          new THREE.MeshStandardMaterial({ color: 0xffb300, roughness: 0.3 })
+        );
+        bucket.position.y = 0.22;
+
+        const handle = new THREE.Mesh(
+          new THREE.TorusGeometry(0.26, 0.025, 8, 16, Math.PI),
+          new THREE.MeshStandardMaterial({ color: 0xff6f00 })
+        );
+        handle.rotation.x = Math.PI / 2;
+        handle.position.y = 0.44;
+
+        group.add(bucket, handle);
+
+        group.scale.set(1.2, 1.2, 1.2);
+
+        group.rotation.x = Math.PI / 3.2; 
+        group.rotation.z = -Math.PI / 5;  
+      }
+      scene.add(group);
+      return group;
+    }
+
+    function spawnPlacedTool(type, worldX, worldZ) {
+      const mesh = create3DToolMesh(type);
+      mesh.castShadow = true;
+
+      const toolObj = {
+        type: type,
+        mesh: mesh,
+        x: worldX,
+        z: worldZ,
+        isHeld: false
+      };
+
+      placedTools.push(toolObj);
+      return toolObj;
+    }
+
+    // --- WATER SIMULATION STEP ---
+    function stepWaterSimulation() {
+      for (let i = 0; i < size; i++) {
+        H[i] = T[i] + d[i];
+      }
+
+      const factor = DT * PIPE_A * G / L;
+      for (let y = 0; y < NY; y++) {
+        for (let x = 0; x < NX; x++) {
+          const i = idx(x, y);
+
+          if (x > 0) {
+            fL[i] = Math.max(0, (fL[i] + factor * (H[i] - H[idx(x - 1, y)])) * DAMPING);
+          } else { fL[i] = 0; }
+
+          if (x < NX - 1) {
+            fR[i] = Math.max(0, (fR[i] + factor * (H[i] - H[idx(x + 1, y)])) * DAMPING);
+          } else {
+            fR[i] = Math.max(0, (fR[i] + factor * DRAIN_SPEED_MULT * (H[i] - 0)) * DAMPING);
+          }
+
+          if (y > 0) {
+            fD[i] = Math.max(0, (fD[i] + factor * (H[i] - H[idx(x, y - 1)])) * DAMPING);
+          } else { fD[i] = 0; }
+
+          if (y < NY - 1) {
+            fU[i] = Math.max(0, (fU[i] + factor * (H[i] - H[idx(x, y + 1)])) * DAMPING);
+          } else { fU[i] = 0; }
+        }
+      }
+
+      for (let i = 0; i < size; i++) {
+        const totalOutflow = (fL[i] + fR[i] + fD[i] + fU[i]) * DT;
+        const currentVolume = d[i] * L * L;
+
+        if (totalOutflow > currentVolume && totalOutflow > 0) {
+          const scale = currentVolume / totalOutflow;
+          fL[i] *= scale;
+          fR[i] *= scale;
+          fD[i] *= scale;
+          fU[i] *= scale;
+        }
+      }
+
+      for (let y = 0; y < NY; y++) {
+        for (let x = 0; x < NX; x++) {
+          const i = idx(x, y);
+
+          const inL = (x < NX - 1) ? fL[idx(x + 1, y)] : 0;
+          const inR = (x > 0)      ? fR[idx(x - 1, y)] : 0;
+          const inD = (y < NY - 1) ? fD[idx(x, y + 1)] : 0;
+          const inU = (y > 0)      ? fU[idx(x, y - 1)] : 0;
+
+          const netVolume = ((inL + inR + inD + inU) - (fL[i] + fR[i] + fD[i] + fU[i])) * DT;
+          d[i] += netVolume / (L * L);
+          if (d[i] < 0.0001) d[i] = 0;
+        }
+      }
+
+      for (let y = 0; y < NY; y++) {
+        const iSource = idx(0, y);
+        d[iSource] = Math.max(0, SOURCE_DEPTH - T[iSource]);
+
+        const iSink = idx(NX - 1, y);
+        d[iSink] = 0;
+      }
+
+      for (let y = 0; y < NY; y++) {
+        for (let x = 0; x < NX; x++) {
+          const i = idx(x, y);
+          if (d[i] < 0.001) {
+            Vx[i] = 0;
+            Vy[i] = 0;
+            continue;
+          }
+
+          const inR = (x > 0) ? fR[idx(x - 1, y)] : 0;
+          const inL = (x < NX - 1) ? fL[idx(x + 1, y)] : 0;
+          const inU = (y > 0) ? fU[idx(x, y - 1)] : 0;
+          const inD = (y < NY - 1) ? fD[idx(x, y + 1)] : 0;
+
+          const netFx = (inR - fL[i]) + (fR[i] - inL);
+          const netFy = (inU - fD[i]) + (fU[i] - inD);
+
+          Vx[i] = netFx / (2 * d[i] * L);
+          Vy[i] = netFy / (2 * d[i] * L);
+        }
+      }
+    }
+
+    // --- MESH & SHRUB/FLOWER UPDATE ---
+    const sandColor = new THREE.Color(0xf4d06f);
+    const vibrantGrassColor = new THREE.Color(0x55a630);
+
+    function updateFoliageGroup(candidates, instancedMesh, yOffset = 0.1) {
+      for (let k = 0; k < candidates.length; k++) {
+        const item = candidates[k];
+        const i = idx(item.x, item.y);
+        const smoothT = TSmooth[i];
+
+        if (smoothT > HIGH_PEAK_THRESHOLD && d[i] < 0.02) {
+          const posX = item.x * L + item.offsetX;
+          const posZ = item.y * L + item.offsetZ;
+          
+          dummyMatrix.makeTranslation(posX, smoothT + yOffset, posZ);
+          dummyMatrix.scale(new THREE.Vector3(item.scale, item.scale, item.scale));
+          instancedMesh.setMatrixAt(k, dummyMatrix);
+        } else {
+          dummyMatrix.makeScale(0, 0, 0);
+          instancedMesh.setMatrixAt(k, dummyMatrix);
+        }
+      }
+      instancedMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    function updateMeshes() {
+      for (let y = 1; y < NY - 1; y++) {
+        for (let x = 1; x < NX - 1; x++) {
+          const i = idx(x, y);
+          TSmooth[i] = (
+            T[i] * 0.4 +
+            (T[idx(x + 1, y)] + T[idx(x - 1, y)] + T[idx(x, y + 1)] + T[idx(x, y - 1)]) * 0.15
+          );
+        }
+      }
+
+      const gPos = groundGeo.attributes.position;
+      const gColor = groundGeo.attributes.color;
+      const wPos = waterGeo.attributes.position;
+
+      for (let y = 0; y < NY; y++) {
+        for (let x = 0; x < NX; x++) {
+          const i = idx(x, y);
+          const vertexIdx = i;
+
+          const smoothT = (x > 0 && x < NX - 1 && y > 0 && y < NY - 1) ? TSmooth[i] : T[i];
+          gPos.setY(vertexIdx, smoothT);
+
+          const blendFactor = THREE.MathUtils.clamp((smoothT - 1.75) / 0.25, 0, 1);
+          const c = sandColor.clone().lerp(vibrantGrassColor, blendFactor);
+          gColor.setXYZ(vertexIdx, c.r, c.g, c.b);
+
+          if (d[i] > 0.001) {
+            wPos.setY(vertexIdx, smoothT + d[i]);
+          } else {
+            wPos.setY(vertexIdx, smoothT - 0.02);
+          }
+        }
+      }
+
+      const extPos = waterExtGeo.attributes.position;
+      for (let y = 0; y < NY; y++) {
+        const iSink = idx(NX - 1, y);
+        const edgeT = (TSmooth[iSink] || T[iSink]);
+        const edgeD = d[iSink];
+        const surfaceH = edgeT + Math.max(edgeD, 0.02);
+
+        extPos.setY(y * 2, surfaceH);
+        extPos.setY(y * 2 + 1, surfaceH - 0.5);
+      }
+      extPos.needsUpdate = true;
+      waterExtGeo.computeVertexNormals();
+
+      gPos.needsUpdate = true;
+      gColor.needsUpdate = true;
+      wPos.needsUpdate = true;
+      groundGeo.computeVertexNormals();
+      waterGeo.computeVertexNormals();
+
+      updateFoliageGroup(shrubCandidates, shrubInstanced, 0.12);
+      updateFoliageGroup(pinkFlowerCandidates, pinkFlowerInstanced, 0.06);
+      updateFoliageGroup(yellowFlowerCandidates, yellowFlowerInstanced, 0.06);
+
+      placedTools.forEach(tool => {
+        if (!tool.isHeld) {
+          const gx = Math.min(NX - 1, Math.max(0, Math.floor(tool.x / L)));
+          const gy = Math.min(NY - 1, Math.max(0, Math.floor(tool.z / L)));
+          const groundY = TSmooth[idx(gx, gy)] || T[idx(gx, gy)];
+          tool.mesh.position.set(tool.x, groundY + 0.2, tool.z);
+        }
+      });
+    }
+
+    // --- ITEM PHYSICS & DOWNHILL LAND ROLLING ---
+    function updateFloatingObjects() {
+      for (let k = floatingObjects.length - 1; k >= 0; k--) {
+        const obj = floatingObjects[k];
+        if (obj.isHeld) continue;
+
+        const gx = Math.min(NX - 1, Math.max(0, Math.floor(obj.x / L)));
+        const gy = Math.min(NY - 1, Math.max(0, Math.floor(obj.z / L)));
+        const i = idx(gx, gy);
+
+        const currentDepth = d[i];
+        const waterSurface = T[i] + currentDepth;
+
+        let flowVx = Vx[i];
+        let flowVy = Vy[i];
+        if (obj.x >= (NX - 2) * L) {
+          flowVx = Math.max(flowVx, 0.45);
+        }
+
+        if (obj.type === 'rock') {
+          obj.mesh.position.y = T[i] + 0.12;
+
+          // Calculate terrain slope (height gradient) for rolling downhill on land
+          const tR = (gx < NX - 1) ? T[idx(gx + 1, gy)] : T[i];
+          const tL = (gx > 0)      ? T[idx(gx - 1, gy)] : T[i];
+          const tU = (gy < NY - 1) ? T[idx(gx, gy + 1)] : T[i];
+          const tD = (gy > 0)      ? T[idx(gx, gy - 1)] : T[i];
+
+          const slopeX = (tL - tR); // Gravity acceleration downhill
+          const slopeZ = (tD - tU);
+
+          obj.vx += slopeX * 0.10;
+          obj.vz += slopeZ * 0.10;
+
+          // Water current push
+          const speed = Math.sqrt(flowVx * flowVx + flowVy * flowVy);
+          if (currentDepth > 0.02 && speed > 0.12) {
+            obj.vx += flowVx * 0.015 * ITEM_SPEED_MULTIPLIER;
+            obj.vz += flowVy * 0.015 * ITEM_SPEED_MULTIPLIER;
+          }
+
+          // 3D rolling rotation animation based on movement velocity
+          const rollSpeed = Math.sqrt(obj.vx * obj.vx + obj.vz * obj.vz);
+          if (rollSpeed > 0.005) {
+            obj.rotationAngle += rollSpeed * 0.35;
+            obj.mesh.rotation.x = obj.rotationAngle;
+            obj.mesh.rotation.z += obj.vx * 0.15;
+          }
+
+          obj.vx *= 0.92;
+          obj.vz *= 0.92;
+        } 
+        else if (obj.type === 'duck') {
+          const isFloating = currentDepth > 0.015 || obj.x >= (NX - 2) * L;
+
+          if (isFloating) {
+            obj.mesh.position.y += (waterSurface - obj.mesh.position.y) * 0.2;
+
+            obj.vx += flowVx * 0.030 * ITEM_SPEED_MULTIPLIER;
+            obj.vz += flowVy * 0.030 * ITEM_SPEED_MULTIPLIER;
+
+            if (gx < NX - 4 && currentDepth < 0.12) {
+              const dR = (gx < NX - 1) ? d[idx(gx + 1, gy)] : 0;
+              const dL = (gx > 0)      ? d[idx(gx - 1, gy)] : 0;
+              const dU = (gy < NY - 1) ? d[idx(gx, gy + 1)] : 0;
+              const dD = (gy > 0)      ? d[idx(gx, gy - 1)] : 0;
+
+              const gradX = dR - dL;
+              const gradY = dU - dD;
+
+              obj.vx += gradX * 0.20;
+              obj.vz += gradY * 0.20;
+            }
+
+            const targetAngle = Math.atan2(flowVy, flowVx);
+            let angleDiff = targetAngle - obj.rotationAngle;
+            angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+            obj.rotationAngle += angleDiff * 0.20;
+            obj.mesh.rotation.y = -obj.rotationAngle;
+          } else {
+            obj.mesh.position.y += (T[i] - obj.mesh.position.y) * 0.2;
+          }
+
+          obj.vx *= 0.91;
+          obj.vz *= 0.91;
+        } 
+        else if (obj.type === 'boat') {
+          const minBoatDepth = 0.07;
+          const isFloating = currentDepth > minBoatDepth || obj.x >= (NX - 2) * L;
+
+          if (isFloating) {
+            const boatWaterTarget = waterSurface + 0.075;
+            obj.mesh.position.y += (boatWaterTarget - obj.mesh.position.y) * 0.25;
+
+            obj.vx += flowVx * 0.052 * ITEM_SPEED_MULTIPLIER;
+            obj.vz += flowVy * 0.052 * ITEM_SPEED_MULTIPLIER;
+
+            const targetAngle = Math.atan2(flowVy, flowVx);
+            let angleDiff = targetAngle - obj.rotationAngle;
+            angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+            obj.rotationAngle += angleDiff * 0.04;
+            obj.mesh.rotation.y = -obj.rotationAngle;
+
+            obj.vx *= 0.94;
+            obj.vz *= 0.94;
+          } else {
+            obj.mesh.position.y += (T[i] + 0.03 - obj.mesh.position.y) * 0.2;
+            
+            obj.vx *= 0.50; 
+            obj.vz *= 0.50;
+          }
+        }
+
+        obj.x += obj.vx * DT;
+        obj.z += obj.vz * DT;
+
+        obj.x = Math.max(0.5 * L, obj.x);
+        obj.z = Math.max(0.5 * L, Math.min((NY - 1.5) * L, obj.z));
+
+        obj.mesh.position.x = obj.x;
+        obj.mesh.position.z = obj.z;
+
+        if (obj.x > worldWidth + 2.5) {
+          scene.remove(obj.mesh);
+          floatingObjects.splice(k, 1);
+        }
+      }
+    }
+
+    // --- MULTI-TOUCH DRAG & DROP ENGINE ---
+    const raycaster = new THREE.Raycaster();
+    const touchVector = new THREE.Vector2();
+
+    const activePointers = new Map();
+
+    function isPointerOverUI(clientX, clientY) {
+      const palette = document.getElementById('ui-palette');
+      if (!palette) return false;
+      const rect = palette.getBoundingClientRect();
+      return (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom);
+    }
+
+    // Sculpting height updates - capped to -1.0 (min depth) and +5.0 (max height)
+    function applySculpting(point, mult, brushRadius = 10) {
+      const strength = 0.05;
+
+      const centerGridX = point.x / L;
+      const centerGridY = point.z / L;
+
+      const rCells = Math.ceil(brushRadius);
+      const minX = Math.max(1, Math.floor(centerGridX - rCells));
+      const maxX = Math.min(NX - 2, Math.ceil(centerGridX + rCells));
+      const minY = Math.max(1, Math.floor(centerGridY - rCells));
+      const maxY = Math.min(NY - 2, Math.ceil(centerGridY + rCells));
+
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const dx = x - centerGridX;
+          const dy = y - centerGridY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < brushRadius) {
+            const falloff = 0.5 * (1 + Math.cos((dist / brushRadius) * Math.PI));
+            const i = idx(x, y);
+            T[i] += mult * strength * falloff;
+            T[i] = Math.max(-1.0, Math.min(5.0, T[i])); // Extended depth (-1.0) and height (5.0)
+          }
+        }
+      }
+    }
+
+    function raycastGround(clientX, clientY) {
+      touchVector.x = (clientX / window.innerWidth) * 2 - 1;
+      touchVector.y = -(clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(touchVector, camera);
+      const intersects = raycaster.intersectObject(groundMesh);
+
+      if (intersects.length > 0) {
+        return intersects[0].point;
+      }
+      return null;
+    }
+
+    function raycastPlacedTools(clientX, clientY) {
+      touchVector.x = (clientX / window.innerWidth) * 2 - 1;
+      touchVector.y = -(clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(touchVector, camera);
+      const toolMeshes = placedTools.filter(t => !t.isHeld).map(t => t.mesh);
+      const intersects = raycaster.intersectObjects(toolMeshes, true);
+
+      if (intersects.length > 0) {
+        let topMesh = intersects[0].object;
+        while (topMesh.parent && topMesh.parent !== scene) {
+          topMesh = topMesh.parent;
+        }
+        return placedTools.find(t => t.mesh === topMesh);
+      }
+      return null;
+    }
+
+    function raycastFloatingItem(clientX, clientY) {
+      touchVector.x = (clientX / window.innerWidth) * 2 - 1;
+      touchVector.y = -(clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(touchVector, camera);
+      const itemMeshes = floatingObjects.filter(o => !o.isHeld).map(o => o.mesh);
+      const intersects = raycaster.intersectObjects(itemMeshes, true);
+
+      if (intersects.length > 0) {
+        let topMesh = intersects[0].object;
+        while (topMesh.parent && topMesh.parent !== scene) {
+          topMesh = topMesh.parent;
+        }
+        return floatingObjects.find(o => o.mesh === topMesh);
+      }
+      return null;
+    }
+
+    // Step 1: Drag card from Palette to place tool/toy in world
+    document.querySelectorAll('.draggable-card').forEach(card => {
+      card.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const type = card.getAttribute('data-type');
+        card.setPointerCapture(e.pointerId);
+
+        activePointers.set(e.pointerId, {
+          action: 'place_from_palette',
+          type: type,
+          worldPos: null,
+          mesh: null,
+          targetObj: null
+        });
+      });
+    });
+
+    // Step 2: Touch and drag an ALREADY PLACED tool or toy on the map
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#ui-palette')) return;
+
+      const hitTool = raycastPlacedTools(e.clientX, e.clientY);
+      const hitItem = raycastFloatingItem(e.clientX, e.clientY);
+      const hitPos = raycastGround(e.clientX, e.clientY);
+
+      if (hitTool) {
+        hitTool.isHeld = true;
+        activePointers.set(e.pointerId, {
+          action: 'use_placed_tool',
+          type: hitTool.type,
+          worldPos: hitPos || new THREE.Vector3(hitTool.x, 1, hitTool.z),
+          mesh: null,
+          targetObj: hitTool
+        });
+      } else if (hitItem) {
+        hitItem.isHeld = true;
+        hitItem.vx = 0;
+        hitItem.vz = 0;
+
+        activePointers.set(e.pointerId, {
+          action: 'move_toy',
+          type: hitItem.type,
+          worldPos: hitPos || new THREE.Vector3(hitItem.x, 1, hitItem.z),
+          mesh: null,
+          targetObj: hitItem
+        });
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (activePointers.has(e.pointerId)) {
+        const pointerData = activePointers.get(e.pointerId);
+        const overUI = isPointerOverUI(e.clientX, e.clientY);
+        const hitPos = raycastGround(e.clientX, e.clientY);
+
+        if (pointerData.action === 'place_from_palette') {
+          if (!overUI && hitPos) {
+            pointerData.worldPos = hitPos;
+            if (!pointerData.mesh && ['shovel', 'bucket'].includes(pointerData.type)) {
+              pointerData.mesh = create3DToolMesh(pointerData.type);
+            }
+            if (pointerData.mesh) {
+              pointerData.mesh.visible = true;
+              pointerData.mesh.position.set(hitPos.x, hitPos.y + 0.25, hitPos.z);
+            }
+          } else {
+            pointerData.worldPos = null;
+            if (pointerData.mesh) {
+              pointerData.mesh.visible = false;
+            }
+          }
+        } 
+        else if (pointerData.action === 'use_placed_tool' && pointerData.targetObj) {
+          if (hitPos) {
+            pointerData.worldPos.copy(hitPos);
+            pointerData.targetObj.x = hitPos.x;
+            pointerData.targetObj.z = hitPos.z;
+            pointerData.targetObj.mesh.position.set(hitPos.x, hitPos.y + 0.35, hitPos.z);
+          }
+        }
+        else if (pointerData.action === 'move_toy' && pointerData.targetObj) {
+          if (hitPos) {
+            pointerData.worldPos.copy(hitPos);
+            pointerData.targetObj.x = hitPos.x;
+            pointerData.targetObj.z = hitPos.z;
+            pointerData.targetObj.mesh.position.set(hitPos.x, hitPos.y + 0.3, hitPos.z);
+          }
+        }
+      }
+    });
+
+    function releasePointer(e) {
+      if (activePointers.has(e.pointerId)) {
+        const pointerData = activePointers.get(e.pointerId);
+        const overUI = isPointerOverUI(e.clientX, e.clientY);
+
+        if (pointerData.action === 'place_from_palette') {
+          if (pointerData.worldPos && !overUI) {
+            if (['shovel', 'bucket'].includes(pointerData.type)) {
+              spawnPlacedTool(pointerData.type, pointerData.worldPos.x, pointerData.worldPos.z);
+            } else {
+              spawnItem(pointerData.type, pointerData.worldPos.x, pointerData.worldPos.z);
+            }
+          }
+          if (pointerData.mesh) scene.remove(pointerData.mesh);
+        }
+
+        if (pointerData.action === 'use_placed_tool' && pointerData.targetObj) {
+          scene.remove(pointerData.targetObj.mesh);
+          const toolIndex = placedTools.indexOf(pointerData.targetObj);
+          if (toolIndex !== -1) placedTools.splice(toolIndex, 1);
+        }
+
+        if (pointerData.action === 'move_toy' && pointerData.targetObj) {
+          pointerData.targetObj.isHeld = false;
+        }
+
+        activePointers.delete(e.pointerId);
+      }
+    }
+
+    window.addEventListener('pointerup', releasePointer);
+    window.addEventListener('pointercancel', releasePointer);
+
+    function processActiveTools() {
+      activePointers.forEach(pointerData => {
+        if (pointerData.action === 'use_placed_tool' && pointerData.worldPos) {
+          if (pointerData.type === 'shovel') {
+            applySculpting(pointerData.worldPos, -1, 10);
+          } else if (pointerData.type === 'bucket') {
+            applySculpting(pointerData.worldPos, 1, 10);
+          }
+        }
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      const newAspect = window.innerWidth / window.innerHeight;
+      camera.left = -frustumSize / 2;
+      camera.right = frustumSize / 2;
+      camera.top = (frustumSize / newAspect) / 2;
+      camera.bottom = -(frustumSize / newAspect) / 2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- INITIALIZATION & WARMUP PASS ---
+    for (let s = 0; s < 150; s++) {
+      stepWaterSimulation();
+    }
+    updateMeshes();
+
+    // --- MAIN ANIMATION LOOP ---
+    function animate() {
+      requestAnimationFrame(animate);
+
+      processActiveTools();
+
+      for (let s = 0; s < 2; s++) {
+        stepWaterSimulation();
+      }
+
+      updateMeshes();
+      updateFloatingObjects();
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
