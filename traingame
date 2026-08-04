@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Top-Down Railway Tycoon - Pre-Laid Station & Shed Tracks</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #87CEEB; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        /* Left Sidebar Toolbar */
+        #ui-container {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(20, 20, 20, 0.88);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            color: white;
+            align-items: stretch;
+            z-index: 10;
+            min-width: 170px;
+        }
+        .tool-btn {
+            background: #333;
+            border: 2px solid #555;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .tool-btn.active {
+            background: #1E88E5;
+            border-color: #64B5F6;
+            box-shadow: 0 0 8px rgba(30, 136, 229, 0.8);
+        }
+        #shed-drag-source {
+            background: #BF360C;
+            border-color: #FF7043;
+            cursor: grab;
+            text-align: center;
+        }
+        #shed-drag-source:active {
+            cursor: grabbing;
+        }
+        #demolish-drag-source {
+            background: #C62828;
+            border-color: #EF5350;
+            cursor: grab;
+            text-align: center;
+        }
+        #demolish-drag-source:active {
+            cursor: grabbing;
+        }
+        .stat-badge {
+            font-size: 13px;
+            font-weight: bold;
+            color: #FFD54F;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 8px 10px;
+            border-radius: 6px;
+            text-align: left;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #instruction-banner {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.75);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-container">
+        <div class="tool-btn active">🛤️ Lay Track</div>
+        <div id="shed-drag-source" class="tool-btn" draggable="true">🌉 Drag Shed (<span id="shed-count">1</span>)</div>
+        <div id="demolish-drag-source" class="tool-btn" draggable="true">🗑️ Drag Demolish</div>
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.15); margin: 2px 0;">
+        <div class="stat-badge">👥 Score: <span id="score">0</span></div>
+        <div class="stat-badge">⏱️ Avg Wait: <span id="avg-wait">0.0s</span></div>
+        <div class="stat-badge">🚉 Stations: <span id="station-count">2</span>/6</div>
+    </div>
+
+    <div id="instruction-banner">Stations & Sheds spawn with platform/lead tracks already attached!</div>
+
+    <!-- Import Three.js -->
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+        // --- GPU MEMORY DISPOSAL HELPER ---
+        function disposeObject(obj) {
+            if (!obj) return;
+            obj.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+        }
+
+        // 1. Playable Map Limits & Directions System
+        const MAP_BOUNDS = { minX: -22, maxX: 22, minZ: -12, maxZ: 12 };
+
+        function isValidBuildBounds(pos) {
+            return pos && pos.x > MAP_BOUNDS.minX && pos.x < MAP_BOUNDS.maxX &&
+                   pos.z > MAP_BOUNDS.minZ && pos.z < MAP_BOUNDS.maxZ;
+        }
+
+        const DIRS = {
+            N: { dx: 0, dz: -1, opp: 'S' },
+            E: { dx: 1, dz: 0, opp: 'W' },
+            S: { dx: 0, dz: 1, opp: 'N' },
+            W: { dx: -1, dz: 0, opp: 'E' }
+        };
+
+        const STATION_COLORS = [
+            { name: 'Red', hex: 0xE53935 },
+            { name: 'Blue', hex: 0x1E88E5 },
+            { name: 'Yellow', hex: 0xFBC02D },
+            { name: 'Green', hex: 0x43A047 },
+            { name: 'Purple', hex: 0x8E24AA },
+            { name: 'Orange', hex: 0xFB8C00 }
+        ];
+
+        const ENGINE_COLORS = [
+            0xC62828, // Crimson Red
+            0x1565C0, // Sapphire Blue
+            0x2E7D32, // Emerald Green
+            0x6A1B9A, // Deep Purple
+            0xD84315, // Amber Orange
+            0x00838F, // Deep Teal
+            0x37474F, // Slate Charcoal
+            0xAD1457  // Rose Magenta
+        ];
+
+        function getKey(x, z) { return `${x},${z}`; }
+        function lerpAngle(start, end, amount) {
+            let diff = end - start;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            return start + diff * amount;
+        }
+        function getRelativeLeftRight(baseDir) {
+            if (baseDir === 'N') return { left: 'E', right: 'W' };
+            if (baseDir === 'S') return { left: 'W', right: 'E' };
+            if (baseDir === 'E') return { left: 'S', right: 'N' };
+            if (baseDir === 'W') return { left: 'N', right: 'S' };
+        }
+
+        // 2. Scene, Overhead Camera & Lighting
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 22, 0);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        renderer.domElement.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            console.warn("WebGL Context Lost. Pausing simulation...");
+        }, false);
+
+        renderer.domElement.addEventListener('webglcontextrestored', () => {
+            console.log("WebGL Context Restored. Resuming...");
+        }, false);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        dirLight.position.set(10, 35, 10);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Ground & Grid
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(300, 300),
+            new THREE.MeshLambertMaterial({ color: 0x51b848 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        const gridHelper = new THREE.GridHelper(300, 300, 0x3d9e35, 0x3d9e35);
+        gridHelper.position.y = 0.01;
+        scene.add(gridHelper);
+
+        // World Data Storage
+        const worldObjects = new Map();
+        const bridges = [];
+        const stations = [];
+        const trains = [];
+        const smokeParticles = [];
+
+        let rollingAvgWait = 0;
+        let totalWaitingCount = 0;
+
+        // 3. Coniferous Tree Builders
+        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5d4037 });
+
+        const BORDER_TREE_COLORS = [0x14380D, 0x1B4312, 0x0F2E08, 0x1E4B16, 0x11320A];
+        const borderMaterials = BORDER_TREE_COLORS.map(c => new THREE.MeshLambertMaterial({ color: c }));
+
+        const FOREST_FLOOR_COLORS = [0x422D1C, 0x3D2817, 0x48301E, 0x392414];
+        const forestFloorMaterials = FOREST_FLOOR_COLORS.map(c => new THREE.MeshLambertMaterial({ color: c }));
+        const forestFloorGeo = new THREE.PlaneGeometry(1.0, 1.0);
+
+        const INTERIOR_TREE_COLORS = [0x2E7D32, 0x388E3C, 0x2E6B27, 0x43A047, 0x1B5E20, 0x33691E];
+        const interiorMaterials = INTERIOR_TREE_COLORS.map(c => new THREE.MeshLambertMaterial({ color: c }));
+
+        function createBorderTreeMesh() {
+            const group = new THREE.Group();
+            const mat = borderMaterials[Math.floor(Math.random() * borderMaterials.length)];
+
+            const floorMat = forestFloorMaterials[Math.floor(Math.random() * forestFloorMaterials.length)];
+            const floorTile = new THREE.Mesh(forestFloorGeo, floorMat);
+            floorTile.rotation.x = -Math.PI / 2;
+            floorTile.position.y = 0.005;
+            group.add(floorTile);
+
+            const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.3), trunkMat);
+            trunk.position.y = 0.3;
+            group.add(trunk);
+
+            const layer1 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.9), mat);
+            layer1.position.y = 0.85;
+
+            const layer2 = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.5, 0.65), mat);
+            layer2.position.y = 1.35;
+
+            const layer3 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.45, 0.4), mat);
+            layer3.position.y = 1.825;
+
+            group.add(layer1, layer2, layer3);
+
+            const sy = 0.85 + Math.random() * 0.3;
+            group.scale.set(1.0, sy, 1.0);
+
+            return group;
+        }
+
+        function createInteriorTreeMesh() {
+            const group = new THREE.Group();
+            const mat = interiorMaterials[Math.floor(Math.random() * interiorMaterials.length)];
+
+            const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.3), trunkMat);
+            trunk.position.y = 0.3;
+            group.add(trunk);
+
+            const layer1 = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.45, 0.85), mat);
+            layer1.position.y = 0.825;
+
+            const layer2 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.45, 0.6), mat);
+            layer2.position.y = 1.275;
+
+            const layer3 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.4, 0.35), mat);
+            layer3.position.y = 1.7;
+
+            group.add(layer1, layer2, layer3);
+
+            const sy = 0.85 + Math.random() * 0.3;
+            group.scale.set(1.0, sy, 1.0);
+
+            return group;
+        }
+
+        // Build 3 Rows of Border Trees
+        const BORDER_DEPTH = 3;
+        for (let x = MAP_BOUNDS.minX - BORDER_DEPTH; x <= MAP_BOUNDS.maxX + BORDER_DEPTH; x++) {
+            for (let z = MAP_BOUNDS.minZ - BORDER_DEPTH; z <= MAP_BOUNDS.maxZ + BORDER_DEPTH; z++) {
+                const isBorder = (x <= MAP_BOUNDS.minX || x >= MAP_BOUNDS.maxX || z <= MAP_BOUNDS.minZ || z >= MAP_BOUNDS.maxZ);
+                if (isBorder) {
+                    const key = getKey(x, z);
+                    const treeGroup = createBorderTreeMesh();
+                    treeGroup.position.set(x, 0, z);
+                    scene.add(treeGroup);
+                    worldObjects.set(key, { type: 'border_tree', group: treeGroup });
+                }
+            }
+        }
+
+        // Interior Decorative Trees Scatter
+        for (let i = 0; i < 75; i++) {
+            const rx = Math.floor(Math.random() * (MAP_BOUNDS.maxX - MAP_BOUNDS.minX - 2)) + MAP_BOUNDS.minX + 1;
+            const rz = Math.floor(Math.random() * (MAP_BOUNDS.maxZ - MAP_BOUNDS.minZ - 2)) + MAP_BOUNDS.minZ + 1;
+            const key = getKey(rx, rz);
+            if (!worldObjects.has(key) && (Math.abs(rx) > 4 || Math.abs(rz) > 4)) {
+                const treeGroup = createInteriorTreeMesh();
+                treeGroup.position.set(rx, 0, rz);
+                scene.add(treeGroup);
+                worldObjects.set(key, { type: 'tree', group: treeGroup });
+            }
+        }
+
+        // 4. Track, Covered Bridge Shed & Station Builders
+        const woodMat = new THREE.MeshLambertMaterial({ color: 0x6d4c41 });
+        const railMat = new THREE.MeshLambertMaterial({ color: 0x757575 });
+
+        function createTrackMesh(connections, switchIndex = 0) {
+            const group = new THREE.Group();
+            const connArr = Array.from(connections);
+
+            if (connArr.length === 3) {
+                const missing = ['N', 'E', 'S', 'W'].find(d => !connections.has(d));
+                const base = DIRS[missing].opp;
+                const rel = getRelativeLeftRight(base);
+                const activeExit = (switchIndex === 0) ? rel.left : rel.right;
+
+                for (let x = -0.3; x <= 0.3; x += 0.3) {
+                    for (let z = -0.3; z <= 0.3; z += 0.3) {
+                        if (Math.abs(x) < 0.1 || Math.abs(z) < 0.1) {
+                            const tie = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), woodMat);
+                            tie.position.set(x, 0.02, z);
+                            group.add(tie);
+                        }
+                    }
+                }
+                connections.forEach(dir => {
+                    const d = DIRS[dir];
+                    if (dir === 'N' || dir === 'S') {
+                        const r1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.5), railMat);
+                        const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.5), railMat);
+                        r1.position.set(0.25, 0.08, d.dz * 0.25);
+                        r2.position.set(-0.25, 0.08, d.dz * 0.25);
+                        group.add(r1, r2);
+                    } else {
+                        const r1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.08), railMat);
+                        const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.08), railMat);
+                        r1.position.set(d.dx * 0.25, 0.08, 0.25);
+                        r1.position.set(d.dx * 0.25, 0.08, -0.25);
+                        group.add(r1, r2);
+                    }
+                });
+
+                const offsetD = DIRS[missing];
+                const switchBox = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.2, 0.25), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+                switchBox.position.set(offsetD.dx * 0.38, 0.1, offsetD.dz * 0.38);
+                group.add(switchBox);
+
+                const activeD = DIRS[activeExit];
+                const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 4), new THREE.MeshLambertMaterial({ color: 0x76FF03 }));
+                arrow.position.set(offsetD.dx * 0.38 + activeD.dx * 0.12, 0.25, offsetD.dz * 0.38 + activeD.dz * 0.12);
+                arrow.rotation.x = Math.PI / 2;
+                arrow.rotation.z = Math.atan2(-activeD.dz, activeD.dx);
+                group.add(arrow);
+
+            } else {
+                const isCorner = connArr.length === 2 && 
+                    !((connArr.includes('N') && connArr.includes('S')) || (connArr.includes('E') && connArr.includes('W')));
+
+                if (!isCorner) {
+                    const isNS = connArr.includes('N') || connArr.includes('S');
+                    if (isNS) {
+                        for (let i = -0.3; i <= 0.3; i += 0.3) {
+                            const tie = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.18), woodMat);
+                            tie.position.set(0, 0.03, i);
+                            group.add(tie);
+                        }
+                        const r1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 1.0), railMat);
+                        const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 1.0), railMat);
+                        r1.position.set(0.25, 0.08, 0);
+                        r2.position.set(-0.25, 0.08, 0);
+                        group.add(r1, r2);
+                    } else {
+                        for (let i = -0.3; i <= 0.3; i += 0.3) {
+                            const tie = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.18), woodMat);
+                            tie.position.set(i, 0.03, 0);
+                            tie.rotation.y = Math.PI / 2;
+                            group.add(tie);
+                        }
+                        const r1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.08), railMat);
+                        const r2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.08), railMat);
+                        r1.position.set(0, 0.08, 0.25);
+                        r2.position.set(0, 0.08, -0.25);
+                        group.add(r1, r2);
+                    }
+                } else {
+                    const subGroup = new THREE.Group();
+                    const r1Geo = new THREE.TorusGeometry(0.25, 0.04, 8, 12, Math.PI / 2);
+                    r1Geo.rotateX(Math.PI / 2);
+                    const r1 = new THREE.Mesh(r1Geo, railMat);
+                    const r2Geo = new THREE.TorusGeometry(0.75, 0.04, 8, 12, Math.PI / 2);
+                    r2Geo.rotateX(Math.PI / 2);
+                    const r2 = new THREE.Mesh(r2Geo, railMat);
+
+                    r1.position.set(-0.5, 0.08, -0.5);
+                    r2.position.set(-0.5, 0.08, -0.5);
+                    subGroup.add(r1, r2);
+
+                    [0.22, 0.78, 1.35].forEach(ang => {
+                        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.06, 0.16), woodMat);
+                        tie.position.set(-0.5 + 0.5 * Math.cos(ang), 0.03, -0.5 + 0.5 * Math.sin(ang));
+                        tie.rotation.y = -ang;
+                        subGroup.add(tie);
+                    });
+
+                    const cStr = connArr.sort().join('');
+                    let rot = 0;
+                    if (cStr === 'NW') rot = 0;
+                    else if (cStr === 'SW') rot = Math.PI / 2;
+                    else if (cStr === 'ES') rot = Math.PI;
+                    else if (cStr === 'EN') rot = -Math.PI / 2;
+
+                    subGroup.rotation.y = rot;
+                    group.add(subGroup);
+                }
+            }
+            return group;
+        }
+
+        function createCoveredBridgeMesh() {
+            const group = new THREE.Group();
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0x8D6E63 });
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x6D4C41 });
+            const roofRidgeMat = new THREE.MeshLambertMaterial({ color: 0x3E2723 });
+            const foundationMat = new THREE.MeshLambertMaterial({ color: 0x616161 });
+
+            const baseFloor = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.1, 0.95), wallMat);
+            baseFloor.position.y = 0.05;
+
+            const northWall = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.8, 0.08), wallMat);
+            northWall.position.set(0, 0.5, 0.44);
+            const southWall = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.8, 0.08), wallMat);
+            southWall.position.set(0, 0.5, -0.44);
+
+            const roofNorthSlope = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.06, 0.60), roofMat);
+            roofNorthSlope.position.set(0, 1.02, 0.27);
+            roofNorthSlope.rotation.x = -0.38;
+
+            const roofSouthSlope = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.06, 0.60), roofMat);
+            roofSouthSlope.position.set(0, 1.02, -0.27);
+            roofSouthSlope.rotation.x = 0.38;
+
+            const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(3.12, 0.08, 0.08), roofRidgeMat);
+            ridgeBeam.position.set(0, 1.14, 0);
+
+            const pillar1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.95), foundationMat);
+            pillar1.position.set(-1.35, -0.1, 0);
+            const pillar2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.95), foundationMat);
+            pillar2.position.set(1.35, -0.1, 0);
+
+            group.add(baseFloor, northWall, southWall, roofNorthSlope, roofSouthSlope, ridgeBeam, pillar1, pillar2);
+
+            for (let i = -1; i <= 1; i++) {
+                const r1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.08), railMat);
+                const r2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.08), railMat);
+                r1.position.set(i, 0.08, 0.25);
+                r2.position.set(i, 0.08, -0.25);
+                group.add(r1, r2);
+            }
+
+            return group;
+        }
+
+        // REDESIGNED TOP-DOWN RECOGNIZED STATION MODEL
+        function createStation1x2Mesh(colorHex) {
+            const group = new THREE.Group();
+            const platformMat = new THREE.MeshLambertMaterial({ color: 0xD7CCC8 });
+            const cautionMat = new THREE.MeshLambertMaterial({ color: 0xFFD54F });
+            const buildingMat = new THREE.MeshLambertMaterial({ color: 0x4E342E });
+            const roofMat = new THREE.MeshLambertMaterial({ color: colorHex });
+            const roofRidgeMat = new THREE.MeshLambertMaterial({ color: 0x212121 });
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0x3E2723 });
+            const clockFaceMat = new THREE.MeshBasicMaterial({ color: 0xFFF8E7 });
+            const clockBorderMat = new THREE.MeshLambertMaterial({ color: 0x212121 });
+
+            // 1. Uncovered West Platform (x = -0.22)
+            const openPlatform = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.12, 1.88), platformMat);
+            openPlatform.position.set(-0.22, 0.06, 0.5);
+
+            const cautionLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.13, 1.84), cautionMat);
+            cautionLine.position.set(-0.41, 0.065, 0.5);
+
+            const trimN = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.14, 0.10), roofMat);
+            trimN.position.set(-0.22, 0.07, -0.39);
+            const trimS = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.14, 0.10), roofMat);
+            trimS.position.set(-0.22, 0.07, 1.39);
+
+            const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.45), woodMat);
+            benchSeat.position.set(-0.22, 0.16, 0.1);
+            const crate1 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), woodMat);
+            crate1.position.set(-0.08, 0.19, 0.85);
+            const crate2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), woodMat);
+            crate2.position.set(-0.08, 0.32, 0.87);
+
+            // 2. Covered East Depot Building & Pitched Roof (x = 0.22)
+            const building = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.45, 1.88), buildingMat);
+            building.position.set(0.22, 0.285, 0.5);
+
+            const roofWestSlope = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.06, 1.94), roofMat);
+            roofWestSlope.position.set(0.10, 0.58, 0.5);
+            roofWestSlope.rotation.z = 0.38;
+
+            const roofEastSlope = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.06, 1.94), roofMat);
+            roofEastSlope.position.set(0.34, 0.58, 0.5);
+            roofEastSlope.rotation.z = -0.38;
+
+            const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.96), roofRidgeMat);
+            ridgeBeam.position.set(0.22, 0.64, 0.5);
+
+            const awningOverhang = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 1.90), roofMat);
+            awningOverhang.position.set(-0.06, 0.51, 0.5);
+
+            // 3. Top-Down Clock Tower Cupola & Chimney
+            const tower = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.22), buildingMat);
+            tower.position.set(0.22, 0.78, 0.5);
+
+            const towerCap = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.20, 4), roofMat);
+            towerCap.position.set(0.22, 1.02, 0.5);
+            towerCap.rotation.y = Math.PI / 4;
+
+            const clockBorder = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 12), clockBorderMat);
+            clockBorder.position.set(0.22, 0.93, 0.5);
+            const clockFace = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 12), clockFaceMat);
+            clockFace.position.set(0.22, 0.935, 0.5);
+
+            const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.08), roofRidgeMat);
+            chimney.position.set(0.22, 0.75, -0.2);
+
+            group.add(
+                openPlatform, cautionLine, trimN, trimS, benchSeat, crate1, crate2,
+                building, roofWestSlope, roofEastSlope, ridgeBeam, awningOverhang,
+                tower, towerCap, clockBorder, clockFace, chimney
+            );
+            return group;
+        }
+
+        function createDetailedLocomotiveMesh(bodyColorHex = 0xC62828) {
+            const group = new THREE.Group();
+            const darkMetal = new THREE.MeshLambertMaterial({ color: 0x212121 });
+            const engineBodyMat = new THREE.MeshLambertMaterial({ color: bodyColorHex });
+            const goldMat = new THREE.MeshLambertMaterial({ color: 0xFFD54F });
+            const windowMat = new THREE.MeshLambertMaterial({ color: 0x90CAF9 });
+            const lightMat = new THREE.MeshBasicMaterial({ color: 0xFFEB3B });
+
+            const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.65), darkMetal);
+            chassis.position.y = 0.18;
+            group.add(chassis);
+
+            const wheelGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.06, 12);
+            wheelGeo.rotateX(Math.PI / 2);
+            [-0.25, 0.25].forEach(x => {
+                [-0.32, 0.32].forEach(z => {
+                    const wheel = new THREE.Mesh(wheelGeo, darkMetal);
+                    wheel.position.set(x, 0.14, z);
+                    group.add(wheel);
+                });
+            });
+
+            const boilerGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.55, 12);
+            boilerGeo.rotateZ(Math.PI / 2);
+            const boiler = new THREE.Mesh(boilerGeo, engineBodyMat);
+            boiler.position.set(0.12, 0.46, 0);
+            group.add(boiler);
+
+            [-0.05, 0.25].forEach(bx => {
+                const bandGeo = new THREE.CylinderGeometry(0.29, 0.29, 0.04, 12);
+                bandGeo.rotateZ(Math.PI / 2);
+                const band = new THREE.Mesh(bandGeo, goldMat);
+                band.position.set(bx, 0.46, 0);
+                group.add(band);
+            });
+
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.55, 0.62), engineBodyMat);
+            cab.position.set(-0.24, 0.52, 0);
+            group.add(cab);
+
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.66), darkMetal);
+            roof.position.set(-0.24, 0.81, 0);
+            group.add(roof);
+
+            const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.63), windowMat);
+            w1.position.set(-0.24, 0.62, 0);
+            group.add(w1);
+
+            const chimneyStem = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.35, 8), darkMetal);
+            chimneyStem.position.set(0.3, 0.82, 0);
+            const chimneyTop = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.07, 0.1, 8), darkMetal);
+            chimneyTop.position.set(0.3, 1.02, 0);
+            group.add(chimneyStem, chimneyTop);
+
+            const headlightBox = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), darkMetal);
+            headlightBox.position.set(0.44, 0.52, 0);
+            const headlightGlow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.1), lightMat);
+            headlightGlow.position.set(0.50, 0.52, 0);
+            group.add(headlightBox, headlightGlow);
+
+            const cowcatcher = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.25, 4), darkMetal);
+            cowcatcher.rotation.z = -Math.PI / 2;
+            cowcatcher.rotation.y = Math.PI / 4;
+            cowcatcher.position.set(0.46, 0.2, 0);
+            group.add(cowcatcher);
+
+            return group;
+        }
+
+        function createPassengerCarMesh(carColorHex) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshLambertMaterial({ color: carColorHex });
+            const chassisMat = new THREE.MeshLambertMaterial({ color: 0x212121 });
+
+            const carBase = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.14, 0.62), chassisMat);
+            carBase.position.y = 0.15;
+
+            const side1 = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.32, 0.06), bodyMat);
+            side1.position.set(0, 0.36, 0.26);
+            const side2 = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.32, 0.06), bodyMat);
+            side2.position.set(0, 0.36, -0.26);
+            const wallBack = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.32, 0.58), bodyMat);
+            wallBack.position.set(-0.38, 0.36, 0);
+            const wallFront = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.58), bodyMat);
+            wallFront.position.set(0.38, 0.3, 0);
+
+            const wheelGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 8);
+            wheelGeo.rotateX(Math.PI / 2);
+            [-0.22, 0.22].forEach(x => {
+                [-0.3, 0.3].forEach(z => {
+                    const wheel = new THREE.Mesh(wheelGeo, chassisMat);
+                    wheel.position.set(x, 0.1, z);
+                    group.add(wheel);
+                });
+            });
+
+            group.add(carBase, side1, side2, wallBack, wallFront);
+            return group;
+        }
+
+        function createPassengerMesh(destinationColorHex) {
+            const group = new THREE.Group();
+            const shirtBody = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.28, 0.18), new THREE.MeshLambertMaterial({ color: destinationColorHex }));
+            shirtBody.position.y = 0.14;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), new THREE.MeshLambertMaterial({ color: 0xFFCDD2 }));
+            head.position.y = 0.35;
+            group.add(shirtBody, head);
+            return group;
+        }
+
+        // 5. Shared Geometry Smoke Particle System
+        const sharedSmokeGeo = new THREE.SphereGeometry(0.08, 6, 6);
+
+        function emitSmokeParticle(worldPos) {
+            const pMat = new THREE.MeshBasicMaterial({ color: 0xF5F5F5, transparent: true, opacity: 0.65 });
+            const pMesh = new THREE.Mesh(sharedSmokeGeo, pMat);
+            pMesh.position.copy(worldPos);
+
+            scene.add(pMesh);
+            smokeParticles.push({
+                mesh: pMesh,
+                life: 0,
+                maxLife: 0.8 + Math.random() * 0.4,
+                vx: (Math.random() - 0.5) * 0.25,
+                vy: 0.8 + Math.random() * 0.4,
+                vz: (Math.random() - 0.5) * 0.25
+            });
+        }
+
+        function updateSmokeParticles(delta) {
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const p = smokeParticles[i];
+                p.life += delta;
+
+                p.mesh.position.x += p.vx * delta;
+                p.mesh.position.y += p.vy * delta;
+                p.mesh.position.z += p.vz * delta;
+
+                p.mesh.scale.addScalar(delta * 1.4);
+                p.mesh.material.opacity = (1.0 - p.life / p.maxLife) * 0.65;
+
+                if (p.life >= p.maxLife) {
+                    scene.remove(p.mesh);
+                    p.mesh.material.dispose();
+                    smokeParticles.splice(i, 1);
+                }
+            }
+        }
+
+        // 6. Map Handlers & Operations
+        function setTrack(x, z, connections, switchIndex = 0) {
+            const key = getKey(x, z);
+            const existing = worldObjects.get(key);
+            if (existing && existing.type === 'track') {
+                scene.remove(existing.group);
+                disposeObject(existing.group);
+            }
+            const group = createTrackMesh(connections, switchIndex);
+            group.position.set(x, 0, z);
+            scene.add(group);
+            worldObjects.set(key, { type: 'track', x, z, connections: new Set(connections), group, switchIndex });
+
+            checkBridgeTrainSpawns();
+        }
+
+        function removeObjectAt(x, z) {
+            const key = getKey(x, z);
+            if (!worldObjects.has(key)) return;
+            const obj = worldObjects.get(key);
+            if (obj.type === 'bridge' || obj.type === 'station' || obj.type === 'border_tree') return;
+
+            scene.remove(obj.group);
+            disposeObject(obj.group);
+            worldObjects.delete(key);
+
+            if (obj.type === 'track') {
+                for (let dKey of ['N', 'E', 'S', 'W']) {
+                    const d = DIRS[dKey];
+                    const nKey = getKey(x + d.dx, z + d.dz);
+                    const neighbor = worldObjects.get(nKey);
+                    if (neighbor && neighbor.type === 'track' && neighbor.connections.has(d.opp)) {
+                        neighbor.connections.delete(d.opp);
+                        setTrack(neighbor.x, neighbor.z, neighbor.connections, neighbor.switchIndex);
+                    }
+                }
+            }
+        }
+
+        // 7. Auto-Orienting Covered Bridge Shed Mechanics & Placement Helper
+        function getShedOrientationAndValidity(centerX, centerZ) {
+            let vertScore = 0;
+            let horizScore = 0;
+
+            const centerObj = worldObjects.get(getKey(centerX, centerZ));
+            if (centerObj && centerObj.type === 'track') {
+                if (centerObj.connections.has('N') || centerObj.connections.has('S')) vertScore += 2;
+                if (centerObj.connections.has('E') || centerObj.connections.has('W')) horizScore += 2;
+            }
+
+            const northObj = worldObjects.get(getKey(centerX, centerZ - 1));
+            const southObj = worldObjects.get(getKey(centerX, centerZ + 1));
+            if (northObj && (northObj.type === 'track' || northObj.type === 'bridge_track')) vertScore += 1;
+            if (southObj && (southObj.type === 'track' || southObj.type === 'bridge_track')) vertScore += 1;
+
+            const westObj = worldObjects.get(getKey(centerX - 1, centerZ));
+            const eastObj = worldObjects.get(getKey(centerX + 1, centerZ));
+            if (westObj && (westObj.type === 'track' || westObj.type === 'bridge_track')) horizScore += 1;
+            if (eastObj && (eastObj.type === 'track' || eastObj.type === 'bridge_track')) horizScore += 1;
+
+            const isVertical = vertScore > horizScore;
+
+            const tilesToCheck = isVertical ? [
+                {x: centerX, z: centerZ - 2},
+                {x: centerX, z: centerZ - 1},
+                {x: centerX, z: centerZ},
+                {x: centerX, z: centerZ + 1},
+                {x: centerX, z: centerZ + 2}
+            ] : [
+                {x: centerX - 2, z: centerZ},
+                {x: centerX - 1, z: centerZ},
+                {x: centerX, z: centerZ},
+                {x: centerX + 1, z: centerZ},
+                {x: centerX + 2, z: centerZ}
+            ];
+
+            let isValid = true;
+            for (let t of tilesToCheck) {
+                if (t.x <= MAP_BOUNDS.minX || t.x >= MAP_BOUNDS.maxX ||
+                    t.z <= MAP_BOUNDS.minZ || t.z >= MAP_BOUNDS.maxZ) {
+                    isValid = false;
+                    break;
+                }
+                const existing = worldObjects.get(getKey(t.x, t.z));
+                if (existing) {
+                    if (existing.type === 'station' || existing.type === 'border_tree' || existing.type === 'bridge_track' || existing.type === 'bridge') {
+                        isValid = false;
+                        break;
+                    }
+                }
+            }
+
+            return { isVertical, isValid, keysToCheck: tilesToCheck.map(t => getKey(t.x, t.z)) };
+        }
+
+        // Interactive Ghost Preview Mesh
+        const ghostValidMat = new THREE.MeshLambertMaterial({ color: 0x66BB6A, transparent: true, opacity: 0.6 });
+        const ghostInvalidMat = new THREE.MeshLambertMaterial({ color: 0xEF5350, transparent: true, opacity: 0.6 });
+
+        function createGhostBridgeMesh() {
+            const group = createCoveredBridgeMesh();
+            group.traverse(child => {
+                if (child.isMesh) {
+                    child.material = ghostValidMat;
+                }
+            });
+            group.visible = false;
+            return group;
+        }
+
+        const ghostMesh = createGhostBridgeMesh();
+        scene.add(ghostMesh);
+
+        // Demolish Ghost Preview Mesh
+        const demolishGhostMat = new THREE.MeshLambertMaterial({ color: 0xFF1744, transparent: true, opacity: 0.65 });
+        const demolishGhostMesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 1.0), demolishGhostMat);
+        demolishGhostMesh.visible = false;
+        scene.add(demolishGhostMesh);
+
+        function updateGhostMesh(e) {
+            const gridPos = getGridPos(e);
+            if (!gridPos) {
+                ghostMesh.visible = false;
+                return;
+            }
+
+            const info = getShedOrientationAndValidity(gridPos.x, gridPos.z);
+            ghostMesh.position.set(gridPos.x, 0, gridPos.z);
+            ghostMesh.rotation.y = info.isVertical ? Math.PI / 2 : 0;
+
+            const targetMat = info.isValid ? ghostValidMat : ghostInvalidMat;
+            ghostMesh.traverse(child => {
+                if (child.isMesh) {
+                    child.material = targetMat;
+                }
+            });
+
+            ghostMesh.visible = true;
+        }
+
+        function updateDemolishGhostMesh(e) {
+            const gridPos = getGridPos(e);
+            if (!gridPos) {
+                demolishGhostMesh.visible = false;
+                return;
+            }
+            const obj = worldObjects.get(getKey(gridPos.x, gridPos.z));
+            if (obj && obj.type === 'track') {
+                demolishGhostMesh.position.set(gridPos.x, 0.05, gridPos.z);
+                demolishGhostMesh.visible = true;
+            } else {
+                demolishGhostMesh.visible = false;
+            }
+        }
+
+        let shedCount = 1; // Starts with 1 Shed
+
+        function placeCoveredBridgeShed(centerX, centerZ) {
+            const info = getShedOrientationAndValidity(centerX, centerZ);
+            if (!info.isValid) return false;
+
+            const isVertical = info.isVertical;
+
+            const shedTiles = isVertical ? [
+                {x: centerX, z: centerZ - 1},
+                {x: centerX, z: centerZ},
+                {x: centerX, z: centerZ + 1}
+            ] : [
+                {x: centerX - 1, z: centerZ},
+                {x: centerX, z: centerZ},
+                {x: centerX + 1, z: centerZ}
+            ];
+
+            const leadTiles = isVertical ? [
+                {x: centerX, z: centerZ - 2},
+                {x: centerX, z: centerZ + 2}
+            ] : [
+                {x: centerX - 2, z: centerZ},
+                {x: centerX + 2, z: centerZ}
+            ];
+
+            // Clear existing trees on shed & lead tiles
+            [...shedTiles, ...leadTiles].forEach(t => {
+                const k = getKey(t.x, t.z);
+                if (worldObjects.has(k)) {
+                    const obj = worldObjects.get(k);
+                    if (obj.type === 'tree') {
+                        scene.remove(obj.group);
+                        disposeObject(obj.group);
+                        worldObjects.delete(k);
+                    } else if (obj.type === 'track' && shedTiles.some(st => st.x === t.x && st.z === t.z)) {
+                        scene.remove(obj.group);
+                        disposeObject(obj.group);
+                        worldObjects.delete(k);
+                    }
+                }
+            });
+
+            const bridgeMesh = createCoveredBridgeMesh();
+            bridgeMesh.position.set(centerX, 0, centerZ);
+            if (isVertical) {
+                bridgeMesh.rotation.y = Math.PI / 2;
+            }
+            scene.add(bridgeMesh);
+
+            const bridgeData = {
+                type: 'bridge',
+                centerX,
+                centerZ,
+                isVertical,
+                group: bridgeMesh,
+                trainSpawned: false
+            };
+
+            // Register 3 internal bridge tracks
+            shedTiles.forEach(t => {
+                const k = getKey(t.x, t.z);
+                const conn = isVertical ? new Set(['N', 'S']) : new Set(['E', 'W']);
+                worldObjects.set(k, {
+                    type: 'bridge_track',
+                    x: t.x,
+                    z: t.z,
+                    connections: conn,
+                    bridgeRef: bridgeData
+                });
+            });
+
+            bridges.push(bridgeData);
+
+            // Lay 2 regular lead tracks extending from both ends
+            const primaryDirs = isVertical ? ['N', 'S'] : ['E', 'W'];
+            leadTiles.forEach(lt => {
+                const key = getKey(lt.x, lt.z);
+                let existing = worldObjects.get(key);
+
+                let connections = new Set(primaryDirs);
+                if (existing && existing.type === 'track') {
+                    existing.connections.forEach(c => connections.add(c));
+                }
+
+                for (let dKey of ['N', 'E', 'S', 'W']) {
+                    const d = DIRS[dKey];
+                    const nKey = getKey(lt.x + d.dx, lt.z + d.dz);
+                    const neighbor = worldObjects.get(nKey);
+
+                    if (neighbor && neighbor.type === 'track' && neighbor.connections.size < 3) {
+                        connections.add(dKey);
+                        neighbor.connections.add(d.opp);
+                        setTrack(neighbor.x, neighbor.z, neighbor.connections, neighbor.switchIndex);
+                    }
+                }
+
+                setTrack(lt.x, lt.z, connections, 0);
+            });
+
+            checkBridgeTrainSpawns();
+            return true;
+        }
+
+        function countContinuousTracks(startX, startZ, stepDir) {
+            let count = 0;
+            let currX = startX;
+            let currZ = startZ;
+            const d = DIRS[stepDir];
+
+            while (true) {
+                currX += d.dx;
+                currZ += d.dz;
+                const k = getKey(currX, currZ);
+                const obj = worldObjects.get(k);
+                if (obj && obj.type === 'track') {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+            return count;
+        }
+
+        function checkBridgeTrainSpawns() {
+            bridges.forEach(bridge => {
+                if (bridge.trainSpawned) return;
+
+                if (bridge.isVertical) {
+                    const northTrackCount = countContinuousTracks(bridge.centerX, bridge.centerZ - 1, 'N');
+                    const southTrackCount = countContinuousTracks(bridge.centerX, bridge.centerZ + 1, 'S');
+
+                    if (northTrackCount >= 3) {
+                        spawnTrain(bridge.centerX, bridge.centerZ - 1, 'S', 'N');
+                        bridge.trainSpawned = true;
+                    } else if (southTrackCount >= 3) {
+                        spawnTrain(bridge.centerX, bridge.centerZ + 1, 'N', 'S');
+                        bridge.trainSpawned = true;
+                    }
+                } else {
+                    const westTrackCount = countContinuousTracks(bridge.centerX - 1, bridge.centerZ, 'W');
+                    const eastTrackCount = countContinuousTracks(bridge.centerX + 1, bridge.centerZ, 'E');
+
+                    if (westTrackCount >= 3) {
+                        spawnTrain(bridge.centerX - 1, bridge.centerZ, 'E', 'W');
+                        bridge.trainSpawned = true;
+                    } else if (eastTrackCount >= 3) {
+                        spawnTrain(bridge.centerX + 1, bridge.centerZ, 'W', 'E');
+                        bridge.trainSpawned = true;
+                    }
+                }
+            });
+        }
+
+        // 8. Station & Passenger Logic
+        let score = 0;
+        let grantedThirdStationShed = false;
+        let grantedFifthStationShed = false;
+
+        function layStationPlatformTracks(station) {
+            const isVerticalAxis = (station.rotIndex === 0 || station.rotIndex === 2);
+            const primaryDirs = isVerticalAxis ? ['N', 'S'] : ['E', 'W'];
+
+            // Clear any trees on openSideTiles
+            for (let tile of station.openSideTiles) {
+                const key = getKey(tile.x, tile.z);
+                const existing = worldObjects.get(key);
+                if (existing && existing.type === 'tree') {
+                    scene.remove(existing.group);
+                    disposeObject(existing.group);
+                    worldObjects.delete(key);
+                }
+            }
+
+            // Lay tracks along the open platform side
+            for (let tile of station.openSideTiles) {
+                const key = getKey(tile.x, tile.z);
+                let existing = worldObjects.get(key);
+
+                let connections = new Set(primaryDirs);
+                if (existing && existing.type === 'track') {
+                    existing.connections.forEach(c => connections.add(c));
+                }
+
+                for (let dKey of ['N', 'E', 'S', 'W']) {
+                    const d = DIRS[dKey];
+                    const nKey = getKey(tile.x + d.dx, tile.z + d.dz);
+                    const neighbor = worldObjects.get(nKey);
+
+                    if (neighbor && neighbor.type === 'track' && neighbor.connections.size < 3) {
+                        connections.add(dKey);
+                        neighbor.connections.add(d.opp);
+                        setTrack(neighbor.x, neighbor.z, neighbor.connections, neighbor.switchIndex);
+                    }
+                }
+
+                setTrack(tile.x, tile.z, connections, 0);
+            }
+        }
+
+        function spawnRandomStation() {
+            if (stations.length >= 6) return;
+
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 150) {
+                attempts++;
+                const rx = Math.floor(Math.random() * (MAP_BOUNDS.maxX - MAP_BOUNDS.minX - 4)) + MAP_BOUNDS.minX + 2;
+                const rz = Math.floor(Math.random() * (MAP_BOUNDS.maxZ - MAP_BOUNDS.minZ - 4)) + MAP_BOUNDS.minZ + 2;
+
+                const isTall = Math.random() < 0.5;
+                let rotIndex;
+
+                if (isTall) {
+                    if (rx > 0) rotIndex = 0;      // Platform faces West (towards x=0)
+                    else if (rx < 0) rotIndex = 2; // Platform faces East (towards x=0)
+                    else rotIndex = Math.random() < 0.5 ? 0 : 2;
+                } else {
+                    if (rz > 0) rotIndex = 3;      // Platform faces North (towards z=0)
+                    else if (rz < 0) rotIndex = 1; // Platform faces South (towards z=0)
+                    else rotIndex = Math.random() < 0.5 ? 1 : 3;
+                }
+
+                let footprint = [];
+                let openSideTiles = [];
+
+                if (rotIndex === 0) {
+                    footprint = [{x: rx, z: rz}, {x: rx, z: rz + 1}];
+                    openSideTiles = [{x: rx - 1, z: rz}, {x: rx - 1, z: rz + 1}];
+                } else if (rotIndex === 1) {
+                    footprint = [{x: rx, z: rz}, {x: rx + 1, z: rz}];
+                    openSideTiles = [{x: rx, z: rz + 1}, {x: rx + 1, z: rz + 1}];
+                } else if (rotIndex === 2) {
+                    footprint = [{x: rx, z: rz}, {x: rx, z: rz - 1}];
+                    openSideTiles = [{x: rx + 1, z: rz}, {x: rx + 1, z: rz - 1}];
+                } else if (rotIndex === 3) {
+                    footprint = [{x: rx, z: rz}, {x: rx - 1, z: rz}];
+                    openSideTiles = [{x: rx, z: rz - 1}, {x: rx - 1, z: rz - 1}];
+                }
+
+                let tooClose = false;
+                for (let s of stations) {
+                    const distSq = (rx - s.x) * (rx - s.x) + (rz - s.z) * (rz - s.z);
+                    if (distSq < 64) { // 8^2 = 64
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (tooClose) continue;
+
+                let spaceBlocked = false;
+                for (let fp of footprint.concat(openSideTiles)) {
+                    const key = getKey(fp.x, fp.z);
+                    const existing = worldObjects.get(key);
+                    if (existing && (existing.type === 'station' || existing.type === 'border_tree' || existing.type === 'bridge' || existing.type === 'bridge_track')) {
+                        spaceBlocked = true;
+                        break;
+                    }
+                }
+                if (spaceBlocked) continue;
+
+                const colorObj = STATION_COLORS[stations.length];
+                const stationGroup = createStation1x2Mesh(colorObj.hex);
+                stationGroup.position.set(rx, 0, rz);
+                stationGroup.rotation.y = rotIndex * (Math.PI / 2);
+                scene.add(stationGroup);
+
+                const station = {
+                    x: rx,
+                    z: rz,
+                    rotIndex: rotIndex,
+                    color: colorObj,
+                    group: stationGroup,
+                    waitingPassengers: [],
+                    openSideTiles: openSideTiles,
+                    footprint: footprint
+                };
+
+                for (let fp of footprint) {
+                    worldObjects.set(getKey(fp.x, fp.z), { type: 'station', station });
+                }
+                stations.push(station);
+                placed = true;
+
+                // Automatically lay 2 platform tracks along the station open side
+                layStationPlatformTracks(station);
+
+                document.getElementById('station-count').innerText = stations.length;
+
+                // Grant 2nd Train Shed on 3rd station unlock
+                if (stations.length === 3 && !grantedThirdStationShed) {
+                    grantedThirdStationShed = true;
+                    shedCount++;
+                    document.getElementById('shed-count').innerText = shedCount;
+                }
+
+                // Grant 3rd Train Shed on 5th station unlock
+                if (stations.length === 5 && !grantedFifthStationShed) {
+                    grantedFifthStationShed = true;
+                    shedCount++;
+                    document.getElementById('shed-count').innerText = shedCount;
+                }
+            }
+        }
+
+        function spawnPassengerAtStation(station) {
+            if (station.waitingPassengers.length >= 4) return;
+
+            const activeColors = stations.map(s => s.color).filter(c => c.name !== station.color.name);
+            if (activeColors.length === 0) return;
+
+            const targetColor = activeColors[Math.floor(Math.random() * activeColors.length)];
+
+            const pMesh = createPassengerMesh(targetColor.hex);
+            const pIndex = station.waitingPassengers.length;
+
+            const lx = -0.22;
+            const lz = 0.12 + pIndex * 0.38;
+            const theta = station.rotIndex * (Math.PI / 2);
+
+            const px = station.x + (lx * Math.cos(theta) + lz * Math.sin(theta));
+            const pz = station.z + (-lx * Math.sin(theta) + lz * Math.cos(theta));
+
+            pMesh.position.set(px, 0, pz);
+            pMesh.rotation.y = theta;
+            scene.add(pMesh);
+
+            station.waitingPassengers.push({
+                targetColor: targetColor,
+                mesh: pMesh,
+                spawnTime: clock.getElapsedTime()
+            });
+        }
+
+        // 9. BFS Pathfinder for Station Steering
+        function findShortestDistanceToStationColors(startX, startZ, initialDir, targetColorNames) {
+            if (!targetColorNames || targetColorNames.length === 0) return Infinity;
+
+            const queue = [{
+                x: startX + DIRS[initialDir].dx,
+                z: startZ + DIRS[initialDir].dz,
+                entryDir: DIRS[initialDir].opp,
+                dist: 1
+            }];
+            const visited = new Set([getKey(startX, startZ)]);
+
+            while (queue.length > 0) {
+                const curr = queue.shift();
+                const k = getKey(curr.x, curr.z);
+
+                if (visited.has(k)) continue;
+                visited.add(k);
+
+                const obj = worldObjects.get(k);
+                if (!obj || (obj.type !== 'track' && obj.type !== 'bridge_track')) continue;
+
+                for (let s of stations) {
+                    if (targetColorNames.includes(s.color.name)) {
+                        const isAlongOpenSide = s.openSideTiles.some(t => t.x === curr.x && t.z === curr.z);
+                        if (isAlongOpenSide) return curr.dist;
+                    }
+                }
+
+                if (curr.dist > 30) continue;
+
+                const validExits = Array.from(obj.connections).filter(d => d !== curr.entryDir);
+
+                for (let dir of validExits) {
+                    const d = DIRS[dir];
+                    queue.push({
+                        x: curr.x + d.dx,
+                        z: curr.z + d.dz,
+                        entryDir: d.opp,
+                        dist: curr.dist + 1
+                    });
+                }
+            }
+            return Infinity;
+        }
+
+        // Reverses a train, updating its curve, orientation, and trail
+        function reverseTrain(train) {
+            train.pauseTimer = 1.2;
+            train.exchangeState = null;
+
+            const oldEntry = train.entryDir;
+            const oldExit = train.exitDir;
+            train.entryDir = oldExit;
+            train.exitDir = oldEntry;
+
+            train.currentCurve = getCellCurve(train.x, train.z, train.entryDir, train.exitDir);
+            train.dist = 0;
+
+            train.locomotive.rotation.y += Math.PI;
+
+            train.trail = [{
+                pos: train.locomotive.position.clone(),
+                rot: train.locomotive.rotation.y
+            }];
+
+            const chimneyPos = train.locomotive.position.clone();
+            chimneyPos.y += 0.8;
+            for (let k = 0; k < 4; k++) {
+                emitSmokeParticle(chimneyPos);
+            }
+        }
+
+        // 10. Multi-Car Train Engine & Collision Mechanics
+        function spawnTrain(startX, startZ, entryDir, exitDir) {
+            const engineColor = ENGINE_COLORS[trains.length % ENGINE_COLORS.length];
+            const locomotiveGroup = createDetailedLocomotiveMesh(engineColor);
+            scene.add(locomotiveGroup);
+
+            const car1Group = createPassengerCarMesh(0x37474F);
+            const car2Group = createPassengerCarMesh(0x37474F);
+            scene.add(car1Group, car2Group);
+
+            const initialPos = new THREE.Vector3(startX, 0, startZ);
+
+            const train = {
+                locomotive: locomotiveGroup,
+                car1: car1Group,
+                car2: car2Group,
+                x: startX,
+                z: startZ,
+                entryDir: entryDir,
+                exitDir: exitDir,
+                dist: 0,
+                speed: 1.25,
+                passengers: [],
+                trail: [{ pos: initialPos.clone(), rot: 0 }],
+                smokeTimer: 0,
+                pauseTimer: 0,
+                lastStationStopped: null,
+                exchangeState: null
+            };
+
+            locomotiveGroup.position.copy(initialPos);
+            car1Group.position.copy(initialPos);
+            car2Group.position.copy(initialPos);
+
+            trains.push(train);
+        }
+
+        function getCellCurve(x, z, entryDir, exitDir) {
+            const p0 = new THREE.Vector3(x + 0.5 * DIRS[entryDir].dx, 0, z + 0.5 * DIRS[entryDir].dz);
+            const p2 = new THREE.Vector3(x + 0.5 * DIRS[exitDir].dx, 0, z + 0.5 * DIRS[exitDir].dz);
+            if (entryDir === DIRS[exitDir].opp) {
+                return new THREE.LineCurve3(p0, p2);
+            } else {
+                return new THREE.QuadraticBezierCurve3(p0, new THREE.Vector3(x, 0, z), p2);
+            }
+        }
+
+        function updateTrainCarsFromTrail(train) {
+            const trail = train.trail;
+            if (trail.length < 2) return;
+
+            const targetD1 = 0.95;
+            const targetD2 = 1.90;
+
+            let accumulatedDist = 0;
+            let car1Set = false;
+            let car2Set = false;
+
+            for (let i = 0; i < trail.length - 1; i++) {
+                const p1 = trail[i].pos;
+                const p2 = trail[i + 1].pos;
+                const segDist = p1.distanceTo(p2);
+
+                if (segDist === 0) continue;
+
+                const prevDist = accumulatedDist;
+                accumulatedDist += segDist;
+
+                if (!car1Set && accumulatedDist >= targetD1) {
+                    const alpha = (targetD1 - prevDist) / segDist;
+                    train.car1.position.lerpVectors(p1, p2, alpha);
+                    train.car1.rotation.y = lerpAngle(trail[i].rot, trail[i + 1].rot, alpha);
+                    car1Set = true;
+                }
+
+                if (!car2Set && accumulatedDist >= targetD2) {
+                    const alpha = (targetD2 - prevDist) / segDist;
+                    train.car2.position.lerpVectors(p1, p2, alpha);
+                    train.car2.rotation.y = lerpAngle(trail[i].rot, trail[i + 1].rot, alpha);
+                    car2Set = true;
+
+                    trail.length = i + 4;
+                    break;
+                }
+            }
+        }
+
+        function isOpposingTrainAhead(train) {
+            let currX = train.x;
+            let currZ = train.z;
+            let dir = train.exitDir;
+
+            for (let step = 1; step <= 3; step++) {
+                const nextX = currX + DIRS[dir].dx;
+                const nextZ = currZ + DIRS[dir].dz;
+
+                for (let other of trains) {
+                    if (other === train) continue;
+                    const distToLoco = other.locomotive.position.distanceTo(new THREE.Vector3(nextX, 0, nextZ));
+                    if (distToLoco < 0.85) {
+                        return true;
+                    }
+                }
+
+                const k = getKey(nextX, nextZ);
+                const obj = worldObjects.get(k);
+                if (!obj || (obj.type !== 'track' && obj.type !== 'bridge_track')) break;
+
+                const exits = Array.from(obj.connections).filter(c => c !== DIRS[dir].opp);
+                if (exits.length === 1) {
+                    dir = exits[0];
+                    currX = nextX;
+                    currZ = nextZ;
+                } else {
+                    break;
+                }
+            }
+            return false;
+        }
+
+        function updateTrain(train, delta) {
+            // STEP 1: Process Sequential 1-by-1 Passenger Disembarking / Embarking
+            if (train.exchangeState) {
+                const ex = train.exchangeState;
+                ex.timer += delta;
+
+                if (ex.timer >= ex.stepInterval) {
+                    ex.timer = 0;
+
+                    if (ex.stage === 'disembark') {
+                        if (ex.disembarkIndices.length > 0) {
+                            const passIdx = ex.disembarkIndices.pop();
+                            const p = train.passengers[passIdx];
+                            if (p && p.mesh.parent) {
+                                p.mesh.parent.remove(p.mesh);
+                            }
+                            disposeObject(p.mesh);
+                            train.passengers.splice(passIdx, 1);
+                            score++;
+                            document.getElementById('score').innerText = score;
+
+                            // Re-align remaining onboard passengers inside train cars
+                            train.passengers.forEach((pObj, idx) => {
+                                const targetCarGroup = (idx < 3) ? train.car1 : train.car2;
+                                if (pObj.mesh.parent !== targetCarGroup) {
+                                    if (pObj.mesh.parent) pObj.mesh.parent.remove(pObj.mesh);
+                                    targetCarGroup.add(pObj.mesh);
+                                }
+                                const carOffsetIndex = idx % 3;
+                                pObj.mesh.position.set(carOffsetIndex * 0.25 - 0.25, 0.3, 0);
+                            });
+
+                            ex.disembarkIndices = [];
+                            for (let i = train.passengers.length - 1; i >= 0; i--) {
+                                if (train.passengers[i].targetColor.name === ex.station.color.name) {
+                                    ex.disembarkIndices.push(i);
+                                }
+                            }
+                        }
+
+                        if (ex.disembarkIndices.length === 0) {
+                            ex.stage = 'embark';
+                        }
+                    } else if (ex.stage === 'embark') {
+                        if (ex.station.waitingPassengers.length > 0 && train.passengers.length < 6) {
+                            const pass = ex.station.waitingPassengers.shift();
+                            scene.remove(pass.mesh);
+                            disposeObject(pass.mesh);
+
+                            const onboardMesh = createPassengerMesh(pass.targetColor.hex);
+                            const targetCarGroup = (train.passengers.length < 3) ? train.car1 : train.car2;
+                            const carOffsetIndex = train.passengers.length % 3;
+
+                            targetCarGroup.add(onboardMesh);
+                            onboardMesh.position.set(carOffsetIndex * 0.25 - 0.25, 0.3, 0);
+
+                            train.passengers.push({
+                                targetColor: pass.targetColor,
+                                mesh: onboardMesh
+                            });
+
+                            ex.station.waitingPassengers.forEach((pObj, idx) => {
+                                const lx = -0.22;
+                                const lz = 0.12 + idx * 0.38;
+                                const theta = ex.station.rotIndex * (Math.PI / 2);
+                                const px = ex.station.x + (lx * Math.cos(theta) + lz * Math.sin(theta));
+                                const pz = ex.station.z + (-lx * Math.sin(theta) + lz * Math.cos(theta));
+                                pObj.mesh.position.set(px, 0, pz);
+                            });
+                        } else {
+                            train.exchangeState = null;
+                            train.pauseTimer = 0.4;
+                        }
+                    }
+                }
+                return;
+            }
+
+            if (train.pauseTimer > 0) {
+                train.pauseTimer -= delta;
+                return;
+            }
+
+            const currKey = getKey(train.x, train.z);
+            const currObj = worldObjects.get(currKey);
+
+            if (!currObj || (currObj.type !== 'track' && currObj.type !== 'bridge_track')) return;
+
+            // STEP 2: Junction Steering
+            if (!train.currentCurve) {
+                const availableExits = Array.from(currObj.connections).filter(c => c !== train.entryDir);
+                let exitDir;
+
+                if (availableExits.length > 1) {
+                    let bestExit = null;
+                    let minDistance = Infinity;
+
+                    if (train.passengers.length > 0) {
+                        const dropoffColors = Array.from(new Set(train.passengers.map(p => p.targetColor.name)));
+                        for (let optionDir of availableExits) {
+                            const dist = findShortestDistanceToStationColors(train.x, train.z, optionDir, dropoffColors);
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                bestExit = optionDir;
+                            }
+                        }
+                    }
+
+                    if (minDistance === Infinity && train.passengers.length < 6) {
+                        const pickupColors = [];
+                        stations.forEach(s => {
+                            if (s.waitingPassengers.length > 0) {
+                                pickupColors.push(s.color.name);
+                            }
+                        });
+
+                        if (pickupColors.length > 0) {
+                            for (let optionDir of availableExits) {
+                                const dist = findShortestDistanceToStationColors(train.x, train.z, optionDir, pickupColors);
+                                if (dist < minDistance) {
+                                    minDistance = dist;
+                                    bestExit = optionDir;
+                                }
+                            }
+                        }
+                    }
+
+                    if (minDistance === Infinity || !bestExit) {
+                        const nextIdx = (currObj.switchIndex + 1) % availableExits.length;
+                        bestExit = availableExits[nextIdx] || availableExits[0];
+                    }
+
+                    exitDir = bestExit;
+
+                    if (currObj.type === 'track' && currObj.connections.size === 3) {
+                        const missing = ['N', 'E', 'S', 'W'].find(d => !currObj.connections.has(d));
+                        const baseDir = DIRS[missing].opp;
+                        const rel = getRelativeLeftRight(baseDir);
+
+                        if (exitDir === rel.left) {
+                            currObj.switchIndex = 0;
+                        } else if (exitDir === rel.right) {
+                            currObj.switchIndex = 1;
+                        }
+                        setTrack(currObj.x, currObj.z, currObj.connections, currObj.switchIndex);
+                    }
+                } else if (availableExits.length === 1) {
+                    exitDir = availableExits[0];
+                } else {
+                    exitDir = DIRS[train.entryDir].opp;
+                }
+
+                train.exitDir = exitDir;
+                train.currentCurve = getCellCurve(train.x, train.z, train.entryDir, exitDir);
+                train.curveLength = train.currentCurve.getLength();
+            }
+
+            if (train.dist >= train.curveLength - 0.1) {
+                if (isOpposingTrainAhead(train)) {
+                    reverseTrain(train);
+                    return;
+                }
+            }
+
+            train.dist += train.speed * delta;
+
+            if (train.dist >= train.curveLength) {
+                const nextX = train.x + DIRS[train.exitDir].dx;
+                const nextZ = train.z + DIRS[train.exitDir].dz;
+                const nextKey = getKey(nextX, nextZ);
+                const nextObj = worldObjects.get(nextKey);
+
+                if (nextObj && (nextObj.type === 'track' || nextObj.type === 'bridge_track')) {
+                    train.dist -= train.curveLength;
+                    train.x = nextX;
+                    train.z = nextZ;
+                    train.entryDir = DIRS[train.exitDir].opp;
+                    train.currentCurve = null;
+                } else {
+                    train.dist = 0;
+                    const temp = train.entryDir;
+                    train.entryDir = train.exitDir;
+                    train.exitDir = temp;
+                    train.currentCurve = null;
+                }
+            }
+
+            if (train.currentCurve) {
+                const t = Math.min(Math.max(train.dist / train.curveLength, 0), 1);
+                train.locomotive.position.copy(train.currentCurve.getPointAt(t));
+                const tan = train.currentCurve.getTangentAt(t);
+                train.locomotive.rotation.y = lerpAngle(train.locomotive.rotation.y, Math.atan2(-tan.z, tan.x), 0.25);
+
+                const headPos = train.locomotive.position.clone();
+                if (train.trail.length === 0 || headPos.distanceTo(train.trail[0].pos) > 0.02) {
+                    train.trail.unshift({
+                        pos: headPos,
+                        rot: train.locomotive.rotation.y
+                    });
+                }
+
+                updateTrainCarsFromTrail(train);
+
+                // STEP 3: Detect Station Arrival & Initiate Sequential Exchange
+                const car1X = Math.round(train.car1.position.x);
+                const car1Z = Math.round(train.car1.position.z);
+
+                stations.forEach(station => {
+                    const isCarAlignedOnOpenPlatform = station.openSideTiles.some(t => t.x === car1X && t.z === car1Z);
+
+                    if (isCarAlignedOnOpenPlatform) {
+                        if (train.lastStationStopped !== station) {
+                            const disembarkIndices = [];
+                            for (let i = train.passengers.length - 1; i >= 0; i--) {
+                                if (train.passengers[i].targetColor.name === station.color.name) {
+                                    disembarkIndices.push(i);
+                                }
+                            }
+
+                            const hasDisembark = disembarkIndices.length > 0;
+                            const hasEmbark = station.waitingPassengers.length > 0 && train.passengers.length < 6;
+
+                            if (hasDisembark || hasEmbark) {
+                                train.lastStationStopped = station;
+                                train.exchangeState = {
+                                    station: station,
+                                    disembarkIndices: disembarkIndices,
+                                    stage: hasDisembark ? 'disembark' : 'embark',
+                                    timer: 0.2,
+                                    stepInterval: 0.45
+                                };
+                            }
+                        }
+                    } else {
+                        if (train.lastStationStopped === station) {
+                            train.lastStationStopped = null;
+                        }
+                    }
+                });
+
+                train.smokeTimer += delta;
+                if (train.smokeTimer >= 0.08) {
+                    train.smokeTimer = 0;
+                    const chimneyPos = train.locomotive.position.clone();
+                    chimneyPos.y += 1.0;
+                    emitSmokeParticle(chimneyPos);
+                }
+            }
+        }
+
+        // Head-On Collision Handler (Close Proximity)
+        function checkTrainCollisions() {
+            for (let i = 0; i < trains.length; i++) {
+                for (let j = i + 1; j < trains.length; j++) {
+                    const t1 = trains[i];
+                    const t2 = trains[j];
+
+                    if (t1.pauseTimer > 0.8 || t2.pauseTimer > 0.8) continue;
+
+                    const p1 = t1.locomotive.position;
+                    const p2 = t2.locomotive.position;
+
+                    if (p1.distanceTo(p2) < 0.75) {
+                        reverseTrain(t1);
+                        reverseTrain(t2);
+                    }
+                }
+            }
+        }
+
+        // Initialize Starting 2 Stations
+        spawnRandomStation();
+        spawnRandomStation();
+
+        // 11. Wiggle-Proof Track Laying & Drag/Drop Mechanics
+        let isMouseDown = false;
+        let dragPath = [];
+        let dragTileMap = new Map();
+
+        function getTileSnapshot(x, z) {
+            const key = getKey(x, z);
+            const obj = worldObjects.get(key);
+            if (!obj) return null;
+            if (obj.type === 'tree') return { type: 'tree', group: obj.group };
+            if (obj.type === 'track') {
+                return {
+                    type: 'track',
+                    x: obj.x,
+                    z: obj.z,
+                    connections: new Set(obj.connections),
+                    switchIndex: obj.switchIndex
+                };
+            }
+            if (obj.type === 'bridge_track') {
+                return {
+                    type: 'bridge_track',
+                    x: obj.x,
+                    z: obj.z,
+                    connections: new Set(obj.connections),
+                    bridgeRef: obj.bridgeRef
+                };
+            }
+            return { type: obj.type, obj: obj };
+        }
+
+        function recordTileSnapshot(x, z) {
+            const key = getKey(x, z);
+            if (!dragTileMap.has(key)) {
+                dragTileMap.set(key, getTileSnapshot(x, z));
+            }
+        }
+
+        function restoreDragTileSnapshots() {
+            for (let [key, snap] of dragTileMap.entries()) {
+                const current = worldObjects.get(key);
+                if (snap === null) {
+                    if (current && current.type === 'track') {
+                        scene.remove(current.group);
+                        disposeObject(current.group);
+                        worldObjects.delete(key);
+                    }
+                } else if (snap.type === 'tree') {
+                    if (current && current.type === 'track') {
+                        scene.remove(current.group);
+                        disposeObject(current.group);
+                        scene.add(snap.group);
+                        worldObjects.set(key, { type: 'tree', group: snap.group });
+                    }
+                } else if (snap.type === 'track') {
+                    setTrack(snap.x, snap.z, snap.connections, snap.switchIndex);
+                } else if (snap.type === 'bridge_track') {
+                    if (current && current.type === 'bridge_track') {
+                        current.connections = new Set(snap.connections);
+                    }
+                }
+            }
+        }
+
+        function connectTwoTiles(P1, P2) {
+            let dir1To2 = null;
+            if (P2.x > P1.x) dir1To2 = 'E';
+            else if (P2.x < P1.x) dir1To2 = 'W';
+            else if (P2.z > P1.z) dir1To2 = 'S';
+            else if (P2.z < P1.z) dir1To2 = 'N';
+
+            if (!dir1To2) return;
+            const dir2To1 = DIRS[dir1To2].opp;
+
+            const key1 = getKey(P1.x, P1.z);
+            const key2 = getKey(P2.x, P2.z);
+
+            let obj1 = worldObjects.get(key1);
+            let obj2 = worldObjects.get(key2);
+
+            if (obj1 && obj1.type === 'tree') {
+                scene.remove(obj1.group);
+                worldObjects.delete(key1);
+                obj1 = null;
+            }
+            if (obj2 && obj2.type === 'tree') {
+                scene.remove(obj2.group);
+                worldObjects.delete(key2);
+                obj2 = null;
+            }
+
+            if ((obj1 && obj1.type !== 'track' && obj1.type !== 'bridge_track') ||
+                (obj2 && obj2.type !== 'track' && obj2.type !== 'bridge_track')) {
+                return;
+            }
+
+            if (obj1 && (obj1.type === 'track' || obj1.type === 'bridge_track')) {
+                if (!obj1.connections.has(dir1To2) && obj1.connections.size >= 3) {
+                    return;
+                }
+            }
+            if (obj2 && (obj2.type === 'track' || obj2.type === 'bridge_track')) {
+                if (!obj2.connections.has(dir2To1) && obj2.connections.size >= 3) {
+                    return;
+                }
+            }
+
+            const conn1 = obj1 ? new Set(obj1.connections) : new Set();
+            conn1.add(dir1To2);
+
+            const conn2 = obj2 ? new Set(obj2.connections) : new Set();
+            conn2.add(dir2To1);
+
+            if (!obj1 || obj1.type === 'track') {
+                setTrack(P1.x, P1.z, conn1, obj1 ? obj1.switchIndex : 0);
+            } else if (obj1.type === 'bridge_track') {
+                obj1.connections.add(dir1To2);
+            }
+
+            if (!obj2 || obj2.type === 'track') {
+                setTrack(P2.x, P2.z, conn2, obj2 ? obj2.switchIndex : 0);
+            } else if (obj2.type === 'bridge_track') {
+                obj2.connections.add(dir2To1);
+            }
+        }
+
+        function applyDragPath() {
+            restoreDragTileSnapshots();
+
+            if (dragPath.length === 1) {
+                const P0 = dragPath[0];
+                const key0 = getKey(P0.x, P0.z);
+                const snap0 = dragTileMap.get(key0);
+
+                if (snap0 === null || snap0.type === 'tree') {
+                    if (snap0 && snap0.type === 'tree') {
+                        scene.remove(snap0.group);
+                    }
+
+                    const newConnections = new Set();
+                    for (let dKey of ['N', 'E', 'S', 'W']) {
+                        if (newConnections.size >= 3) break;
+                        const d = DIRS[dKey];
+                        const nKey = getKey(P0.x + d.dx, P0.z + d.dz);
+                        const neighbor = worldObjects.get(nKey);
+
+                        if (neighbor && (neighbor.type === 'track' || neighbor.type === 'bridge_track') && neighbor.connections.size < 3) {
+                            newConnections.add(dKey);
+                            neighbor.connections.add(d.opp);
+                            if (neighbor.type === 'track') {
+                                setTrack(neighbor.x, neighbor.z, neighbor.connections, neighbor.switchIndex);
+                            }
+                        }
+                    }
+
+                    if (newConnections.size === 0) {
+                        newConnections.add('E');
+                        newConnections.add('W');
+                    }
+
+                    setTrack(P0.x, P0.z, newConnections, 0);
+                }
+                return;
+            }
+
+            for (let i = 0; i < dragPath.length - 1; i++) {
+                connectTwoTiles(dragPath[i], dragPath[i + 1]);
+            }
+        }
+
+        function handleTrackDrag(targetGridPos) {
+            if (!isMouseDown || dragPath.length === 0) return;
+            if (!isValidBuildBounds(targetGridPos)) return;
+
+            let lastP = dragPath[dragPath.length - 1];
+            if (lastP.x === targetGridPos.x && lastP.z === targetGridPos.z) {
+                return;
+            }
+
+            let currX = lastP.x;
+            let currZ = lastP.z;
+
+            while (currX !== targetGridPos.x || currZ !== targetGridPos.z) {
+                let nextX = currX;
+                let nextZ = currZ;
+
+                if (currX !== targetGridPos.x) {
+                    nextX += Math.sign(targetGridPos.x - currX);
+                } else if (currZ !== targetGridPos.z) {
+                    nextZ += Math.sign(targetGridPos.z - currZ);
+                }
+
+                if (!isValidBuildBounds({ x: nextX, z: nextZ })) break;
+
+                const nextKey = getKey(nextX, nextZ);
+                const targetObj = worldObjects.get(nextKey);
+
+                if (targetObj && (targetObj.type === 'station' || targetObj.type === 'border_tree' || targetObj.type === 'bridge')) {
+                    break;
+                }
+
+                if (dragPath.length >= 2) {
+                    const prevP = dragPath[dragPath.length - 2];
+                    if (prevP.x === nextX && prevP.z === nextZ) {
+                        dragPath.pop();
+                        currX = nextX;
+                        currZ = nextZ;
+                        continue;
+                    }
+                }
+
+                recordTileSnapshot(nextX, nextZ);
+                dragPath.push({ x: nextX, z: nextZ });
+
+                currX = nextX;
+                currZ = nextZ;
+            }
+
+            applyDragPath();
+        }
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const intersectPoint = new THREE.Vector3();
+
+        function getGridPos(e) {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            if (raycaster.ray.intersectPlane(groundPlane, intersectPoint)) {
+                return {
+                    x: Math.round(intersectPoint.x),
+                    z: Math.round(intersectPoint.z)
+                };
+            }
+            return null;
+        }
+
+        // Drag and Drop Tool Listeners
+        const shedDragSource = document.getElementById('shed-drag-source');
+        const demolishDragSource = document.getElementById('demolish-drag-source');
+
+        let activeDragType = null;
+
+        const blankDragImg = new Image();
+        blankDragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+        shedDragSource.addEventListener('dragstart', (e) => {
+            if (shedCount <= 0) {
+                e.preventDefault();
+                return;
+            }
+            activeDragType = 'shed';
+            e.dataTransfer.setData('text/plain', 'shed');
+            e.dataTransfer.setDragImage(blankDragImg, 0, 0);
+        });
+
+        demolishDragSource.addEventListener('dragstart', (e) => {
+            activeDragType = 'demolish';
+            e.dataTransfer.setData('text/plain', 'demolish');
+            e.dataTransfer.setDragImage(blankDragImg, 0, 0);
+        });
+
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (activeDragType === 'shed') {
+                updateGhostMesh(e);
+                demolishGhostMesh.visible = false;
+            } else if (activeDragType === 'demolish') {
+                updateDemolishGhostMesh(e);
+                ghostMesh.visible = false;
+            }
+        });
+
+        function clearDragGhosts() {
+            ghostMesh.visible = false;
+            demolishGhostMesh.visible = false;
+            activeDragType = null;
+        }
+
+        window.addEventListener('dragleave', (e) => {
+            if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+                clearDragGhosts();
+            }
+        });
+
+        shedDragSource.addEventListener('dragend', clearDragGhosts);
+        demolishDragSource.addEventListener('dragend', clearDragGhosts);
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const dragType = e.dataTransfer.getData('text/plain') || activeDragType;
+            clearDragGhosts();
+
+            const gridPos = getGridPos(e);
+            if (!gridPos) return;
+
+            if (dragType === 'shed' && shedCount > 0) {
+                if (placeCoveredBridgeShed(gridPos.x, gridPos.z)) {
+                    shedCount--;
+                    document.getElementById('shed-count').innerText = shedCount;
+                }
+            } else if (dragType === 'demolish') {
+                const key = getKey(gridPos.x, gridPos.z);
+                const obj = worldObjects.get(key);
+                if (obj && obj.type === 'track') {
+                    removeObjectAt(gridPos.x, gridPos.z);
+                }
+            }
+        });
+
+        // Mouse click and drag track laying handlers
+        window.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('#ui-container')) return;
+            const gridPos = getGridPos(e);
+
+            if (e.button === 2) { // Right click quick erase
+                if (gridPos) removeObjectAt(gridPos.x, gridPos.z);
+                return;
+            }
+
+            if (e.button === 0 && gridPos && isValidBuildBounds(gridPos)) {
+                isMouseDown = true;
+                dragPath = [{ x: gridPos.x, z: gridPos.z }];
+                dragTileMap = new Map();
+                recordTileSnapshot(gridPos.x, gridPos.z);
+                applyDragPath();
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isMouseDown && dragPath.length > 0) {
+                const gridPos = getGridPos(e);
+                if (gridPos && isValidBuildBounds(gridPos)) {
+                    handleTrackDrag(gridPos);
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            dragPath = [];
+            dragTileMap.clear();
+        });
+
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // 12. Simulation Loop & Real-Time Waiting Passenger Analytics
+        let stationCheckTimer = 0;
+        let passengerTimer = 0;
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            let delta = clock.getDelta();
+            if (delta > 0.1) delta = 0.1;
+
+            stationCheckTimer += delta;
+            passengerTimer += delta;
+
+            let totalCurrentWait = 0;
+            totalWaitingCount = 0;
+            const now = clock.getElapsedTime();
+
+            stations.forEach(s => {
+                s.waitingPassengers.forEach(p => {
+                    totalCurrentWait += (now - p.spawnTime);
+                    totalWaitingCount++;
+                });
+            });
+
+            rollingAvgWait = totalWaitingCount > 0 ? (totalCurrentWait / totalWaitingCount) : 0;
+            document.getElementById('avg-wait').innerText = rollingAvgWait.toFixed(1) + 's';
+
+            if (stationCheckTimer > 18 && stations.length < 6) {
+                stationCheckTimer = 0;
+                if (stations.length < 3 || (totalWaitingCount > 0 && rollingAvgWait < 14.0) || totalWaitingCount === 0) {
+                    spawnRandomStation();
+                }
+            }
+
+            if (passengerTimer > 4.5 && stations.length > 0) {
+                const randStation = stations[Math.floor(Math.random() * stations.length)];
+                spawnPassengerAtStation(randStation);
+                passengerTimer = 0;
+            }
+
+            trains.forEach(t => updateTrain(t, delta));
+            checkTrainCollisions();
+            updateSmokeParticles(delta);
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
