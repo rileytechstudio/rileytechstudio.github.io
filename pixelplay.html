@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KID PIX Museum Studio</title>
+    <title>Pixel Play</title>
     <style>
         /* Modern Museum Touch Table Styling */
         * {
@@ -44,27 +44,33 @@
             gap: 12px;
         }
 
+        /* 180 degree Rotated Logo */
         .title {
             color: white;
             font-size: 2.2rem;
             font-weight: 900;
-            text-shadow: 3px 3px 0 #000;
+            text-shadow: -3px -3px 0 #000;
             letter-spacing: 2px;
+            transform: rotate(180deg);
+            display: inline-block;
         }
 
         .header-btn {
             background: #fff;
             border: 4px solid #000;
             border-radius: 18px;
-            padding: 6px 18px;
-            font-size: 1.3rem;
-            font-weight: bold;
+            padding: 8px 16px;
             cursor: pointer;
             box-shadow: 4px 4px 0 #000;
-            transition: transform 0.1s;
+            transition: transform 0.1s, background-color 0.2s;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+        }
+
+        .header-btn.active {
+            background: #ffeb3b;
+            border-color: #d32f2f;
         }
 
         .header-btn:active {
@@ -81,7 +87,7 @@
             overflow: hidden;
         }
 
-        /* Tools Sidebar (Extra Large Buttons for Touch) */
+        /* Tools Sidebar */
         #toolbar {
             width: 140px;
             background: #333;
@@ -102,7 +108,6 @@
             border: 5px solid #000;
             border-radius: 22px;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -114,14 +119,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 42px;
-        }
-
-        .tool-btn .label {
-            font-size: 0.85rem;
-            font-weight: bold;
-            color: #000;
-            margin-top: 2px;
         }
 
         .tool-btn.active {
@@ -137,15 +134,13 @@
 
         .btn-dynamite {
             background: #ff5252 !important;
-            color: white;
         }
 
         .btn-ohno {
             background: #ff9800 !important;
-            color: white;
         }
 
-        /* Canvas Wrapper */
+        /* Canvas Wrapper with Layered Overlay */
         #canvas-container {
             flex: 1;
             position: relative;
@@ -157,13 +152,24 @@
         }
 
         canvas {
-            background: #ffffff;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            cursor: crosshair;
         }
 
-        /* Sub-panel for Stamps or Sizes */
+        #paintCanvas {
+            background: #ffffff;
+            cursor: crosshair;
+            z-index: 1;
+        }
+
+        /* Dedicated Uncolorable Grid Overlay Canvas Layer */
+        #gridCanvas {
+            position: absolute;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Sub-panel for Tool Sizes */
         #sub-panel {
             width: 130px;
             background: #3a3a3a;
@@ -201,7 +207,7 @@
             box-shadow: 1px 1px 0 #000;
         }
 
-        /* Color Palette Bar at Bottom */
+        /* Color / Stamp Swatch Bar at Bottom */
         #palette {
             height: 110px;
             background: #222;
@@ -232,6 +238,109 @@
             box-shadow: 0 0 15px #ffeb3b;
         }
 
+        /* Full Screen Template Modal Overlay */
+        #template-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            padding: 20px;
+        }
+
+        #template-modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #2a2a2a;
+            border: 6px solid #ffeb3b;
+            border-radius: 30px;
+            width: 90vw;
+            max-width: 1100px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+
+        .modal-header {
+            background: linear-gradient(90deg, #ff0055, #ff9900, #33cc33, #0099ff);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 5px solid #000;
+        }
+
+        .close-btn {
+            background: #ff5252;
+            color: white;
+            border: 4px solid #000;
+            border-radius: 50%;
+            width: 55px;
+            height: 55px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        .close-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 #000;
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 25px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .template-option-btn {
+            background: #fff;
+            border: 5px solid #000;
+            border-radius: 22px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 5px 5px 0 #000;
+            transition: transform 0.1s, background-color 0.15s;
+            height: 160px;
+        }
+
+        .template-option-btn:active {
+            transform: translate(3px, 3px);
+            box-shadow: 2px 2px 0 #000;
+            background-color: #ffeb3b;
+        }
+
+        .template-option-btn .preview-icon {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Screen Shake Animation for Dynamite */
         .shake {
             animation: shakeAnim 0.5s cubic-bezier(.36,.07,.19,.97) both;
@@ -250,7 +359,7 @@
     <!-- Header -->
     <div id="header">
         <div class="brand-container">
-            <!-- Bespoke Paint Palette SVG Icon -->
+            <!-- Paint Palette SVG Icon -->
             <svg viewBox="0 0 24 24" width="42" height="42" fill="none">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9z" fill="#FFF" stroke="#000" stroke-width="2"/>
                 <circle cx="6.5" cy="11.5" r="1.8" fill="#E63946"/>
@@ -258,22 +367,29 @@
                 <circle cx="14.5" cy="7.5" r="1.8" fill="#FFD166"/>
                 <circle cx="17.5" cy="11.5" r="1.8" fill="#06D6A0"/>
             </svg>
-            <div class="title">KID PIX STUDIO</div>
+            <!-- 180-Degree Rotated Pixel Play Logo -->
+            <div class="title">PIXEL PLAY</div>
         </div>
         <div style="display: flex; gap: 15px;">
-            <button class="header-btn" onclick="cycleTemplate()">
-                <!-- Frame SVG -->
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Separate Grid Toggle Button -->
+            <button class="header-btn" id="grid-btn" onclick="cycleGridMode()">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" fill="#FFF"/>
+                    <line x1="9" y1="3" x2="9" y2="21"/>
+                    <line x1="15" y1="3" x2="15" y2="21"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="3" y1="15" x2="21" y2="15"/>
+                </svg>
+            </button>
+            <button class="header-btn" onclick="openTemplateModal()">
+                <!-- Frame SVG Icon -->
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="3" fill="#FFF"/>
                     <circle cx="8.5" cy="8.5" r="1.5" fill="#000"/>
                     <polyline points="21 15 16 10 5 21"/>
                 </svg>
-                Line Art Page
             </button>
-            <button class="header-btn" onclick="toggleAudio()" id="audio-btn">
-                <span id="audio-icon" style="display: flex; align-items: center;"></span>
-                <span id="audio-text">Sound: ON</span>
-            </button>
+            <button class="header-btn" onclick="toggleAudio()" id="audio-btn"></button>
         </div>
     </div>
 
@@ -283,68 +399,74 @@
         <div id="toolbar">
             <button class="tool-btn active" id="btn-brush" onclick="selectTool('brush')">
                 <div class="svg-icon">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#000" stroke-width="2">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2">
                         <path d="M18 2l4 4-10 10H8v-4L18 2z" fill="#FF9F1C"/>
                         <path d="M4 20c0-2 2-4 4-4s4 2 4 4-2 2-4 2-4-1-4-2z" fill="#E63946"/>
                         <path d="M8 16l4 4" stroke-width="2"/>
                     </svg>
                 </div>
-                <span class="label">Paint Brush</span>
+            </button>
+
+            <!-- Straight Line Tool Button -->
+            <button class="tool-btn" id="btn-line" onclick="selectTool('line')">
+                <div class="svg-icon">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="4" y1="20" x2="20" y2="4" stroke="#0099ff" stroke-width="3.5"/>
+                        <circle cx="4" cy="20" r="2.5" fill="#000"/>
+                        <circle cx="20" cy="4" r="2.5" fill="#000"/>
+                    </svg>
+                </div>
             </button>
 
             <button class="tool-btn" id="btn-wacky" onclick="selectTool('wacky')">
                 <div class="svg-icon">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#000" stroke-width="2">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2">
                         <path d="M12 2l2.4 5.2 5.6.8-4 4.1 1 5.7-5-2.8-5 2.8 1-5.7-4-4.1 5.6-.8z" fill="#FFD166"/>
                         <circle cx="4" cy="4" r="2.5" fill="#06D6A0"/>
                         <circle cx="20" cy="19" r="3" fill="#9D4EDD"/>
                         <circle cx="19" cy="4" r="2" fill="#FF6B6B"/>
                     </svg>
                 </div>
-                <span class="label">Wacky Brush</span>
             </button>
 
             <button class="tool-btn" id="btn-bucket" onclick="selectTool('bucket')">
                 <div class="svg-icon">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 11L13 5 4.5 13.5C3.7 14.3 3.7 15.7 4.5 16.5L7.5 19.5C8.3 20.3 9.7 20.3 10.5 19.5L19 11Z" fill="#118AB2"/>
                         <path d="M22 18C22 20 19 22 19 22C19 22 16 20 16 18C16 16.3 17.3 15 19 15C20.7 15 22 16.3 22 18Z" fill="#FF9F1C"/>
                         <path d="M9 3L15 9"/>
                     </svg>
                 </div>
-                <span class="label">Paint Bucket</span>
             </button>
 
             <button class="tool-btn" id="btn-stamp" onclick="selectTool('stamp')">
                 <div class="svg-icon">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 2v6"/>
                         <rect x="7" y="8" width="10" height="5" rx="2" fill="#FF6B6B"/>
                         <path d="M5 13h14v4H5z" fill="#8D99AE"/>
                         <path d="M3 17h18v4H3z" fill="#000"/>
                     </svg>
                 </div>
-                <span class="label">Stamps</span>
             </button>
 
             <button class="tool-btn" id="btn-eraser" onclick="selectTool('eraser')">
                 <div class="svg-icon">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M16 2L21 7L9 19L4 14L16 2Z" fill="#FF6B6B"/>
                         <path d="M13 5L18 10"/>
                         <path d="M9 19L4 14L2 16C1.5 16.5 1.5 17.5 2 18L5 21C5.5 21.5 6.5 21.5 7 21L9 19Z" fill="#8D99AE"/>
                         <path d="M12 22H22"/>
                     </svg>
                 </div>
-                <span class="label">Eraser</span>
             </button>
             
             <hr style="width: 80%; border: 2px solid #555; margin: 5px 0;">
 
-            <!-- Kid Pix Action Buttons -->
+            <!-- Action Buttons -->
             <button class="tool-btn btn-ohno" onclick="triggerUndo()">
                 <div class="svg-icon">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10" fill="#FF9800"/>
                         <circle cx="8" cy="9" r="2" fill="#000"/>
                         <circle cx="16" cy="9" r="2" fill="#000"/>
@@ -352,43 +474,77 @@
                         <path d="M3 12a9 9 0 0 1 15-6.7" stroke="#FFF" stroke-width="3" fill="none"/>
                     </svg>
                 </div>
-                <span class="label">OH NO!</span>
             </button>
 
             <button class="tool-btn btn-dynamite" onclick="triggerDynamite()">
                 <div class="svg-icon">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="7" y="7" width="10" height="15" rx="2" fill="#FF5252"/>
                         <path d="M12 7V4C12 3 13 2 14 2H16"/>
                         <path d="M18 2L19 1M18 4L20 4M16 1L16 0" stroke="#FFD166" stroke-width="2"/>
-                        <text x="12" y="17" font-size="7" font-weight="900" fill="#FFF" text-anchor="middle" stroke="none">TNT</text>
                     </svg>
                 </div>
-                <span class="label">DYNAMITE</span>
             </button>
         </div>
 
-        <!-- Canvas -->
+        <!-- Canvas Container with Stacked Drawing & Grid Overlay Layers -->
         <div id="canvas-container">
             <canvas id="paintCanvas"></canvas>
+            <canvas id="gridCanvas"></canvas>
         </div>
 
-        <!-- Dynamic Sub Panel (Stamps / Sizes) -->
+        <!-- Dynamic Sub Panel (Tool Sizes) -->
         <div id="sub-panel"></div>
     </div>
 
-    <!-- Color Palette -->
+    <!-- Palette / Stamp Options Bar -->
     <div id="palette"></div>
+
+    <!-- Full Screen Template Picker Modal -->
+    <div id="template-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#FFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="3" fill="none"/>
+                    <circle cx="8.5" cy="8.5" r="1.5" fill="#FFF"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <button class="close-btn" onclick="closeTemplateModal()">
+                    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#FFF" stroke-width="3.5" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="template-grid" id="template-grid"></div>
+        </div>
+    </div>
 
     <script>
         // --- Sound Toggle SVGs ---
-        const soundOnSvg = `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#000"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
-        const soundOffSvg = `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#000"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+        const soundOnSvg = `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#000"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+        const soundOffSvg = `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#000"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
 
-        // --- Emoji Stamp Selection ---
+        // --- Emoji Stamp Options ---
         const stamps = ['⭐', '🦄', '🐸', '❤️', '🚀', '🍦', '🌸', '🦖', '🎨', '👑'];
 
-        // --- Web Audio Synthesizer for Authentic Sound FX ---
+        // --- Detailed Coloring Page Options (High-Detail Previews) ---
+        const templateOptions = [
+            { id: 'blank', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><rect x="5" y="5" width="40" height="40" rx="5" fill="#FFF" stroke="#000" stroke-width="2" stroke-dasharray="3 3"/></svg>` },
+            { id: 'mandala1', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><circle cx="25" cy="25" r="22" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="25" cy="25" r="14" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="25" cy="25" r="6" fill="none" stroke="#000" stroke-width="1.5"/><path d="M25,3 L25,47 M3,25 L47,25 M9.4,9.4 L40.6,40.6 M9.4,40.6 L40.6,9.4" stroke="#000" stroke-width="1.5"/><circle cx="25" cy="11" r="3" fill="none" stroke="#000" stroke-width="1"/><circle cx="25" cy="39" r="3" fill="none" stroke="#000" stroke-width="1"/><circle cx="11" cy="25" r="3" fill="none" stroke="#000" stroke-width="1"/><circle cx="39" cy="25" r="3" fill="none" stroke="#000" stroke-width="1"/></svg>` },
+            { id: 'leaf_pattern', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><path d="M10,40 Q25,10 40,10 Q25,40 10,40 Z M10,40 Q35,25 40,10" fill="none" stroke="#000" stroke-width="1.5"/><path d="M20,28 L28,24 M25,21 L33,17 M17,34 L22,31" stroke="#000" stroke-width="1.5"/><path d="M5,20 Q20,2 30,5 Q15,25 5,20 Z" fill="none" stroke="#000" stroke-width="1.5"/><path d="M20,45 Q35,20 45,30 Q25,50 20,45 Z" fill="none" stroke="#000" stroke-width="1.5"/></svg>` },
+            { id: 'nature_scene', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><circle cx="38" cy="12" r="6" fill="none" stroke="#000" stroke-width="1.5"/><path d="M2,35 L12,20 L22,35 M15,35 L28,15 L40,35 M2,45 C15,38 25,48 48,42 M2,42 L48,42" fill="none" stroke="#000" stroke-width="1.5"/><path d="M38,30 L43,22 L48,30 M43,22 L43,38" fill="none" stroke="#000" stroke-width="1.2"/></svg>` },
+            { id: 'tessellation', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><path d="M12.5,5 L37.5,5 L50,25 L37.5,45 L12.5,45 L0,25 Z" fill="none" stroke="#000" stroke-width="1.5"/><path d="M12.5,5 L25,25 L0,25 M37.5,5 L25,25 L50,25 M25,25 L37.5,45 M25,25 L12.5,45 M25,5 L25,25 M25,25 L25,45" fill="none" stroke="#000" stroke-width="1.2"/></svg>` },
+            { id: 'stained_glass', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><path d="M10,48 L10,20 A15,15 0 0,1 40,20 L40,48 Z" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="25" cy="20" r="8" fill="none" stroke="#000" stroke-width="1.2"/><line x1="25" y1="5" x2="25" y2="48" stroke="#000" stroke-width="1.2"/><line x1="10" y1="20" x2="40" y2="20" stroke="#000" stroke-width="1.2"/><line x1="10" y1="34" x2="40" y2="34" stroke="#000" stroke-width="1.2"/></svg>` },
+            { id: 'underwater', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><path d="M5,20 Q15,10 25,20 Q15,30 5,20 Z M25,20 L32,12 L28,20 L32,28 Z" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="10" cy="17" r="1.5"/><path d="M8,48 Q12,35 6,25 Q15,35 12,48 M38,48 Q42,32 35,22 Q45,32 42,48" fill="none" stroke="#000" stroke-width="1.5"/></svg>` },
+            { id: 'star_mandala', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><polygon points="25,2 31,17 47,17 34,27 39,43 25,33 11,43 16,27 3,17 19,17" fill="none" stroke="#000" stroke-width="1.5"/><polygon points="25,10 28,20 38,20 30,26 33,36 25,30 17,36 20,26 12,20 22,20" fill="none" stroke="#000" stroke-width="1.2"/></svg>` },
+            { id: 'floral_garden', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><circle cx="25" cy="25" r="6" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="25" cy="13" r="6" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="37" cy="25" r="6" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="25" cy="37" r="6" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="13" cy="25" r="6" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="16" cy="16" r="5" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="34" cy="16" r="5" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="34" cy="34" r="5" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="16" cy="34" r="5" fill="none" stroke="#000" stroke-width="1.2"/></svg>` },
+            { id: 'space_cosmos', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><circle cx="25" cy="25" r="10" fill="none" stroke="#000" stroke-width="1.5"/><ellipse cx="25" cy="25" rx="20" ry="6" fill="none" stroke="#000" stroke-width="1.5" transform="rotate(-20 25 25)"/><circle cx="10" cy="10" r="3" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="40" cy="38" r="4" fill="none" stroke="#000" stroke-width="1.2"/></svg>` },
+            { id: 'castle_landscape', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><path d="M12,45 L12,25 L18,25 L18,30 L22,30 L22,20 L28,20 L28,30 L32,30 L32,25 L38,25 L38,45 Z" fill="none" stroke="#000" stroke-width="1.5"/><path d="M15,20 L15,12 L20,16 M35,20 L38,10 L43,15" fill="none" stroke="#000" stroke-width="1.2"/><path d="M2,45 L48,45" stroke="#000" stroke-width="1.5"/></svg>` },
+            { id: 'owl_pattern', svg: `<svg viewBox="0 0 50 50" width="80" height="80"><path d="M15,10 Q25,18 35,10 Q42,25 38,42 Q25,48 12,42 Q8,25 15,10 Z" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="20" cy="22" r="5" fill="none" stroke="#000" stroke-width="1.2"/><circle cx="30" cy="22" r="5" fill="none" stroke="#000" stroke-width="1.2"/><polygon points="25,25 23,30 27,30" fill="none" stroke="#000" stroke-width="1.2"/></svg>` }
+        ];
+
+        // --- Web Audio Synthesizer ---
         let audioEnabled = true;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -458,14 +614,21 @@
         }
 
         function updateAudioButton() {
-            document.getElementById('audio-icon').innerHTML = audioEnabled ? soundOnSvg : soundOffSvg;
-            document.getElementById('audio-text').innerText = audioEnabled ? "Sound: ON" : "Sound: OFF";
+            document.getElementById('audio-btn').innerHTML = audioEnabled ? soundOnSvg : soundOffSvg;
         }
 
         // --- Application State ---
         const canvas = document.getElementById('paintCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridCtx = gridCanvas.getContext('2d');
+
         const subPanel = document.getElementById('sub-panel');
+        
+        // Offscreen buffer for live straight line previewing
+        const lineBufferCanvas = document.createElement('canvas');
+        const lineBufferCtx = lineBufferCanvas.getContext('2d');
         
         let currentTool = 'brush';
         let currentColor = '#E63946';
@@ -475,6 +638,10 @@
         let undoHistory = [];
         const MAX_UNDO = 5;
 
+        // Grid Modes: 'none' -> 'lines' -> 'dots' -> 'isometric'
+        const gridModes = ['none', 'lines', 'dots', 'isometric'];
+        let currentGridIndex = 0;
+
         const colors = [
             '#E63946', '#FF9F1C', '#FFD166', '#06D6A0', 
             '#118AB2', '#073B4C', '#9D4EDD', '#FF6B6B', 
@@ -482,8 +649,7 @@
         ];
 
         const brushSizes = [12, 25, 45, 70];
-        let currentTemplateIndex = 0;
-        const templates = ['blank', 'dinosaur', 'rocket', 'flower'];
+        let currentTemplateId = 'blank';
 
         // --- Initialization ---
         window.addEventListener('load', () => {
@@ -491,6 +657,7 @@
             resizeCanvas();
             setupPalette();
             updateSubPanel();
+            setupTemplateModalGrid();
             saveState();
             
             document.body.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
@@ -511,31 +678,138 @@
 
             canvas.width = rect.width - 20;
             canvas.height = rect.height - 20;
+            gridCanvas.width = canvas.width;
+            gridCanvas.height = canvas.height;
+            lineBufferCanvas.width = canvas.width;
+            lineBufferCanvas.height = canvas.height;
 
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
-            if (templates[currentTemplateIndex] !== 'blank') {
-                drawTemplateOutline(templates[currentTemplateIndex]);
+            if (currentTemplateId !== 'blank') {
+                drawTemplateOutline(currentTemplateId);
+            }
+            lineBufferCtx.drawImage(canvas, 0, 0);
+            drawGridOverlay();
+        }
+
+        // --- Grid Mode Overlay Control ---
+        function cycleGridMode() {
+            currentGridIndex = (currentGridIndex + 1) % gridModes.length;
+            const btn = document.getElementById('grid-btn');
+            if (gridModes[currentGridIndex] !== 'none') {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+            drawGridOverlay();
+            playSound('stamp');
+        }
+
+        function drawGridOverlay() {
+            gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+            const mode = gridModes[currentGridIndex];
+
+            if (mode === 'none') return;
+
+            gridCtx.strokeStyle = '#000000';
+            gridCtx.fillStyle = '#000000';
+            gridCtx.lineWidth = 0.8; // Thin, precise grid line weight
+
+            const width = gridCanvas.width;
+            const height = gridCanvas.height;
+
+            if (mode === 'lines') {
+                const step = 35;
+                gridCtx.beginPath();
+                for (let x = 0; x <= width; x += step) {
+                    gridCtx.moveTo(x, 0);
+                    gridCtx.lineTo(x, height);
+                }
+                for (let y = 0; y <= height; y += step) {
+                    gridCtx.moveTo(0, y);
+                    gridCtx.lineTo(width, y);
+                }
+                gridCtx.stroke();
+            }
+            else if (mode === 'dots') {
+                const step = 35;
+                for (let x = step / 2; x <= width; x += step) {
+                    for (let y = step / 2; y <= height; y += step) {
+                        gridCtx.beginPath();
+                        gridCtx.arc(x, y, 1.8, 0, Math.PI * 2);
+                        gridCtx.fill();
+                    }
+                }
+            }
+            else if (mode === 'isometric') {
+                // Aligned Triangular Isometric Grid Math (No Unwanted Hexagons)
+                const s = 32; // Side length of equilateral triangles
+                const H = s * Math.sqrt(3) / 2; // Exact height of equilateral triangle (~27.71px)
+                const sqrt3 = Math.sqrt(3);
+
+                gridCtx.beginPath();
+
+                // 1. Horizontal lines spaced exactly by H
+                for (let y = 0; y <= height + H; y += H) {
+                    gridCtx.moveTo(-width, y);
+                    gridCtx.lineTo(width * 2, y);
+                }
+
+                // 2. Lines at +60 deg
+                const maxDim = Math.max(width, height) * 2;
+                for (let k = -Math.ceil(maxDim / s) * 2; k <= Math.ceil(maxDim / s) * 2; k++) {
+                    const x0 = k * s;
+                    gridCtx.moveTo(x0 - maxDim, -maxDim * sqrt3);
+                    gridCtx.lineTo(x0 + maxDim, maxDim * sqrt3);
+                }
+
+                // 3. Lines at -60 deg
+                for (let k = -Math.ceil(maxDim / s) * 2; k <= Math.ceil(maxDim / s) * 2; k++) {
+                    const x0 = k * s;
+                    gridCtx.moveTo(x0 - maxDim, maxDim * sqrt3);
+                    gridCtx.lineTo(x0 + maxDim, -maxDim * sqrt3);
+                }
+
+                gridCtx.stroke();
             }
         }
 
-        // --- Palette & Controls ---
+        // --- Palette & Stamps Bottom Swatch Bar ---
         function setupPalette() {
             const paletteEl = document.getElementById('palette');
             paletteEl.innerHTML = '';
-            colors.forEach((color) => {
-                const swatch = document.createElement('div');
-                swatch.className = `color-swatch ${color === currentColor ? 'active' : ''}`;
-                swatch.style.backgroundColor = color;
-                swatch.onclick = () => {
-                    currentColor = color;
-                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-                    swatch.classList.add('active');
-                };
-                paletteEl.appendChild(swatch);
-            });
+
+            if (currentTool === 'stamp') {
+                stamps.forEach((stamp, idx) => {
+                    const swatch = document.createElement('div');
+                    swatch.className = `color-swatch ${idx === currentStampIndex ? 'active' : ''}`;
+                    swatch.style.backgroundColor = '#ffffff';
+                    swatch.style.display = 'flex';
+                    swatch.style.alignItems = 'center';
+                    swatch.style.justifyContent = 'center';
+                    swatch.style.fontSize = '2.2rem';
+                    swatch.innerText = stamp;
+                    swatch.onclick = () => {
+                        currentStampIndex = idx;
+                        setupPalette();
+                    };
+                    paletteEl.appendChild(swatch);
+                });
+            } else {
+                colors.forEach((color) => {
+                    const swatch = document.createElement('div');
+                    swatch.className = `color-swatch ${color === currentColor ? 'active' : ''}`;
+                    swatch.style.backgroundColor = color;
+                    swatch.onclick = () => {
+                        currentColor = color;
+                        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                        swatch.classList.add('active');
+                    };
+                    paletteEl.appendChild(swatch);
+                });
+            }
         }
 
         function selectTool(tool) {
@@ -544,33 +818,57 @@
             const btn = document.getElementById(`btn-${tool}`);
             if (btn) btn.classList.add('active');
             updateSubPanel();
+            setupPalette();
         }
 
+        // --- Right Menu Area (Tool & Stamp Sizes) ---
         function updateSubPanel() {
             subPanel.innerHTML = '';
-            if (currentTool === 'stamp') {
-                stamps.forEach((stamp, idx) => {
-                    const btn = document.createElement('div');
-                    btn.className = `sub-btn ${idx === currentStampIndex ? 'active' : ''}`;
-                    btn.innerText = stamp;
-                    btn.onclick = () => {
-                        currentStampIndex = idx;
-                        updateSubPanel();
-                    };
-                    subPanel.appendChild(btn);
-                });
-            } else {
-                brushSizes.forEach(size => {
-                    const btn = document.createElement('div');
-                    btn.className = `sub-btn ${size === currentSize ? 'active' : ''}`;
-                    btn.innerHTML = `<div style="width:${size/1.5}px; height:${size/1.5}px; background:#000; border-radius:50%;"></div>`;
-                    btn.onclick = () => {
-                        currentSize = size;
-                        updateSubPanel();
-                    };
-                    subPanel.appendChild(btn);
-                });
+            brushSizes.forEach(size => {
+                const btn = document.createElement('div');
+                btn.className = `sub-btn ${size === currentSize ? 'active' : ''}`;
+                btn.innerHTML = `<div style="width:${size/1.5}px; height:${size/1.5}px; background:#000; border-radius:50%;"></div>`;
+                btn.onclick = () => {
+                    currentSize = size;
+                    updateSubPanel();
+                };
+                subPanel.appendChild(btn);
+            });
+        }
+
+        // --- Full Screen Template Modal Handling ---
+        function setupTemplateModalGrid() {
+            const grid = document.getElementById('template-grid');
+            grid.innerHTML = '';
+            templateOptions.forEach((tmpl) => {
+                const btn = document.createElement('button');
+                btn.className = 'template-option-btn';
+                btn.innerHTML = `<div class="preview-icon">${tmpl.svg}</div>`;
+                btn.onclick = () => selectTemplate(tmpl.id);
+                grid.appendChild(btn);
+            });
+        }
+
+        function openTemplateModal() {
+            document.getElementById('template-modal').classList.add('open');
+            playSound('stamp');
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.remove('open');
+        }
+
+        function selectTemplate(templateId) {
+            currentTemplateId = templateId;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (templateId !== 'blank') {
+                drawTemplateOutline(templateId);
             }
+            lineBufferCtx.drawImage(canvas, 0, 0);
+            saveState();
+            closeTemplateModal();
+            playSound('fill');
         }
 
         // --- Undo / State History ---
@@ -584,6 +882,7 @@
                 undoHistory.pop();
                 const prevState = undoHistory[undoHistory.length - 1];
                 ctx.putImageData(prevState, 0, 0);
+                lineBufferCtx.drawImage(canvas, 0, 0);
                 playSound('ohno');
             }
         }
@@ -596,9 +895,10 @@
             setTimeout(() => {
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                if (templates[currentTemplateIndex] !== 'blank') {
-                    drawTemplateOutline(templates[currentTemplateIndex]);
+                if (currentTemplateId !== 'blank') {
+                    drawTemplateOutline(currentTemplateId);
                 }
+                lineBufferCtx.drawImage(canvas, 0, 0);
                 saveState();
                 workspace.classList.remove('shake');
             }, 300);
@@ -634,20 +934,38 @@
 
         function handleTouchStart(e) {
             e.preventDefault();
+
+            if (currentTool === 'line') {
+                const activeLineCount = Object.keys(activeTouches).filter(k => activeTouches[k].isLine).length;
+                if (activeLineCount === 0) {
+                    lineBufferCtx.drawImage(canvas, 0, 0);
+                }
+            }
+
             saveState();
 
             for (let touch of e.changedTouches) {
                 const id = touch.identifier;
                 const coords = getCanvasCoords(touch);
-                activeTouches[id] = coords;
 
-                if (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'wacky') {
+                if (currentTool === 'line') {
+                    activeTouches[id] = {
+                        startX: coords.x,
+                        startY: coords.y,
+                        x: coords.x,
+                        y: coords.y,
+                        isLine: true
+                    };
+                    renderLinePreviews();
+                } else if (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'wacky') {
+                    activeTouches[id] = coords;
                     drawSegment(coords.x, coords.y, coords.x, coords.y);
                 } else if (currentTool === 'stamp') {
                     drawStamp(coords.x, coords.y);
                     playSound('stamp');
                 } else if (currentTool === 'bucket') {
                     floodFill(coords.x, coords.y, currentColor);
+                    lineBufferCtx.drawImage(canvas, 0, 0);
                     playSound('fill');
                 }
             }
@@ -655,23 +973,72 @@
 
         function handleTouchMove(e) {
             e.preventDefault();
+            let hasLineMove = false;
+
             for (let touch of e.changedTouches) {
                 const id = touch.identifier;
                 const coords = getCanvasCoords(touch);
-                const prevCoords = activeTouches[id];
+                const touchObj = activeTouches[id];
 
-                if (prevCoords && (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'wacky')) {
-                    drawSegment(prevCoords.x, prevCoords.y, coords.x, coords.y);
+                if (touchObj && touchObj.isLine) {
+                    touchObj.x = coords.x;
+                    touchObj.y = coords.y;
+                    hasLineMove = true;
+                } else if (touchObj && (currentTool === 'brush' || currentTool === 'eraser' || currentTool === 'wacky')) {
+                    drawSegment(touchObj.x, touchObj.y, coords.x, coords.y);
                     activeTouches[id] = coords;
                 }
+            }
+
+            if (hasLineMove) {
+                renderLinePreviews();
             }
         }
 
         function handleTouchEnd(e) {
             e.preventDefault();
+            let endedLine = false;
+
             for (let touch of e.changedTouches) {
-                delete activeTouches[touch.identifier];
+                const id = touch.identifier;
+                const touchObj = activeTouches[id];
+
+                if (touchObj && touchObj.isLine) {
+                    drawSingleLine(lineBufferCtx, touchObj.startX, touchObj.startY, touchObj.x, touchObj.y, currentColor, currentSize);
+                    endedLine = true;
+                    playSound('stamp');
+                }
+
+                delete activeTouches[id];
             }
+
+            if (endedLine) {
+                ctx.drawImage(lineBufferCanvas, 0, 0);
+            }
+        }
+
+        // --- Straight Line Preview Engine ---
+        function renderLinePreviews() {
+            ctx.drawImage(lineBufferCanvas, 0, 0);
+            for (let id in activeTouches) {
+                const t = activeTouches[id];
+                if (t.isLine) {
+                    drawSingleLine(ctx, t.startX, t.startY, t.x, t.y, currentColor, currentSize);
+                }
+            }
+        }
+
+        function drawSingleLine(targetCtx, x1, y1, x2, y2, color, size) {
+            targetCtx.save();
+            targetCtx.strokeStyle = color;
+            targetCtx.lineWidth = size;
+            targetCtx.lineCap = 'round';
+            targetCtx.lineJoin = 'round';
+            targetCtx.beginPath();
+            targetCtx.moveTo(x1, y1);
+            targetCtx.lineTo(x2, y2);
+            targetCtx.stroke();
+            targetCtx.restore();
         }
 
         // --- Drawing Tools Implementations ---
@@ -707,12 +1074,13 @@
                     ctx.fill();
                 }
             }
+            lineBufferCtx.drawImage(canvas, 0, 0);
         }
 
-        // --- Draw Stamp with Randomized Orientation ---
+        // --- Draw Stamp with Selected Size & Randomized Orientation ---
         function drawStamp(x, y) {
             const stamp = stamps[currentStampIndex];
-            const randomAngle = Math.random() * Math.PI * 2; // Random rotation 0 - 360 deg
+            const randomAngle = Math.random() * Math.PI * 2;
 
             ctx.save();
             ctx.translate(x, y);
@@ -722,76 +1090,137 @@
             ctx.textBaseline = 'middle';
             ctx.fillText(stamp, 0, 0);
             ctx.restore();
+
+            lineBufferCtx.drawImage(canvas, 0, 0);
         }
 
-        // --- Fast Scanline Flood Fill Algorithm ---
+        // --- High-Precision Flood Fill Algorithm with Edge Bleed & Grid Boundary Collision ---
         function floodFill(startX, startY, fillHex) {
             const width = canvas.width;
             const height = canvas.height;
+
+            // Composite test buffer combining drawing canvas + grid overlay canvas
+            let testData;
+            if (gridModes[currentGridIndex] !== 'none') {
+                const testCanvas = document.createElement('canvas');
+                testCanvas.width = width;
+                testCanvas.height = height;
+                const testCtx = testCanvas.getContext('2d');
+                testCtx.drawImage(canvas, 0, 0);
+                testCtx.drawImage(gridCanvas, 0, 0);
+                testData = testCtx.getImageData(0, 0, width, height).data;
+            } else {
+                testData = ctx.getImageData(0, 0, width, height).data;
+            }
+
             const imgData = ctx.getImageData(0, 0, width, height);
             const data = imgData.data;
 
             const targetRgb = hexToRgb(fillHex);
             const startIdx = (startY * width + startX) * 4;
-            const startR = data[startIdx], startG = data[startIdx+1], startB = data[startIdx+2], startA = data[startIdx+3];
+            const startR = testData[startIdx], startG = testData[startIdx+1], startB = testData[startIdx+2], startA = testData[startIdx+3];
 
-            if (colorMatch(startR, startG, startB, startA, targetRgb.r, targetRgb.g, targetRgb.b, 255)) return;
+            const TOLERANCE = 80;
 
-            const pixelStack = [[startX, startY]];
+            if (colorMatch(startR, startG, startB, startA, targetRgb.r, targetRgb.g, targetRgb.b, 255, 10)) return;
 
-            while (pixelStack.length) {
-                const newPos = pixelStack.pop();
-                const x = newPos[0];
-                let y = newPos[1];
+            const filled = new Uint8Array(width * height);
+            const stack = [startX + startY * width];
+            const boundary = [];
 
-                let pixelPos = (y * width + x) * 4;
-                while (y >= 0 && colorMatch(data[pixelPos], data[pixelPos+1], data[pixelPos+2], data[pixelPos+3], startR, startG, startB, startA)) {
-                    y--;
-                    pixelPos -= width * 4;
-                }
-                pixelPos += width * 4;
-                y++;
+            while (stack.length > 0) {
+                const idx = stack.pop();
+                if (filled[idx]) continue;
 
-                let reachLeft = false;
-                let reachRight = false;
+                const px = idx % width;
+                const py = Math.floor(idx / width);
+                const pos = idx * 4;
 
-                while (y < height && colorMatch(data[pixelPos], data[pixelPos+1], data[pixelPos+2], data[pixelPos+3], startR, startG, startB, startA)) {
-                    data[pixelPos] = targetRgb.r;
-                    data[pixelPos + 1] = targetRgb.g;
-                    data[pixelPos + 2] = targetRgb.b;
-                    data[pixelPos + 3] = 255;
+                const r = testData[pos], g = testData[pos+1], b = testData[pos+2], a = testData[pos+3];
 
-                    if (x > 0) {
-                        if (colorMatch(data[pixelPos - 4], data[pixelPos - 3], data[pixelPos - 2], data[pixelPos - 1], startR, startG, startB, startA)) {
-                            if (!reachLeft) {
-                                pixelStack.push([x - 1, y]);
-                                reachLeft = true;
+                if (!colorMatch(r, g, b, a, startR, startG, startB, startA, TOLERANCE)) continue;
+
+                filled[idx] = 1;
+
+                const neighbors = [];
+                if (px > 0) neighbors.push(idx - 1);
+                if (px < width - 1) neighbors.push(idx + 1);
+                if (py > 0) neighbors.push(idx - width);
+                if (py < height - 1) neighbors.push(idx + width);
+
+                for (let i = 0; i < neighbors.length; i++) {
+                    const nIdx = neighbors[i];
+                    if (nIdx < 0 || nIdx >= width * height) continue;
+                    if (!filled[nIdx]) {
+                        const nPos = nIdx * 4;
+                        const nr = testData[nPos], ng = testData[nPos+1], nb = testData[nPos+2], na = testData[nPos+3];
+                        if (colorMatch(nr, ng, nb, na, startR, startG, startB, startA, TOLERANCE)) {
+                            stack.push(nIdx);
+                        } else {
+                            const brightness = (nr * 299 + ng * 587 + nb * 114) / 1000;
+                            if (brightness > 60) {
+                                boundary.push(nIdx);
                             }
-                        } else if (reachLeft) {
-                            reachLeft = false;
                         }
                     }
-
-                    if (x < width - 1) {
-                        if (colorMatch(data[pixelPos + 4], data[pixelPos + 5], data[pixelPos + 6], data[pixelPos + 7], startR, startG, startB, startA)) {
-                            if (!reachRight) {
-                                pixelStack.push([x + 1, y]);
-                                reachRight = true;
-                            }
-                        } else if (reachRight) {
-                            reachRight = false;
-                        }
-                    }
-
-                    y++;
-                    pixelPos += width * 4;
                 }
             }
+
+            // 2-Pass Bleed Step into Anti-Aliased Edge Lines
+            let currentFrontier = boundary;
+            const BLEED_PIXELS = 2;
+
+            for (let pass = 0; pass < BLEED_PIXELS; pass++) {
+                const nextFrontier = [];
+                for (let i = 0; i < currentFrontier.length; i++) {
+                    const idx = currentFrontier[i];
+                    if (!filled[idx]) {
+                        filled[idx] = 1;
+                        const px = idx % width;
+                        const py = Math.floor(idx / width);
+
+                        const neighbors = [];
+                        if (px > 0) neighbors.push(idx - 1);
+                        if (px < width - 1) neighbors.push(idx + 1);
+                        if (py > 0) neighbors.push(idx - width);
+                        if (py < height - 1) neighbors.push(idx + width);
+
+                        for (let j = 0; j < neighbors.length; j++) {
+                            const nIdx = neighbors[j];
+                            if (nIdx >= 0 && nIdx < width * height && !filled[nIdx]) {
+                                const nPos = nIdx * 4;
+                                const nr = testData[nPos], ng = testData[nPos+1], nb = testData[nPos+2];
+                                const brightness = (nr * 299 + ng * 587 + nb * 114) / 1000;
+                                if (brightness > 60) {
+                                    nextFrontier.push(nIdx);
+                                }
+                            }
+                        }
+                    }
+                }
+                currentFrontier = nextFrontier;
+            }
+
+            // Write colored pixels back to drawing canvas only
+            for (let i = 0; i < width * height; i++) {
+                if (filled[i]) {
+                    const pos = i * 4;
+                    data[pos]     = targetRgb.r;
+                    data[pos + 1] = targetRgb.g;
+                    data[pos + 2] = targetRgb.b;
+                    data[pos + 3] = 255;
+                }
+            }
+
             ctx.putImageData(imgData, 0, 0);
+            lineBufferCtx.drawImage(canvas, 0, 0);
         }
 
-        function colorMatch(r1, g1, b1, a1, r2, g2, b2, a2) {
-            return Math.abs(r1 - r2) < 30 && Math.abs(g1 - g2) < 30 && Math.abs(b1 - b2) < 30 && Math.abs(a1 - a2) < 30;
+        function colorMatch(r1, g1, b1, a1, r2, g2, b2, a2, tolerance = 80) {
+            return Math.abs(r1 - r2) <= tolerance && 
+                   Math.abs(g1 - g2) <= tolerance && 
+                   Math.abs(b1 - b2) <= tolerance && 
+                   Math.abs(a1 - a2) <= tolerance;
         }
 
         function hexToRgb(hex) {
@@ -803,76 +1232,284 @@
             } : { r: 0, g: 0, b: 0 };
         }
 
-        // --- Line Art Templates ---
-        function cycleTemplate() {
-            currentTemplateIndex = (currentTemplateIndex + 1) % templates.length;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            if (templates[currentTemplateIndex] !== 'blank') {
-                drawTemplateOutline(templates[currentTemplateIndex]);
-            }
-            saveState();
-        }
-
-        function drawTemplateOutline(template) {
+        // --- Intricate & Fine-Lined Vector Line Art Engine ---
+        function drawTemplateOutline(templateId) {
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 8;
+            ctx.fillStyle = '#000000';
+            ctx.lineWidth = 2.5;
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
+            const scale = Math.min(canvas.width, canvas.height) / 520;
 
-            if (template === 'dinosaur') {
-                ctx.beginPath();
-                ctx.arc(cx - 50, cy - 100, 60, Math.PI * 0.8, Math.PI * 2.2);
-                ctx.lineTo(cx + 80, cy + 50);
-                ctx.quadraticCurveTo(cx + 180, cy + 100, cx + 220, cy + 30);
-                ctx.quadraticCurveTo(cx + 160, cy + 140, cx + 80, cy + 130);
-                ctx.lineTo(cx + 70, cy + 180); ctx.lineTo(cx + 40, cy + 180); ctx.lineTo(cx + 30, cy + 120);
-                ctx.lineTo(cx - 30, cy + 120); ctx.lineTo(cx - 40, cy + 180); ctx.lineTo(cx - 70, cy + 180);
-                ctx.lineTo(cx - 60, cy + 50);
-                ctx.quadraticCurveTo(cx - 120, cy - 20, cx - 50, cy - 100);
-                ctx.stroke();
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(scale, scale);
 
-                ctx.beginPath();
-                ctx.arc(cx - 70, cy - 110, 8, 0, Math.PI * 2);
-                ctx.fillStyle = '#000'; ctx.fill();
+            if (templateId === 'mandala1') {
+                for (let r = 30; r <= 210; r += 35) {
+                    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+                }
+
+                const petals = 16;
+                for (let i = 0; i < petals; i++) {
+                    const angle = (i * Math.PI * 2) / petals;
+                    ctx.save();
+                    ctx.rotate(angle);
+
+                    ctx.beginPath(); ctx.moveTo(0, 30); ctx.quadraticCurveTo(20, 48, 0, 65); ctx.quadraticCurveTo(-20, 48, 0, 30); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(0, 48, 4, 0, Math.PI * 2); ctx.stroke();
+
+                    ctx.beginPath(); ctx.moveTo(0, 65); ctx.lineTo(0, 100); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(0, 82, 10, 0, Math.PI * 2); ctx.stroke();
+
+                    ctx.beginPath(); ctx.moveTo(0, 100); ctx.quadraticCurveTo(30, 120, 0, 135); ctx.quadraticCurveTo(-30, 120, 0, 100); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, 135); ctx.quadraticCurveTo(40, 170, 0, 210); ctx.quadraticCurveTo(-40, 170, 0, 135); ctx.stroke();
+                    
+                    ctx.beginPath(); ctx.moveTo(0, 135); ctx.lineTo(0, 210); ctx.stroke();
+                    ctx.restore();
+                }
             } 
-            else if (template === 'rocket') {
-                ctx.beginPath();
-                ctx.moveTo(cx, cy - 180);
-                ctx.quadraticCurveTo(cx + 90, cy - 50, cx + 60, cy + 100);
-                ctx.lineTo(cx - 60, cy + 100);
-                ctx.quadraticCurveTo(cx - 90, cy - 50, cx, cy - 180);
-                ctx.stroke();
+            else if (templateId === 'leaf_pattern') {
+                const leaves = [
+                    {x: -120, y: -120, rot: 0.3, s: 1.2},
+                    {x: 100, y: -140, rot: -0.5, s: 1.1},
+                    {x: -140, y: 80, rot: -0.8, s: 1.3},
+                    {x: 90, y: 90, rot: 0.6, s: 1.2},
+                    {x: 0, y: 0, rot: 0, s: 1.5}
+                ];
 
-                ctx.beginPath();
-                ctx.arc(cx, cy - 20, 35, 0, Math.PI * 2);
-                ctx.stroke();
+                leaves.forEach(l => {
+                    ctx.save();
+                    ctx.translate(l.x, l.y);
+                    ctx.rotate(l.rot);
+                    ctx.scale(l.s, l.s);
 
-                ctx.beginPath();
-                ctx.moveTo(cx - 60, cy + 30); ctx.lineTo(cx - 120, cy + 120); ctx.lineTo(cx - 60, cy + 100);
-                ctx.moveTo(cx + 60, cy + 30); ctx.lineTo(cx + 120, cy + 120); ctx.lineTo(cx + 60, cy + 100);
-                ctx.stroke();
-            } 
-            else if (template === 'flower') {
-                ctx.beginPath();
-                ctx.arc(cx, cy - 30, 50, 0, Math.PI * 2);
-                ctx.stroke();
-
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i * Math.PI) / 4;
-                    const px = cx + Math.cos(angle) * 110;
-                    const py = (cy - 30) + Math.sin(angle) * 110;
                     ctx.beginPath();
-                    ctx.arc(px, py, 45, 0, Math.PI * 2);
+                    ctx.moveTo(0, -80);
+                    ctx.quadraticCurveTo(60, -20, 0, 80);
+                    ctx.quadraticCurveTo(-60, -20, 0, -80);
+                    ctx.stroke();
+
+                    ctx.beginPath(); ctx.moveTo(0, -80); ctx.lineTo(0, 100); ctx.stroke();
+
+                    for (let v = -60; v <= 50; v += 20) {
+                        ctx.beginPath(); ctx.moveTo(0, v); ctx.quadraticCurveTo(25, v - 10, 40, v + 10); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(0, v); ctx.quadraticCurveTo(-25, v - 10, -40, v + 10); ctx.stroke();
+                    }
+                    ctx.restore();
+                });
+            }
+            else if (templateId === 'nature_scene') {
+                ctx.beginPath(); ctx.arc(0, -140, 40, 0, Math.PI * 2); ctx.stroke();
+                for (let i = 0; i < 12; i++) {
+                    const ang = (i * Math.PI * 2) / 12;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(ang) * 48, -140 + Math.sin(ang) * 48);
+                    ctx.lineTo(Math.cos(ang) * 70, -140 + Math.sin(ang) * 70);
                     ctx.stroke();
                 }
 
                 ctx.beginPath();
-                ctx.moveTo(cx, cy + 20); ctx.lineTo(cx, cy + 200);
-                ctx.lineWidth = 12;
+                ctx.moveTo(-240, -20); ctx.lineTo(-140, -110); ctx.lineTo(-40, -30); ctx.lineTo(70, -120); ctx.lineTo(240, -10);
+                ctx.stroke();
+
+                ctx.beginPath(); ctx.moveTo(-140, -110); ctx.lineTo(-110, -20); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(70, -120); ctx.lineTo(90, -10); ctx.stroke();
+
+                [-180, -100, 120, 180].forEach(tx => {
+                    ctx.save();
+                    ctx.translate(tx, 30);
+                    ctx.beginPath(); ctx.moveTo(0, -60); ctx.lineTo(-30, -10); ctx.lineTo(-15, -10); ctx.lineTo(-40, 40); ctx.lineTo(40, 40); ctx.lineTo(15, -10); ctx.lineTo(30, -10); ctx.closePath(); ctx.stroke();
+                    ctx.strokeRect(-8, 40, 16, 25);
+                    ctx.restore();
+                });
+
+                ctx.beginPath();
+                ctx.moveTo(-30, 20); ctx.quadraticCurveTo(0, 80, -100, 200);
+                ctx.moveTo(30, 20); ctx.quadraticCurveTo(80, 100, 40, 200);
                 ctx.stroke();
             }
+            else if (templateId === 'tessellation') {
+                const r = 45;
+                const h = r * Math.sqrt(3);
+
+                for (let row = -3; row <= 3; row++) {
+                    for (let col = -3; col <= 3; col++) {
+                        const hx = col * r * 1.5;
+                        const hy = row * h + (Math.abs(col) % 2 === 1 ? h / 2 : 0);
+
+                        ctx.save();
+                        ctx.translate(hx, hy);
+                        ctx.beginPath();
+                        for (let i = 0; i < 6; i++) {
+                            const angle = (i * Math.PI) / 3;
+                            const px = r * Math.cos(angle);
+                            const py = r * Math.sin(angle);
+                            if (i === 0) ctx.moveTo(px, py);
+                            else ctx.lineTo(px, py);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+
+                        for (let i = 0; i < 6; i++) {
+                            const angle = (i * Math.PI) / 3;
+                            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r * Math.cos(angle), r * Math.sin(angle)); ctx.stroke();
+                        }
+                        ctx.beginPath(); ctx.arc(0, 0, r / 2, 0, Math.PI * 2); ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            }
+            else if (templateId === 'stained_glass') {
+                ctx.beginPath(); ctx.rect(-180, -120, 360, 320); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, -120, 180, Math.PI, 0); ctx.stroke();
+
+                ctx.beginPath(); ctx.arc(0, -120, 60, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, -120, 110, 0, Math.PI * 2); ctx.stroke();
+
+                for (let i = 0; i < 12; i++) {
+                    const ang = (i * Math.PI * 2) / 12;
+                    ctx.beginPath(); ctx.moveTo(60 * Math.cos(ang), -120 + 60 * Math.sin(ang)); ctx.lineTo(180 * Math.cos(ang), -120 + 180 * Math.sin(ang)); ctx.stroke();
+                }
+
+                [-120, -60, 60, 120].forEach(gx => {
+                    ctx.beginPath(); ctx.moveTo(gx, -120); ctx.lineTo(gx, 200); ctx.stroke();
+                });
+                [-40, 40, 120].forEach(gy => {
+                    ctx.beginPath(); ctx.moveTo(-180, gy); ctx.lineTo(180, gy); ctx.stroke();
+                });
+            }
+            else if (templateId === 'underwater') {
+                ctx.beginPath();
+                ctx.moveTo(-220, 100);
+                ctx.quadraticCurveTo(-100, 80, 0, 120);
+                ctx.quadraticCurveTo(120, 150, 220, 100);
+                ctx.lineTo(220, 220); ctx.lineTo(-220, 220); ctx.closePath();
+                ctx.stroke();
+
+                [ {x: -80, y: -40, s: 1}, {x: 80, y: -100, s: 0.8} ].forEach(f => {
+                    ctx.save();
+                    ctx.translate(f.x, f.y);
+                    ctx.scale(f.s, f.s);
+                    ctx.beginPath();
+                    ctx.moveTo(-60, 0);
+                    ctx.quadraticCurveTo(0, -50, 60, 0);
+                    ctx.quadraticCurveTo(0, 50, -60, 0);
+                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(60, 0); ctx.lineTo(100, -35); ctx.lineTo(85, 0); ctx.lineTo(100, 35); ctx.closePath(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(-30, -10, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-10, -35); ctx.quadraticCurveTo(-5, 0, -10, 35); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(20, -25); ctx.quadraticCurveTo(25, 0, 20, 25); ctx.stroke();
+                    ctx.restore();
+                });
+
+                [-150, 150].forEach(cx => {
+                    ctx.save(); ctx.translate(cx, 120);
+                    for (let b = -40; b <= 40; b += 20) {
+                        ctx.beginPath(); ctx.moveTo(b, 0); ctx.quadraticCurveTo(b * 1.5, -80, b * 0.5, -140); ctx.stroke();
+                    }
+                    ctx.restore();
+                });
+            }
+            else if (templateId === 'star_mandala') {
+                const points = 12;
+                for (let r = 40; r <= 200; r += 40) {
+                    ctx.beginPath();
+                    for (let i = 0; i < points * 2; i++) {
+                        const radius = i % 2 === 0 ? r : r / 2;
+                        const angle = (i * Math.PI) / points;
+                        const x = radius * Math.cos(angle);
+                        const y = radius * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+            }
+            else if (templateId === 'floral_garden') {
+                const flowerPositions = [
+                    {x: -110, y: -100, r: 40}, {x: 110, y: -100, r: 40},
+                    {x: 0, y: 0, r: 55},
+                    {x: -110, y: 100, r: 40}, {x: 110, y: 100, r: 40}
+                ];
+
+                flowerPositions.forEach(fp => {
+                    ctx.save();
+                    ctx.translate(fp.x, fp.y);
+                    ctx.beginPath(); ctx.arc(0, 0, fp.r / 2, 0, Math.PI * 2); ctx.stroke();
+                    for (let i = 0; i < 8; i++) {
+                        const ang = (i * Math.PI * 2) / 8;
+                        const px = Math.cos(ang) * (fp.r * 0.9);
+                        const py = Math.sin(ang) * (fp.r * 0.9);
+                        ctx.beginPath(); ctx.arc(px, py, fp.r / 2.5, 0, Math.PI * 2); ctx.stroke();
+                    }
+                    ctx.restore();
+                });
+            }
+            else if (templateId === 'space_cosmos') {
+                ctx.save();
+                ctx.translate(-80, -60);
+                ctx.rotate(-0.3);
+                ctx.beginPath(); ctx.arc(0, 0, 50, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(0, 0, 100, 20, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(0, 0, 120, 28, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+
+                ctx.beginPath(); ctx.arc(110, 80, 40, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(100, 70, 12, 0, Math.PI * 2); ctx.stroke();
+
+                [ {x: 120, y: -120}, {x: -140, y: 110}, {x: 0, y: -150}, {x: -160, y: -160} ].forEach(st => {
+                    ctx.save(); ctx.translate(st.x, st.y);
+                    ctx.beginPath();
+                    for(let i=0; i<5; i++){
+                        ctx.lineTo(Math.cos((18+i*72)*Math.PI/180)*20, -Math.sin((18+i*72)*Math.PI/180)*20);
+                        ctx.lineTo(Math.cos((54+i*72)*Math.PI/180)*8, -Math.sin((54+i*72)*Math.PI/180)*8);
+                    }
+                    ctx.closePath(); ctx.stroke();
+                    ctx.restore();
+                });
+            }
+            else if (templateId === 'castle_landscape') {
+                ctx.beginPath();
+                ctx.moveTo(-220, 120); ctx.quadraticCurveTo(-100, 60, 0, 120);
+                ctx.quadraticCurveTo(100, 180, 220, 120); ctx.stroke();
+
+                ctx.strokeRect(-120, -40, 240, 160);
+                for (let x = -120; x <= 100; x += 30) {
+                    ctx.strokeRect(x, -60, 20, 20);
+                }
+                ctx.strokeRect(-160, -100, 40, 220);
+                ctx.strokeRect(120, -100, 40, 220);
+                ctx.beginPath(); ctx.moveTo(-160, -100); ctx.lineTo(-140, -160); ctx.lineTo(-120, -100); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(120, -100); ctx.lineTo(140, -160); ctx.lineTo(160, -100); ctx.stroke();
+
+                ctx.beginPath(); ctx.arc(0, 120, 35, Math.PI, 0); ctx.lineTo(35, 120); ctx.lineTo(-35, 120); ctx.stroke();
+            }
+            else if (templateId === 'owl_pattern') {
+                ctx.beginPath();
+                ctx.moveTo(-100, -120); ctx.quadraticCurveTo(0, -60, 100, -120);
+                ctx.quadraticCurveTo(150, 40, 100, 160); ctx.quadraticCurveTo(0, 210, -100, 160);
+                ctx.quadraticCurveTo(-150, 40, -100, -120); ctx.stroke();
+
+                ctx.beginPath(); ctx.arc(-45, -30, 35, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(45, -30, 35, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(-45, -30, 15, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(45, -30, 15, 0, Math.PI * 2); ctx.stroke();
+
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-15, 20); ctx.lineTo(15, 20); ctx.closePath(); ctx.stroke();
+
+                for (let y = 40; y <= 120; y += 25) {
+                    for (let x = -60; x <= 60; x += 30) {
+                        ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI); ctx.stroke();
+                    }
+                }
+            }
+
+            ctx.restore();
         }
     </script>
 </body>
