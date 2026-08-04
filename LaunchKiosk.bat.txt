@@ -1,0 +1,12 @@
+@echo off
+:: Get the full path of index.html in the current folder
+set "FILE_PATH=%~dp0index.html"
+
+:: Locate and launch Google Chrome in Kiosk mode
+if exist "C:\Program Files\Google\Chrome\Application\chrome.exe" (
+    start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk "%FILE_PATH%" --no-first-run --incognito
+) else if exist "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" (
+    start "" "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" --kiosk "%FILE_PATH%" --no-first-run --incognito
+) else (
+    start chrome --kiosk "%FILE_PATH%" --no-first-run --incognito
+)

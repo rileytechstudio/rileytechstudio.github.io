@@ -3,19 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Children's Museum Multi-Touch Water Table</title>
+  <title>Water Table</title>
   <style>
     * {
       touch-action: none;
       box-sizing: border-box;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
-    body {
+    html, body {
       margin: 0;
       padding: 0;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
       background-color: #233142;
-      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Fredoka', sans-serif, Arial;
-      user-select: none;
+      font-family: system-ui, -apple-system, sans-serif;
     }
     #canvas-container {
       width: 100vw;
@@ -23,61 +27,98 @@
       display: block;
     }
 
-    /* Multi-User Bottom Palette Bar */
-    #ui-palette {
+    /* Base Palette UI Styles */
+    .ui-palette {
       position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(12px);
-      padding: 10px 24px;
-      border-radius: 35px;
+      padding: 12px;
+      border-radius: 28px;
       box-shadow: 0 10px 35px rgba(0,0,0,0.35);
       border: 4px solid #4dd0e1;
       display: flex;
-      gap: 20px;
-      align-items: center;
+      flex-direction: column;
+      gap: 10px;
       z-index: 10;
     }
-    .palette-section {
+
+    /* Top-Left Menu (Rotated 180° for opposite player) */
+    #ui-palette-top {
+      top: 20px;
+      left: 20px;
+      transform: rotate(180deg);
+    }
+
+    /* Bottom-Right Menu (Facing normal orientation for primary player) */
+    #ui-palette-bottom {
+      bottom: 20px;
+      right: 20px;
+      transform: rotate(0deg);
+    }
+
+    .palette-header {
       display: flex;
-      gap: 12px;
+      justify-content: space-between;
       align-items: center;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #eceff1;
+      gap: 12px;
     }
-    .palette-divider {
-      width: 3px;
-      height: 45px;
-      background: #cfd8dc;
-      border-radius: 2px;
+    .palette-icon-brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-left: 4px;
     }
-    .palette-label {
+    .palette-title {
       font-size: 13px;
       font-weight: bold;
-      color: #546e7a;
+      color: #37474f;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
+    .btn-exit {
+      background: #ff5252;
+      color: white;
+      border: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #d32f2f;
+      transition: transform 0.1s, background-color 0.1s;
+    }
+    .btn-exit:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #d32f2f;
+    }
+    .cluster-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .palette-divider {
+      width: 2px;
+      height: 32px;
+      background: #cfd8dc;
+      border-radius: 1px;
+      margin: 0 2px;
+    }
     .draggable-card {
-      width: 60px;
-      height: 60px;
+      width: 58px;
+      height: 58px;
       border-radius: 18px;
       background: #f0f4f8;
       border: 3px solid #b0bec5;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-size: 26px;
       cursor: grab;
       box-shadow: 0 4px 0 #90a4ae;
       transition: transform 0.1s;
-    }
-    .draggable-card span {
-      font-size: 10px;
-      font-weight: bold;
-      color: #37474f;
-      margin-top: -2px;
     }
     .draggable-card:active {
       cursor: grabbing;
@@ -88,48 +129,141 @@
       border-color: #ffe082;
       box-shadow: 0 4px 0 #ffb300;
     }
-
-    #instruction-banner {
-      position: absolute;
-      top: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.65);
-      color: #fff;
-      padding: 8px 22px;
-      border-radius: 20px;
-      font-size: 14px;
-      pointer-events: none;
-      z-index: 10;
-    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
   <div id="canvas-container"></div>
 
-  <div id="instruction-banner">
-    🖐️ <b>Step 1:</b> Drag tools/toys onto the sand. <b>Step 2:</b> Drag a placed tool around to dig or build!
-  </div>
-
-  <div id="ui-palette">
-    <span class="palette-label">Tools:</span>
-    <div class="palette-section">
-      <div class="draggable-card tool-card" data-type="shovel" title="Drag Shovel onto map to Dig">
-        🥄<span>Shovel</span>
+  <!-- TOP-LEFT ROTATED UI MENU -->
+  <div id="ui-palette-top" class="ui-palette">
+    <div class="palette-header">
+      <div class="palette-icon-brand">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0288d1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12c1.5 0 2.5-.8 3.5-1.5s2-.8 3.5 0 2.5 1.5 3.5 1.5 2.5-.8 3.5-1.5 2-.8 3.5 0"/>
+          <path d="M2 17c1.5 0 2.5-.8 3.5-1.5s2-.8 3.5 0 2.5 1.5 3.5 1.5 2.5-.8 3.5-1.5 2-.8 3.5 0"/>
+        </svg>
+        <span class="palette-title">Drag and Drop</span>
       </div>
-      <div class="draggable-card tool-card" data-type="bucket" title="Drag Bucket onto map to Build">
-        🪣<span>Bucket</span>
-      </div>
+      <button class="btn-exit" onclick="window.location.href='index.html'">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="palette-divider"></div>
+    <div class="cluster-row">
+      <div class="draggable-card tool-card" data-type="shovel">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 22l7.5-7.5" stroke="#d32f2f" stroke-width="2.5"/>
+          <path d="M14 11l-2.5-2.5" stroke="#d32f2f" stroke-width="2.5"/>
+          <path d="M10.5 14.5l2.5 2.5" stroke="#d32f2f" stroke-width="2.5"/>
+          <path d="M11 9.5l4.5-4.5a2.5 2.5 0 0 1 3.5 3.5L14.5 13z" fill="#ef5350" stroke="#d32f2f" stroke-width="2"/>
+        </svg>
+      </div>
 
-    <span class="palette-label">Toys:</span>
-    <div class="palette-section">
-      <div class="draggable-card" data-type="duck" title="Rubber Duck">🦆</div>
-      <div class="draggable-card" data-type="boat" title="Paper Boat">⛵</div>
-      <div class="draggable-card" data-type="rock" title="Rolling Rock">🪨</div>
+      <div class="draggable-card tool-card" data-type="bucket">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M5 9l1.5 10.5a2 2 0 0 0 2 1.5h7a2 2 0 0 0 2-1.5L19 9" fill="#ffb300" stroke="#f57f17" stroke-width="2"/>
+          <path d="M3.5 9h17v-2a1 1 0 0 0-1-1h-15a1 1 0 0 0-1 1v2z" fill="#ffe082" stroke="#f57f17" stroke-width="2"/>
+          <path d="M7 6a5 5 0 0 1 10 0" stroke="#f57f17" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="palette-divider"></div>
+
+      <div class="draggable-card" data-type="duck">
+        <svg width="34" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M4 13.5C4 17.5 7.5 20 12 20C16.5 20 20 18 20.5 15.5C21 13 19.5 12 17 12C15.5 12 14.5 11 14.5 9.5C14.5 7 12.5 5 10 5C8.5 5 7.2 5.8 6.5 7C7.2 8 7.5 9.2 7.5 10.5C5.2 11 4 12.2 4 13.5Z" fill="#ffeb3b" stroke="#fbc02d" stroke-width="1.2" stroke-linejoin="round"/>
+          <path d="M8.5 14.5C9.5 16 12 16.5 14.5 15.5" stroke="#fbc02d" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M14 8.2C15.8 8.2 18.5 8.5 19 9.2C19.5 9.8 18.2 10.8 16.5 10.8C15 10.8 14 9.8 14 8.2Z" fill="#ff9800" stroke="#e65100" stroke-width="0.8"/>
+          <circle cx="11.5" cy="7.2" r="1.1" fill="#212121"/>
+          <circle cx="11.8" cy="6.9" r="0.4" fill="#ffffff"/>
+        </svg>
+      </div>
+
+      <div class="draggable-card" data-type="boat">
+        <svg width="34" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M2 13l4 7h12l4-7H2z" fill="#e0e0e0" stroke="#616161" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M12 3l-6 10h12L12 3z" fill="#ffffff" stroke="#616161" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M12 3v17" stroke="#bdbdbd" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <div class="draggable-card" data-type="rock">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M6 18l-3-6 4-7 8-2 6 5 1 8-5 4-8-1-3-1z" fill="#78909c" stroke="#37474f" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M7 5l4 6 8-2M11 11l-3 8M11 11l8 6" stroke="#455a64" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM-RIGHT NORMAL UI MENU -->
+  <div id="ui-palette-bottom" class="ui-palette">
+    <div class="palette-header">
+      <div class="palette-icon-brand">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0288d1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12c1.5 0 2.5-.8 3.5-1.5s2-.8 3.5 0 2.5 1.5 3.5 1.5 2.5-.8 3.5-1.5 2-.8 3.5 0"/>
+          <path d="M2 17c1.5 0 2.5-.8 3.5-1.5s2-.8 3.5 0 2.5 1.5 3.5 1.5 2.5-.8 3.5-1.5 2-.8 3.5 0"/>
+        </svg>
+        <span class="palette-title">Drag and Drop</span>
+      </div>
+      <button class="btn-exit" onclick="window.location.href='index.html'">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="cluster-row">
+      <div class="draggable-card tool-card" data-type="shovel">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 22l7.5-7.5" stroke="#d32f2f" stroke-width="2.5"/>
+          <path d="M14 11l-2.5-2.5" stroke="#d32f2f" stroke-width="2.5"/>
+          <path d="M10.5 14.5l2.5 2.5" stroke="#d32f2f" stroke-width="2.5"/>
+          <path d="M11 9.5l4.5-4.5a2.5 2.5 0 0 1 3.5 3.5L14.5 13z" fill="#ef5350" stroke="#d32f2f" stroke-width="2"/>
+        </svg>
+      </div>
+
+      <div class="draggable-card tool-card" data-type="bucket">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M5 9l1.5 10.5a2 2 0 0 0 2 1.5h7a2 2 0 0 0 2-1.5L19 9" fill="#ffb300" stroke="#f57f17" stroke-width="2"/>
+          <path d="M3.5 9h17v-2a1 1 0 0 0-1-1h-15a1 1 0 0 0-1 1v2z" fill="#ffe082" stroke="#f57f17" stroke-width="2"/>
+          <path d="M7 6a5 5 0 0 1 10 0" stroke="#f57f17" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="palette-divider"></div>
+
+      <div class="draggable-card" data-type="duck">
+        <svg width="34" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M4 13.5C4 17.5 7.5 20 12 20C16.5 20 20 18 20.5 15.5C21 13 19.5 12 17 12C15.5 12 14.5 11 14.5 9.5C14.5 7 12.5 5 10 5C8.5 5 7.2 5.8 6.5 7C7.2 8 7.5 9.2 7.5 10.5C5.2 11 4 12.2 4 13.5Z" fill="#ffeb3b" stroke="#fbc02d" stroke-width="1.2" stroke-linejoin="round"/>
+          <path d="M8.5 14.5C9.5 16 12 16.5 14.5 15.5" stroke="#fbc02d" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M14 8.2C15.8 8.2 18.5 8.5 19 9.2C19.5 9.8 18.2 10.8 16.5 10.8C15 10.8 14 9.8 14 8.2Z" fill="#ff9800" stroke="#e65100" stroke-width="0.8"/>
+          <circle cx="11.5" cy="7.2" r="1.1" fill="#212121"/>
+          <circle cx="11.8" cy="6.9" r="0.4" fill="#ffffff"/>
+        </svg>
+      </div>
+
+      <div class="draggable-card" data-type="boat">
+        <svg width="34" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M2 13l4 7h12l4-7H2z" fill="#e0e0e0" stroke="#616161" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M12 3l-6 10h12L12 3z" fill="#ffffff" stroke="#616161" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M12 3v17" stroke="#bdbdbd" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <div class="draggable-card" data-type="rock">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M6 18l-3-6 4-7 8-2 6 5 1 8-5 4-8-1-3-1z" fill="#78909c" stroke="#37474f" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M7 5l4 6 8-2M11 11l-3 8M11 11l8 6" stroke="#455a64" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+      </div>
     </div>
   </div>
 
@@ -213,23 +347,38 @@
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x233142);
 
-    const aspect = window.innerWidth / window.innerHeight;
     const worldWidth = NX * L;
     const worldHeight = NY * L;
     
-    const frustumSize = worldWidth;
-    const camera = new THREE.OrthographicCamera(
-      -frustumSize / 2, frustumSize / 2,
-      (frustumSize / aspect) / 2, -(frustumSize / aspect) / 2,
-      0.1, 100
-    );
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
     camera.position.set(worldWidth / 2, 20, worldHeight / 2);
     camera.lookAt(worldWidth / 2, 0, worldHeight / 2);
+
+    function updateCameraFrustum() {
+      const newAspect = window.innerWidth / window.innerHeight;
+      const groundAspect = worldWidth / worldHeight;
+      let viewW, viewH;
+      if (newAspect < groundAspect) {
+        viewH = worldHeight;
+        viewW = worldHeight * newAspect;
+      } else {
+        viewW = worldWidth;
+        viewH = worldWidth / newAspect;
+      }
+      camera.left = -viewW / 2;
+      camera.right = viewW / 2;
+      camera.top = viewH / 2;
+      camera.bottom = -viewH / 2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
+
+    updateCameraFrustum();
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
     scene.add(ambientLight);
@@ -408,14 +557,74 @@
 
     const rockGeo = new THREE.DodecahedronGeometry(0.22, 1);
 
+    // --- LILY PAD WITH FROG CREATION (10% smaller pad, 80% larger frog) ---
+    function createLilyPadWithFrog() {
+      const group = new THREE.Group();
+
+      const padGeo = new THREE.CylinderGeometry(0.342, 0.342, 0.02, 16);
+      const padMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.4 });
+      const pad = new THREE.Mesh(padGeo, padMat);
+      pad.position.y = 0.01;
+      pad.receiveShadow = true;
+      group.add(pad);
+
+      const frogGroup = new THREE.Group();
+      frogGroup.name = "frogGroup";
+      frogGroup.scale.set(1.8, 1.8, 1.8);
+
+      const frogBody = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x66bb6a, roughness: 0.3 })
+      );
+      frogBody.scale.set(1.0, 0.65, 1.2);
+      frogBody.position.y = 0.08;
+      frogGroup.add(frogBody);
+
+      const eyeGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(-0.06, 0.15, 0.06);
+      const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), pupilMat);
+      leftPupil.position.set(-0.06, 0.16, 0.09);
+
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(0.06, 0.15, 0.06);
+      const rightPupil = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), pupilMat);
+      rightPupil.position.set(0.06, 0.16, 0.09);
+
+      frogGroup.add(leftEye, leftPupil, rightEye, rightPupil);
+
+      const legGeo = new THREE.SphereGeometry(0.05, 6, 6);
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
+      const leftLeg = new THREE.Mesh(legGeo, legMat);
+      leftLeg.scale.set(1.2, 0.6, 1.8);
+      leftLeg.position.set(-0.1, 0.05, -0.04);
+
+      const rightLeg = new THREE.Mesh(legGeo, legMat);
+      rightLeg.scale.set(1.2, 0.6, 1.8);
+      rightLeg.position.set(0.1, 0.05, -0.04);
+
+      frogGroup.add(leftLeg, rightLeg);
+
+      group.add(frogGroup);
+      return group;
+    }
+
     function spawnItem(type, worldX, worldZ) {
       let mesh;
+      let hasFrog = false;
+
       if (type === 'duck') {
         mesh = duckGeo.clone();
       } else if (type === 'boat') {
         mesh = new THREE.Mesh(paperBoatGeo, paperBoatMat);
       } else if (type === 'rock') {
         mesh = new THREE.Mesh(rockGeo, new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.9 }));
+      } else if (type === 'frog_lilypad') {
+        mesh = createLilyPadWithFrog();
+        hasFrog = true;
       }
 
       mesh.castShadow = true;
@@ -429,7 +638,10 @@
         vx: 0,
         vz: 0,
         rotationAngle: 0,
-        isHeld: false
+        isHeld: false,
+        hasFrog: hasFrog,
+        isFrogJumping: false,
+        jumpProgress: 0
       };
 
       floatingObjects.push(itemObj);
@@ -440,47 +652,50 @@
     const placedTools = [];
 
     function create3DToolMesh(type) {
-      const group = new THREE.Group();
+      let mesh;
       if (type === 'shovel') {
-        const handleMat = new THREE.MeshStandardMaterial({ color: 0xe53935, roughness: 0.3 });
-        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.2 });
+        const group = new THREE.Group();
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.6 });
+        const gripMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.4 });
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.8, roughness: 0.2 });
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.3 }); // Red trowel blade
 
         const handle = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04, 0.04, 0.9),
+          new THREE.CylinderGeometry(0.045, 0.04, 0.5, 12),
           handleMat
         );
-        handle.position.set(0, 0, -0.45);
-        handle.rotation.x = Math.PI / 2;
+        handle.position.set(-0.35, 0, 0);
+        handle.rotation.z = Math.PI / 2;
 
         const grip = new THREE.Mesh(
-          new THREE.TorusGeometry(0.08, 0.025, 8, 12, Math.PI),
-          handleMat
+          new THREE.CylinderGeometry(0.05, 0.05, 0.18, 12),
+          gripMat
         );
-        grip.position.set(0, 0, -0.9);
-        grip.rotation.x = Math.PI / 2;
+        grip.position.set(-0.55, 0, 0);
+        grip.rotation.z = Math.PI / 2;
 
-        const blade = new THREE.Mesh(
-          new THREE.BoxGeometry(0.35, 0.04, 0.45),
-          bladeMat
+        const neck = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8),
+          metalMat
         );
-        blade.position.set(0, 0, 0.15);
+        neck.position.set(-0.05, -0.03, 0);
+        neck.rotation.z = Math.PI / 4;
 
-        const tip = new THREE.Mesh(
-          new THREE.ConeGeometry(0.25, 0.25, 4),
-          bladeMat
-        );
-        tip.position.set(0, 0, 0.45);
-        tip.rotation.x = Math.PI / 2;
-        tip.rotation.y = Math.PI / 4;
-        tip.scale.set(1, 0.15, 1);
+        const scoopGeo = new THREE.ConeGeometry(0.22, 0.5, 16, 1, true, 0, Math.PI);
+        scoopGeo.rotateZ(-Math.PI / 2);
+        scoopGeo.rotateX(Math.PI);
+        
+        const scoop = new THREE.Mesh(scoopGeo, bladeMat);
+        scoop.material.side = THREE.DoubleSide;
+        scoop.position.set(0.25, -0.02, 0);
+        scoop.scale.set(1.1, 0.5, 1.0);
 
-        group.add(handle, grip, blade, tip);
-
-        group.scale.set(2.0, 2.0, 2.0);
-
-        group.rotation.x = Math.PI / 8;  
-        group.rotation.y = -Math.PI / 4; 
-      } else if (type === 'bucket') {
+        group.add(handle, grip, neck, scoop);
+        group.scale.set(1.8, 1.8, 1.8);
+        mesh = group;
+      } 
+      else if (type === 'bucket') {
+        const group = new THREE.Group();
         const bucket = new THREE.Mesh(
           new THREE.CylinderGeometry(0.28, 0.20, 0.45, 16),
           new THREE.MeshStandardMaterial({ color: 0xffb300, roughness: 0.3 })
@@ -497,17 +712,28 @@
         group.add(bucket, handle);
 
         group.scale.set(1.2, 1.2, 1.2);
-
         group.rotation.x = Math.PI / 3.2; 
-        group.rotation.z = -Math.PI / 5;  
+        mesh = group;
       }
-      scene.add(group);
-      return group;
+      else if (type === 'duck') {
+        mesh = duckGeo.clone();
+      } 
+      else if (type === 'boat') {
+        mesh = new THREE.Mesh(paperBoatGeo, paperBoatMat);
+      } 
+      else if (type === 'rock') {
+        mesh = new THREE.Mesh(rockGeo, new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.9 }));
+      }
+
+      if (mesh) {
+        mesh.castShadow = true;
+        scene.add(mesh); // GUARANTEED ADD TO SCENE GRAPH
+      }
+      return mesh;
     }
 
     function spawnPlacedTool(type, worldX, worldZ) {
       const mesh = create3DToolMesh(type);
-      mesh.castShadow = true;
 
       const toolObj = {
         type: type,
@@ -704,7 +930,7 @@
       });
     }
 
-    // --- ITEM PHYSICS & DOWNHILL LAND ROLLING ---
+    // --- ITEM PHYSICS & FROG JUMPING / FLOATING ---
     function updateFloatingObjects() {
       for (let k = floatingObjects.length - 1; k >= 0; k--) {
         const obj = floatingObjects[k];
@@ -724,28 +950,27 @@
         }
 
         if (obj.type === 'rock') {
-          obj.mesh.position.y = T[i] + 0.12;
+          // Rock sits directly on the riverbed / terrain floor
+          const targetY = T[i] + 0.12;
+          obj.mesh.position.y += (targetY - obj.mesh.position.y) * 0.18;
 
-          // Calculate terrain slope (height gradient) for rolling downhill on land
           const tR = (gx < NX - 1) ? T[idx(gx + 1, gy)] : T[i];
           const tL = (gx > 0)      ? T[idx(gx - 1, gy)] : T[i];
           const tU = (gy < NY - 1) ? T[idx(gx, gy + 1)] : T[i];
           const tD = (gy > 0)      ? T[idx(gx, gy - 1)] : T[i];
 
-          const slopeX = (tL - tR); // Gravity acceleration downhill
+          const slopeX = (tL - tR);
           const slopeZ = (tD - tU);
 
           obj.vx += slopeX * 0.10;
           obj.vz += slopeZ * 0.10;
 
-          // Water current push
           const speed = Math.sqrt(flowVx * flowVx + flowVy * flowVy);
           if (currentDepth > 0.02 && speed > 0.12) {
             obj.vx += flowVx * 0.015 * ITEM_SPEED_MULTIPLIER;
             obj.vz += flowVy * 0.015 * ITEM_SPEED_MULTIPLIER;
           }
 
-          // 3D rolling rotation animation based on movement velocity
           const rollSpeed = Math.sqrt(obj.vx * obj.vx + obj.vz * obj.vz);
           if (rollSpeed > 0.005) {
             obj.rotationAngle += rollSpeed * 0.35;
@@ -758,10 +983,11 @@
         } 
         else if (obj.type === 'duck') {
           const isFloating = currentDepth > 0.015 || obj.x >= (NX - 2) * L;
+          const targetY = isFloating ? waterSurface : T[i];
+
+          obj.mesh.position.y += (targetY - obj.mesh.position.y) * 0.15;
 
           if (isFloating) {
-            obj.mesh.position.y += (waterSurface - obj.mesh.position.y) * 0.2;
-
             obj.vx += flowVx * 0.030 * ITEM_SPEED_MULTIPLIER;
             obj.vz += flowVy * 0.030 * ITEM_SPEED_MULTIPLIER;
 
@@ -783,8 +1009,6 @@
             angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
             obj.rotationAngle += angleDiff * 0.20;
             obj.mesh.rotation.y = -obj.rotationAngle;
-          } else {
-            obj.mesh.position.y += (T[i] - obj.mesh.position.y) * 0.2;
           }
 
           obj.vx *= 0.91;
@@ -793,11 +1017,11 @@
         else if (obj.type === 'boat') {
           const minBoatDepth = 0.07;
           const isFloating = currentDepth > minBoatDepth || obj.x >= (NX - 2) * L;
+          const targetY = isFloating ? waterSurface + 0.075 : T[i] + 0.03;
+
+          obj.mesh.position.y += (targetY - obj.mesh.position.y) * 0.15;
 
           if (isFloating) {
-            const boatWaterTarget = waterSurface + 0.075;
-            obj.mesh.position.y += (boatWaterTarget - obj.mesh.position.y) * 0.25;
-
             obj.vx += flowVx * 0.052 * ITEM_SPEED_MULTIPLIER;
             obj.vz += flowVy * 0.052 * ITEM_SPEED_MULTIPLIER;
 
@@ -810,10 +1034,47 @@
             obj.vx *= 0.94;
             obj.vz *= 0.94;
           } else {
-            obj.mesh.position.y += (T[i] + 0.03 - obj.mesh.position.y) * 0.2;
-            
             obj.vx *= 0.50; 
             obj.vz *= 0.50;
+          }
+        }
+        else if (obj.type === 'frog_lilypad') {
+          const targetY = (currentDepth > 0.01) ? waterSurface : T[i];
+          obj.mesh.position.y += (targetY - obj.mesh.position.y) * 0.15;
+
+          obj.vx += flowVx * 0.035 * ITEM_SPEED_MULTIPLIER;
+          obj.vz += flowVy * 0.035 * ITEM_SPEED_MULTIPLIER;
+
+          const targetAngle = Math.atan2(flowVy, flowVx);
+          let angleDiff = targetAngle - obj.rotationAngle;
+          angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+          obj.rotationAngle += angleDiff * 0.10;
+          obj.mesh.rotation.y = -obj.rotationAngle;
+
+          obj.vx *= 0.92;
+          obj.vz *= 0.92;
+
+          // Handle Frog Jump Animation
+          if (obj.isFrogJumping && obj.hasFrog) {
+            obj.jumpProgress += DT * 2.2;
+            const frogSubGroup = obj.mesh.getObjectByName('frogGroup');
+            
+            if (frogSubGroup) {
+              const jumpArc = Math.sin(obj.jumpProgress * Math.PI) * 0.6;
+              frogSubGroup.position.z += 0.025;
+              frogSubGroup.position.y = 0.08 + jumpArc;
+
+              if (obj.jumpProgress > 0.6) {
+                const fadeScale = Math.max(0, 1 - (obj.jumpProgress - 0.6) * 2.5) * 1.8;
+                frogSubGroup.scale.set(fadeScale, fadeScale, fadeScale);
+              }
+
+              if (obj.jumpProgress >= 1.0) {
+                obj.mesh.remove(frogSubGroup);
+                obj.hasFrog = false;
+                obj.isFrogJumping = false;
+              }
+            }
           }
         }
 
@@ -840,13 +1101,16 @@
     const activePointers = new Map();
 
     function isPointerOverUI(clientX, clientY) {
-      const palette = document.getElementById('ui-palette');
-      if (!palette) return false;
-      const rect = palette.getBoundingClientRect();
-      return (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom);
+      const palettes = document.querySelectorAll('.ui-palette');
+      for (let palette of palettes) {
+        const rect = palette.getBoundingClientRect();
+        if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+          return true;
+        }
+      }
+      return false;
     }
 
-    // Sculpting height updates - capped to -1.0 (min depth) and +5.0 (max height)
     function applySculpting(point, mult, brushRadius = 10) {
       const strength = 0.05;
 
@@ -869,7 +1133,7 @@
             const falloff = 0.5 * (1 + Math.cos((dist / brushRadius) * Math.PI));
             const i = idx(x, y);
             T[i] += mult * strength * falloff;
-            T[i] = Math.max(-1.0, Math.min(5.0, T[i])); // Extended depth (-1.0) and height (5.0)
+            T[i] = Math.max(-1.0, Math.min(5.0, T[i]));
           }
         }
       }
@@ -924,7 +1188,7 @@
       return null;
     }
 
-    // Step 1: Drag card from Palette to place tool/toy in world
+    // Step 1: Drag card from Palette to place tool/toy in world (Guaranteed 3D Mesh Rendering)
     document.querySelectorAll('.draggable-card').forEach(card => {
       card.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -933,23 +1197,43 @@
         const type = card.getAttribute('data-type');
         card.setPointerCapture(e.pointerId);
 
+        const hitPos = raycastGround(e.clientX, e.clientY);
+        const proxyMesh = create3DToolMesh(type);
+        
+        if (hitPos) {
+          const hoverY = ['duck', 'boat', 'rock'].includes(type) ? hitPos.y + 0.8 : hitPos.y + 0.35;
+          proxyMesh.position.set(hitPos.x, hoverY, hitPos.z);
+          proxyMesh.visible = !isPointerOverUI(e.clientX, e.clientY);
+        } else {
+          proxyMesh.visible = false;
+        }
+
         activePointers.set(e.pointerId, {
           action: 'place_from_palette',
           type: type,
-          worldPos: null,
-          mesh: null,
-          targetObj: null
+          worldPos: hitPos,
+          mesh: proxyMesh,
+          targetObj: null,
+          lastX: hitPos ? hitPos.x : null,
+          lastZ: hitPos ? hitPos.z : null,
+          targetAngle: 0,
+          currentAngle: 0
         });
       });
     });
 
     // Step 2: Touch and drag an ALREADY PLACED tool or toy on the map
     window.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('#ui-palette')) return;
+      if (e.target.closest('.ui-palette')) return;
 
       const hitTool = raycastPlacedTools(e.clientX, e.clientY);
       const hitItem = raycastFloatingItem(e.clientX, e.clientY);
       const hitPos = raycastGround(e.clientX, e.clientY);
+
+      if (hitItem && hitItem.type === 'frog_lilypad' && hitItem.hasFrog && !hitItem.isFrogJumping) {
+        hitItem.isFrogJumping = true;
+        hitItem.jumpProgress = 0;
+      }
 
       if (hitTool) {
         hitTool.isHeld = true;
@@ -958,7 +1242,11 @@
           type: hitTool.type,
           worldPos: hitPos || new THREE.Vector3(hitTool.x, 1, hitTool.z),
           mesh: null,
-          targetObj: hitTool
+          targetObj: hitTool,
+          lastX: hitPos ? hitPos.x : hitTool.x,
+          lastZ: hitPos ? hitPos.z : hitTool.z,
+          targetAngle: hitTool.mesh.rotation.y,
+          currentAngle: hitTool.mesh.rotation.y
         });
       } else if (hitItem) {
         hitItem.isHeld = true;
@@ -982,20 +1270,25 @@
         const hitPos = raycastGround(e.clientX, e.clientY);
 
         if (pointerData.action === 'place_from_palette') {
-          if (!overUI && hitPos) {
+          if (hitPos) {
             pointerData.worldPos = hitPos;
-            if (!pointerData.mesh && ['shovel', 'bucket'].includes(pointerData.type)) {
-              pointerData.mesh = create3DToolMesh(pointerData.type);
-            }
             if (pointerData.mesh) {
-              pointerData.mesh.visible = true;
-              pointerData.mesh.position.set(hitPos.x, hitPos.y + 0.25, hitPos.z);
+              pointerData.mesh.visible = !overUI;
+
+              // Hover height (+0.8 units) clearly visible in 3D space with cast shadow on ground
+              const hoverY = ['duck', 'boat', 'rock'].includes(pointerData.type) ? hitPos.y + 0.8 : hitPos.y + 0.35;
+              pointerData.mesh.position.set(hitPos.x, hoverY, hitPos.z);
             }
-          } else {
-            pointerData.worldPos = null;
-            if (pointerData.mesh) {
-              pointerData.mesh.visible = false;
+
+            if (pointerData.lastX !== null) {
+              const dx = hitPos.x - pointerData.lastX;
+              const dz = hitPos.z - pointerData.lastZ;
+              if (Math.hypot(dx, dz) > 0.02) {
+                pointerData.targetAngle = Math.atan2(dz, dx);
+              }
             }
+            pointerData.lastX = hitPos.x;
+            pointerData.lastZ = hitPos.z;
           }
         } 
         else if (pointerData.action === 'use_placed_tool' && pointerData.targetObj) {
@@ -1004,6 +1297,16 @@
             pointerData.targetObj.x = hitPos.x;
             pointerData.targetObj.z = hitPos.z;
             pointerData.targetObj.mesh.position.set(hitPos.x, hitPos.y + 0.35, hitPos.z);
+
+            if (pointerData.lastX !== null) {
+              const dx = hitPos.x - pointerData.lastX;
+              const dz = hitPos.z - pointerData.lastZ;
+              if (Math.hypot(dx, dz) > 0.02) {
+                pointerData.targetAngle = Math.atan2(dz, dx);
+              }
+            }
+            pointerData.lastX = hitPos.x;
+            pointerData.lastZ = hitPos.z;
           }
         }
         else if (pointerData.action === 'move_toy' && pointerData.targetObj) {
@@ -1011,7 +1314,7 @@
             pointerData.worldPos.copy(hitPos);
             pointerData.targetObj.x = hitPos.x;
             pointerData.targetObj.z = hitPos.z;
-            pointerData.targetObj.mesh.position.set(hitPos.x, hitPos.y + 0.3, hitPos.z);
+            pointerData.targetObj.mesh.position.set(hitPos.x, hitPos.y + 0.8, hitPos.z);
           }
         }
       }
@@ -1027,7 +1330,9 @@
             if (['shovel', 'bucket'].includes(pointerData.type)) {
               spawnPlacedTool(pointerData.type, pointerData.worldPos.x, pointerData.worldPos.z);
             } else {
-              spawnItem(pointerData.type, pointerData.worldPos.x, pointerData.worldPos.z);
+              // Spawn item elevated so it drops smoothly to the water/ground
+              const newItem = spawnItem(pointerData.type, pointerData.worldPos.x, pointerData.worldPos.z);
+              newItem.mesh.position.set(pointerData.worldPos.x, pointerData.worldPos.y + 0.8, pointerData.worldPos.z);
             }
           }
           if (pointerData.mesh) scene.remove(pointerData.mesh);
@@ -1052,6 +1357,20 @@
 
     function processActiveTools() {
       activePointers.forEach(pointerData => {
+        let meshToRotate = null;
+        if (pointerData.action === 'use_placed_tool' && pointerData.targetObj) {
+          meshToRotate = pointerData.targetObj.mesh;
+        } else if (pointerData.action === 'place_from_palette' && pointerData.mesh && ['shovel', 'bucket'].includes(pointerData.type)) {
+          meshToRotate = pointerData.mesh;
+        }
+
+        if (meshToRotate && pointerData.targetAngle !== undefined) {
+          let diff = pointerData.targetAngle - pointerData.currentAngle;
+          diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+          pointerData.currentAngle += diff * 0.18;
+          meshToRotate.rotation.y = pointerData.currentAngle;
+        }
+
         if (pointerData.action === 'use_placed_tool' && pointerData.worldPos) {
           if (pointerData.type === 'shovel') {
             applySculpting(pointerData.worldPos, -1, 10);
@@ -1062,15 +1381,24 @@
       });
     }
 
-    window.addEventListener('resize', () => {
-      const newAspect = window.innerWidth / window.innerHeight;
-      camera.left = -frustumSize / 2;
-      camera.right = frustumSize / 2;
-      camera.top = (frustumSize / newAspect) / 2;
-      camera.bottom = -(frustumSize / newAspect) / 2;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    // --- RANDOM FROG LILYPAD SPAWNER ---
+    let nextFrogSpawnTime = Date.now() + (12000 + Math.random() * 15000);
+
+    function checkFrogSpawning() {
+      if (Date.now() >= nextFrogSpawnTime) {
+        const activeFrogPads = floatingObjects.filter(o => o.type === 'frog_lilypad').length;
+        
+        if (activeFrogPads <= 2) {
+          const centerY = (NY / 2) + Math.sin(0) * (NY * 0.22);
+          const spawnZ = (centerY + (Math.random() - 0.5) * 8.0) * L;
+          spawnItem('frog_lilypad', 0.8 * L, spawnZ);
+        }
+
+        nextFrogSpawnTime = Date.now() + (20000 + Math.random() * 40000);
+      }
+    }
+
+    window.addEventListener('resize', updateCameraFrustum);
 
     // --- INITIALIZATION & WARMUP PASS ---
     for (let s = 0; s < 150; s++) {
@@ -1083,6 +1411,7 @@
       requestAnimationFrame(animate);
 
       processActiveTools();
+      checkFrogSpawning();
 
       for (let s = 0; s < 2; s++) {
         stepWaterSimulation();

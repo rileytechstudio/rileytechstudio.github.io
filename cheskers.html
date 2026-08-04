@@ -187,7 +187,7 @@
       font-size: 1.2rem;
     }
 
-    /* Centered Controls Container (Icon Button + Bot Button) */
+    /* Centered Controls Container */
     .center-controls {
       position: absolute;
       top: 50%;
@@ -226,7 +226,41 @@
       transform: scale(0.95);
     }
 
-    /* Compact Fast-Forward Bot Button Positioned Below Center Button */
+    /* Menu Center Exit Button */
+    .menu-exit-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #c0392b;
+      color: #ffffff;
+      border: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 6px 25px rgba(192, 57, 43, 0.6);
+      transition: all 0.2s ease;
+      z-index: 15;
+    }
+    .menu-exit-btn svg {
+      width: 55px;
+      height: 55px;
+      pointer-events: none;
+    }
+    .menu-exit-btn:hover {
+      background: #e74c3c;
+      transform: translate(-50%, -50%) scale(1.08);
+      box-shadow: 0 0 30px rgba(231, 76, 60, 0.8);
+    }
+    .menu-exit-btn:active {
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+
+    /* Compact Fast-Forward Bot Button */
     .bot-btn {
       padding: 6px 18px;
       background: #2c3e50;
@@ -323,6 +357,15 @@
     <div class="center-panel">
       <div id="board-wrapper" class="border-menu"></div>
 
+      <!-- Custom SVG Door & Arrow Exit Icon -->
+      <button id="menu-exit-btn" class="menu-exit-btn" onclick="exitToIndex()" title="Exit to Index">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </button>
+
       <div id="victory-overlay" class="victory-overlay" style="display: none;">
         <h2 id="victory-text">WINNER</h2>
         <button class="icon-btn" style="width: auto; height: auto; padding: 12px 30px; border-radius: 30px; font-size: 1.2rem; font-weight: 800;" onclick="resetCurrentGame()">AGAIN</button>
@@ -346,6 +389,8 @@
     };
 
     let victoryTimeout = null;
+    let idleTimer = null;
+    const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
     const CHESS_GLYPHS = {
       'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
@@ -353,9 +398,38 @@
     };
 
     function init() {
+      setupIdleTimer();
       renderSidePanels();
       renderBoard();
       updateTurnBorder();
+      updateMenuExitButton();
+    }
+
+    // --- Idle Auto-Redirect (10 Minutes) ---
+    function setupIdleTimer() {
+      const resetTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          exitToIndex();
+        }, IDLE_TIMEOUT_MS);
+      };
+
+      ['click', 'touchstart', 'mousemove', 'keydown', 'pointerdown'].forEach(evt => {
+        window.addEventListener(evt, resetTimer, { passive: true });
+      });
+
+      resetTimer();
+    }
+
+    function exitToIndex() {
+      window.location.href = 'index.html';
+    }
+
+    function updateMenuExitButton() {
+      const exitBtn = document.getElementById('menu-exit-btn');
+      if (exitBtn) {
+        exitBtn.style.display = !gameState.mode ? 'flex' : 'none';
+      }
     }
 
     function startGame(mode) {
@@ -399,6 +473,7 @@
       renderSidePanels();
       renderBoard();
       updateTurnBorder();
+      updateMenuExitButton();
     }
 
     function resetCurrentGame() {
@@ -413,6 +488,7 @@
       renderSidePanels();
       renderBoard();
       updateTurnBorder();
+      updateMenuExitButton();
     }
 
     function updateTurnBorder() {
@@ -928,7 +1004,7 @@
         victoryTimeout = setTimeout(() => {
           document.getElementById('victory-text').textContent = `${winner} WINS`;
           document.getElementById('victory-overlay').style.display = 'flex';
-        }, 1500); // 1.5 second pause to view the winning move
+        }, 1500);
       }
     }
 

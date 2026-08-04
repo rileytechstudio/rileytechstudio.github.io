@@ -351,7 +351,7 @@
             box-shadow: 0 15px 35px rgba(0,0,0,0.6);
             transform: scale(0.8);
             transition: transform 0.3s ease;
-            max-width: 380px;
+            max-width: 420px;
             width: 85%;
         }
         .modal-overlay.active .modal-card {
@@ -562,7 +562,7 @@
             </div>
         </div>
 
-        <!-- 3-Icon Victory Modal -->
+        <!-- 4-Icon Victory Modal (WITH EXIT TO HOME BUTTON) -->
         <div id="next-level-modal" class="modal-overlay">
             <div class="modal-card">
                 <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 16px;">
@@ -580,6 +580,9 @@
                     </svg>
                 </div>
                 <div class="modal-actions">
+                    <button class="icon-btn" title="Exit to Index" onclick="exitToHome()">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
                     <button class="icon-btn" title="Select Level" onclick="openLevelSelectModal()">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
                     </button>
@@ -593,7 +596,7 @@
             </div>
         </div>
 
-        <!-- Level Select Grid Modal -->
+        <!-- Level Select Grid Modal (WITH EXIT BUTTON IN HEADER) -->
         <div id="level-select-modal" class="modal-overlay">
             <div class="modal-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -601,9 +604,14 @@
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="#2ecc71"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
                         LEVELS
                     </h2>
-                    <button class="close-modal-btn" onclick="hideLevelSelectModal()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button class="close-modal-btn" title="Exit to Index" onclick="exitToHome()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        </button>
+                        <button class="close-modal-btn" title="Close Modal" onclick="hideLevelSelectModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="level-grid" id="level-grid-container"></div>
             </div>
@@ -813,6 +821,26 @@
         initAudio();
         document.getElementById('start-menu-modal').classList.remove('active');
     }
+
+    // ==========================================
+    // IDLE AUTO-REDIRECT & EXIT NAVIGATION
+    // ==========================================
+    function exitToHome() {
+        window.location.href = 'index.html';
+    }
+
+    let idleTimer = null;
+    const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+    function resetIdleTimer() {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(exitToHome, IDLE_TIMEOUT);
+    }
+
+    ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'click'].forEach(evt => {
+        window.addEventListener(evt, resetIdleTimer, { passive: true });
+    });
+    resetIdleTimer();
 
     // ==========================================
     // 1. GAME STATE & VARIABLES

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>3D Top-Down Railway Tycoon - Pre-Laid Station & Shed Tracks</title>
+    <title>3D Top-Down Railway Tycoon</title>
     <style>
         body { 
             margin: 0; 
@@ -10,99 +10,220 @@
             background-color: #87CEEB; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
+            touch-action: none;
         }
-        /* Left Sidebar Toolbar */
-        #ui-container {
+
+        /* Minimalist UI Sidebars */
+        .ui-sidebar {
             position: absolute;
             top: 50%;
-            left: 20px;
-            transform: translateY(-50%);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            background: rgba(20, 20, 20, 0.88);
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            gap: 10px;
+            background: rgba(18, 22, 28, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 12px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             color: white;
-            align-items: stretch;
+            align-items: center;
             z-index: 10;
-            min-width: 170px;
         }
+
+        /* Left Player UI */
+        #ui-container-left {
+            left: 20px;
+            transform: translateY(-50%);
+        }
+
+        /* Right Player UI (Rotated 180° for Tabletop Play) */
+        #ui-container-right {
+            right: 20px;
+            transform: translateY(-50%) rotate(180deg);
+        }
+
         .tool-btn {
-            background: #333;
-            border: 2px solid #555;
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: white;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            position: relative;
+            box-sizing: border-box;
+            touch-action: none;
         }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
         .tool-btn.active {
             background: #1E88E5;
             border-color: #64B5F6;
-            box-shadow: 0 0 8px rgba(30, 136, 229, 0.8);
+            box-shadow: 0 0 12px rgba(30, 136, 229, 0.6);
         }
-        #shed-drag-source {
-            background: #BF360C;
+
+        .tool-btn.danger:hover {
+            background: #D32F2F;
+            border-color: #FF6666;
+            box-shadow: 0 0 12px rgba(211, 47, 47, 0.6);
+        }
+
+        .shed-drag-source {
+            background: rgba(191, 54, 12, 0.35);
             border-color: #FF7043;
             cursor: grab;
-            text-align: center;
         }
-        #shed-drag-source:active {
-            cursor: grabbing;
+        .shed-drag-source:hover {
+            background: rgba(191, 54, 12, 0.7);
         }
-        #demolish-drag-source {
-            background: #C62828;
+
+        .demolish-drag-source {
+            background: rgba(198, 40, 40, 0.35);
             border-color: #EF5350;
             cursor: grab;
-            text-align: center;
         }
-        #demolish-drag-source:active {
-            cursor: grabbing;
+        .demolish-drag-source:hover {
+            background: rgba(198, 40, 40, 0.7);
         }
-        .stat-badge {
-            font-size: 13px;
-            font-weight: bold;
-            color: #FFD54F;
-            background: rgba(255, 255, 255, 0.06);
-            padding: 8px 10px;
-            border-radius: 6px;
-            text-align: left;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        #instruction-banner {
+
+        .badge-count {
             position: absolute;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.75);
+            top: -5px;
+            right: -5px;
+            background: #FF7043;
             color: white;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 14px;
-            pointer-events: none;
+            font-size: 11px;
+            font-weight: bold;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            box-sizing: border-box;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            border: 1.5px solid #12161C;
+        }
+
+        .ui-divider {
+            width: 100%;
+            border: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            margin: 2px 0;
+        }
+
+        .stat-badge {
+            width: 100%;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            padding: 0 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 13px;
+            font-weight: 600;
+            color: #E0E0E0;
+        }
+
+        .stat-badge span {
+            margin-left: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
         }
     </style>
 </head>
 <body>
-    <div id="ui-container">
-        <div class="tool-btn active">🛤️ Lay Track</div>
-        <div id="shed-drag-source" class="tool-btn" draggable="true">🌉 Drag Shed (<span id="shed-count">1</span>)</div>
-        <div id="demolish-drag-source" class="tool-btn" draggable="true">🗑️ Drag Demolish</div>
-        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.15); margin: 2px 0;">
-        <div class="stat-badge">👥 Score: <span id="score">0</span></div>
-        <div class="stat-badge">⏱️ Avg Wait: <span id="avg-wait">0.0s</span></div>
-        <div class="stat-badge">🚉 Stations: <span id="station-count">2</span>/6</div>
+    <!-- Left Player UI Sidebar -->
+    <div id="ui-container-left" class="ui-sidebar">
+        <button class="tool-btn danger btn-exit" onclick="window.location.href='index.html'" title="Exit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+
+        <hr class="ui-divider">
+
+        <div class="tool-btn active" title="Lay Track">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v18M20 3v18M4 7h16M4 12h16M4 17h16"/></svg>
+        </div>
+
+        <div class="tool-btn shed-drag-source" title="Drag Shed">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="12" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/><path d="M8 15h8"/></svg>
+            <span class="badge-count shed-count">1</span>
+        </div>
+
+        <div class="tool-btn demolish-drag-source" title="Demolish">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        </div>
+
+        <hr class="ui-divider">
+
+        <div class="stat-badge" title="Score">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="val-score">0</span>
+        </div>
+
+        <div class="stat-badge" title="Avg Wait">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="val-avg-wait">0.0s</span>
+        </div>
+
+        <div class="stat-badge" title="Stations">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h6M9 14h6M9 18h6"/></svg>
+            <span><span class="val-station-count">2</span>/6</span>
+        </div>
     </div>
 
-    <div id="instruction-banner">Stations & Sheds spawn with platform/lead tracks already attached!</div>
+    <!-- Right Player UI Sidebar (Upside Down 180°) -->
+    <div id="ui-container-right" class="ui-sidebar">
+        <button class="tool-btn danger btn-exit" onclick="window.location.href='index.html'" title="Exit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+
+        <hr class="ui-divider">
+
+        <div class="tool-btn active" title="Lay Track">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v18M20 3v18M4 7h16M4 12h16M4 17h16"/></svg>
+        </div>
+
+        <div class="tool-btn shed-drag-source" title="Drag Shed">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="12" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/><path d="M8 15h8"/></svg>
+            <span class="badge-count shed-count">1</span>
+        </div>
+
+        <div class="tool-btn demolish-drag-source" title="Demolish">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        </div>
+
+        <hr class="ui-divider">
+
+        <div class="stat-badge" title="Score">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="val-score">0</span>
+        </div>
+
+        <div class="stat-badge" title="Avg Wait">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="val-avg-wait">0.0s</span>
+        </div>
+
+        <div class="stat-badge" title="Stations">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h6M9 14h6M9 18h6"/></svg>
+            <span><span class="val-station-count">2</span>/6</span>
+        </div>
+    </div>
 
     <!-- Import Three.js -->
     <script type="module">
@@ -172,6 +293,10 @@
             if (baseDir === 'S') return { left: 'W', right: 'E' };
             if (baseDir === 'E') return { left: 'S', right: 'N' };
             if (baseDir === 'W') return { left: 'N', right: 'S' };
+        }
+
+        function updateUIStat(className, value) {
+            document.querySelectorAll('.' + className).forEach(el => el.innerText = value);
         }
 
         // 2. Scene, Overhead Camera & Lighting
@@ -356,7 +481,7 @@
                         const r1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.08), railMat);
                         const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.08), railMat);
                         r1.position.set(d.dx * 0.25, 0.08, 0.25);
-                        r1.position.set(d.dx * 0.25, 0.08, -0.25);
+                        r2.position.set(d.dx * 0.25, 0.08, -0.25);
                         group.add(r1, r2);
                     }
                 });
@@ -858,7 +983,7 @@
             }
         }
 
-        let shedCount = 1; // Starts with 1 Shed
+        let shedCount = 1;
 
         function placeCoveredBridgeShed(centerX, centerZ) {
             const info = getShedOrientationAndValidity(centerX, centerZ);
@@ -884,7 +1009,6 @@
                 {x: centerX + 2, z: centerZ}
             ];
 
-            // Clear existing trees on shed & lead tiles
             [...shedTiles, ...leadTiles].forEach(t => {
                 const k = getKey(t.x, t.z);
                 if (worldObjects.has(k)) {
@@ -917,7 +1041,6 @@
                 trainSpawned: false
             };
 
-            // Register 3 internal bridge tracks
             shedTiles.forEach(t => {
                 const k = getKey(t.x, t.z);
                 const conn = isVertical ? new Set(['N', 'S']) : new Set(['E', 'W']);
@@ -932,7 +1055,6 @@
 
             bridges.push(bridgeData);
 
-            // Lay 2 regular lead tracks extending from both ends
             const primaryDirs = isVertical ? ['N', 'S'] : ['E', 'W'];
             leadTiles.forEach(lt => {
                 const key = getKey(lt.x, lt.z);
@@ -1021,7 +1143,6 @@
             const isVerticalAxis = (station.rotIndex === 0 || station.rotIndex === 2);
             const primaryDirs = isVerticalAxis ? ['N', 'S'] : ['E', 'W'];
 
-            // Clear any trees on openSideTiles
             for (let tile of station.openSideTiles) {
                 const key = getKey(tile.x, tile.z);
                 const existing = worldObjects.get(key);
@@ -1032,7 +1153,6 @@
                 }
             }
 
-            // Lay tracks along the open platform side
             for (let tile of station.openSideTiles) {
                 const key = getKey(tile.x, tile.z);
                 let existing = worldObjects.get(key);
@@ -1072,12 +1192,12 @@
                 let rotIndex;
 
                 if (isTall) {
-                    if (rx > 0) rotIndex = 0;      // Platform faces West (towards x=0)
-                    else if (rx < 0) rotIndex = 2; // Platform faces East (towards x=0)
+                    if (rx > 0) rotIndex = 0;      // Platform faces West
+                    else if (rx < 0) rotIndex = 2; // Platform faces East
                     else rotIndex = Math.random() < 0.5 ? 0 : 2;
                 } else {
-                    if (rz > 0) rotIndex = 3;      // Platform faces North (towards z=0)
-                    else if (rz < 0) rotIndex = 1; // Platform faces South (towards z=0)
+                    if (rz > 0) rotIndex = 3;      // Platform faces North
+                    else if (rz < 0) rotIndex = 1; // Platform faces South
                     else rotIndex = Math.random() < 0.5 ? 1 : 3;
                 }
 
@@ -1101,7 +1221,7 @@
                 let tooClose = false;
                 for (let s of stations) {
                     const distSq = (rx - s.x) * (rx - s.x) + (rz - s.z) * (rz - s.z);
-                    if (distSq < 64) { // 8^2 = 64
+                    if (distSq < 64) {
                         tooClose = true;
                         break;
                     }
@@ -1142,23 +1262,20 @@
                 stations.push(station);
                 placed = true;
 
-                // Automatically lay 2 platform tracks along the station open side
                 layStationPlatformTracks(station);
 
-                document.getElementById('station-count').innerText = stations.length;
+                updateUIStat('val-station-count', stations.length);
 
-                // Grant 2nd Train Shed on 3rd station unlock
                 if (stations.length === 3 && !grantedThirdStationShed) {
                     grantedThirdStationShed = true;
                     shedCount++;
-                    document.getElementById('shed-count').innerText = shedCount;
+                    updateUIStat('shed-count', shedCount);
                 }
 
-                // Grant 3rd Train Shed on 5th station unlock
                 if (stations.length === 5 && !grantedFifthStationShed) {
                     grantedFifthStationShed = true;
                     shedCount++;
-                    document.getElementById('shed-count').innerText = shedCount;
+                    updateUIStat('shed-count', shedCount);
                 }
             }
         }
@@ -1404,9 +1521,8 @@
                             disposeObject(p.mesh);
                             train.passengers.splice(passIdx, 1);
                             score++;
-                            document.getElementById('score').innerText = score;
+                            updateUIStat('val-score', score);
 
-                            // Re-align remaining onboard passengers inside train cars
                             train.passengers.forEach((pObj, idx) => {
                                 const targetCarGroup = (idx < 3) ? train.car1 : train.car2;
                                 if (pObj.mesh.parent !== targetCarGroup) {
@@ -1635,7 +1751,7 @@
             }
         }
 
-        // Head-On Collision Handler (Close Proximity)
+        // Head-On Collision Handler: Randomly select ONLY ONE train to reverse direction
         function checkTrainCollisions() {
             for (let i = 0; i < trains.length; i++) {
                 for (let j = i + 1; j < trains.length; j++) {
@@ -1648,8 +1764,11 @@
                     const p2 = t2.locomotive.position;
 
                     if (p1.distanceTo(p2) < 0.75) {
-                        reverseTrain(t1);
-                        reverseTrain(t2);
+                        const chosen = Math.random() < 0.5 ? t1 : t2;
+                        const other = (chosen === t1) ? t2 : t1;
+
+                        reverseTrain(chosen);
+                        other.pauseTimer = 1.2;
                     }
                 }
             }
@@ -1659,46 +1778,48 @@
         spawnRandomStation();
         spawnRandomStation();
 
-        // 11. Wiggle-Proof Track Laying & Drag/Drop Mechanics
-        let isMouseDown = false;
-        let dragPath = [];
-        let dragTileMap = new Map();
+        // 11. Multi-Touch System & Interactive Tool Handlers
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const intersectPoint = new THREE.Vector3();
 
-        function getTileSnapshot(x, z) {
-            const key = getKey(x, z);
-            const obj = worldObjects.get(key);
-            if (!obj) return null;
-            if (obj.type === 'tree') return { type: 'tree', group: obj.group };
-            if (obj.type === 'track') {
+        function getGridPosFromCoords(clientX, clientY) {
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            if (raycaster.ray.intersectPlane(groundPlane, intersectPoint)) {
                 return {
-                    type: 'track',
-                    x: obj.x,
-                    z: obj.z,
-                    connections: new Set(obj.connections),
-                    switchIndex: obj.switchIndex
+                    x: Math.round(intersectPoint.x),
+                    z: Math.round(intersectPoint.z)
                 };
             }
-            if (obj.type === 'bridge_track') {
-                return {
-                    type: 'bridge_track',
-                    x: obj.x,
-                    z: obj.z,
-                    connections: new Set(obj.connections),
-                    bridgeRef: obj.bridgeRef
-                };
-            }
-            return { type: obj.type, obj: obj };
+            return null;
         }
 
-        function recordTileSnapshot(x, z) {
+        function getGridPos(e) {
+            return getGridPosFromCoords(e.clientX, e.clientY);
+        }
+
+        const activePointers = new Map();
+
+        function recordTileSnapshotForPointer(pointerState, x, z) {
             const key = getKey(x, z);
-            if (!dragTileMap.has(key)) {
-                dragTileMap.set(key, getTileSnapshot(x, z));
+            if (!pointerState.dragTileMap.has(key)) {
+                const obj = worldObjects.get(key);
+                let snap = null;
+                if (obj) {
+                    if (obj.type === 'tree') snap = { type: 'tree', group: obj.group };
+                    else if (obj.type === 'track') snap = { type: 'track', x: obj.x, z: obj.z, connections: new Set(obj.connections), switchIndex: obj.switchIndex };
+                    else if (obj.type === 'bridge_track') snap = { type: 'bridge_track', x: obj.x, z: obj.z, connections: new Set(obj.connections), bridgeRef: obj.bridgeRef };
+                    else snap = { type: obj.type, obj: obj };
+                }
+                pointerState.dragTileMap.set(key, snap);
             }
         }
 
-        function restoreDragTileSnapshots() {
-            for (let [key, snap] of dragTileMap.entries()) {
+        function restoreSnapshotsForPointer(pointerState) {
+            for (let [key, snap] of pointerState.dragTileMap.entries()) {
                 const current = worldObjects.get(key);
                 if (snap === null) {
                     if (current && current.type === 'track') {
@@ -1785,13 +1906,14 @@
             }
         }
 
-        function applyDragPath() {
-            restoreDragTileSnapshots();
+        function applyDragPathForPointer(pointerState) {
+            restoreSnapshotsForPointer(pointerState);
 
+            const dragPath = pointerState.dragPath;
             if (dragPath.length === 1) {
                 const P0 = dragPath[0];
                 const key0 = getKey(P0.x, P0.z);
-                const snap0 = dragTileMap.get(key0);
+                const snap0 = pointerState.dragTileMap.get(key0);
 
                 if (snap0 === null || snap0.type === 'tree') {
                     if (snap0 && snap0.type === 'tree') {
@@ -1829,8 +1951,8 @@
             }
         }
 
-        function handleTrackDrag(targetGridPos) {
-            if (!isMouseDown || dragPath.length === 0) return;
+        function handlePointerTrackDrag(pointerState, targetGridPos) {
+            const dragPath = pointerState.dragPath;
             if (!isValidBuildBounds(targetGridPos)) return;
 
             let lastP = dragPath[dragPath.length - 1];
@@ -1870,141 +1992,113 @@
                     }
                 }
 
-                recordTileSnapshot(nextX, nextZ);
+                recordTileSnapshotForPointer(pointerState, nextX, nextZ);
                 dragPath.push({ x: nextX, z: nextZ });
 
                 currX = nextX;
                 currZ = nextZ;
             }
 
-            applyDragPath();
+            applyDragPathForPointer(pointerState);
         }
 
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        const intersectPoint = new THREE.Vector3();
-
-        function getGridPos(e) {
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            if (raycaster.ray.intersectPlane(groundPlane, intersectPoint)) {
-                return {
-                    x: Math.round(intersectPoint.x),
-                    z: Math.round(intersectPoint.z)
-                };
-            }
-            return null;
-        }
-
-        // Drag and Drop Tool Listeners
-        const shedDragSource = document.getElementById('shed-drag-source');
-        const demolishDragSource = document.getElementById('demolish-drag-source');
-
-        let activeDragType = null;
-
-        const blankDragImg = new Image();
-        blankDragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
-        shedDragSource.addEventListener('dragstart', (e) => {
-            if (shedCount <= 0) {
+        // Bind Pointer Events to UI Buttons
+        document.querySelectorAll('.shed-drag-source').forEach(btn => {
+            btn.addEventListener('pointerdown', (e) => {
+                if (shedCount <= 0) return;
                 e.preventDefault();
+                e.stopPropagation();
+                activePointers.set(e.pointerId, {
+                    tool: 'shed',
+                    pointerId: e.pointerId
+                });
+                updateGhostMesh(e);
+            });
+        });
+
+        document.querySelectorAll('.demolish-drag-source').forEach(btn => {
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                activePointers.set(e.pointerId, {
+                    tool: 'demolish',
+                    pointerId: e.pointerId
+                });
+                updateDemolishGhostMesh(e);
+            });
+        });
+
+        window.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.ui-sidebar')) return;
+            const gridPos = getGridPos(e);
+
+            if (e.button === 2 && gridPos) {
+                removeObjectAt(gridPos.x, gridPos.z);
                 return;
             }
-            activeDragType = 'shed';
-            e.dataTransfer.setData('text/plain', 'shed');
-            e.dataTransfer.setDragImage(blankDragImg, 0, 0);
+
+            if (gridPos && isValidBuildBounds(gridPos)) {
+                const pointerState = {
+                    tool: 'track',
+                    pointerId: e.pointerId,
+                    dragPath: [{ x: gridPos.x, z: gridPos.z }],
+                    dragTileMap: new Map()
+                };
+                recordTileSnapshotForPointer(pointerState, gridPos.x, gridPos.z);
+                activePointers.set(e.pointerId, pointerState);
+                applyDragPathForPointer(pointerState);
+            }
         });
 
-        demolishDragSource.addEventListener('dragstart', (e) => {
-            activeDragType = 'demolish';
-            e.dataTransfer.setData('text/plain', 'demolish');
-            e.dataTransfer.setDragImage(blankDragImg, 0, 0);
-        });
+        window.addEventListener('pointermove', (e) => {
+            if (!activePointers.has(e.pointerId)) return;
+            const pState = activePointers.get(e.pointerId);
 
-        window.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (activeDragType === 'shed') {
+            if (pState.tool === 'shed') {
                 updateGhostMesh(e);
-                demolishGhostMesh.visible = false;
-            } else if (activeDragType === 'demolish') {
+            } else if (pState.tool === 'demolish') {
                 updateDemolishGhostMesh(e);
-                ghostMesh.visible = false;
+            } else if (pState.tool === 'track') {
+                const gridPos = getGridPos(e);
+                if (gridPos) {
+                    handlePointerTrackDrag(pState, gridPos);
+                }
             }
         });
 
-        function clearDragGhosts() {
-            ghostMesh.visible = false;
-            demolishGhostMesh.visible = false;
-            activeDragType = null;
-        }
-
-        window.addEventListener('dragleave', (e) => {
-            if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
-                clearDragGhosts();
-            }
-        });
-
-        shedDragSource.addEventListener('dragend', clearDragGhosts);
-        demolishDragSource.addEventListener('dragend', clearDragGhosts);
-
-        window.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const dragType = e.dataTransfer.getData('text/plain') || activeDragType;
-            clearDragGhosts();
+        function handlePointerUp(e) {
+            if (!activePointers.has(e.pointerId)) return;
+            const pState = activePointers.get(e.pointerId);
 
             const gridPos = getGridPos(e);
-            if (!gridPos) return;
 
-            if (dragType === 'shed' && shedCount > 0) {
+            if (pState.tool === 'shed' && gridPos && shedCount > 0) {
                 if (placeCoveredBridgeShed(gridPos.x, gridPos.z)) {
                     shedCount--;
-                    document.getElementById('shed-count').innerText = shedCount;
+                    updateUIStat('shed-count', shedCount);
                 }
-            } else if (dragType === 'demolish') {
+            } else if (pState.tool === 'demolish' && gridPos) {
                 const key = getKey(gridPos.x, gridPos.z);
                 const obj = worldObjects.get(key);
                 if (obj && obj.type === 'track') {
                     removeObjectAt(gridPos.x, gridPos.z);
                 }
             }
-        });
 
-        // Mouse click and drag track laying handlers
-        window.addEventListener('mousedown', (e) => {
-            if (e.target.tagName === 'BUTTON' || e.target.closest('#ui-container')) return;
-            const gridPos = getGridPos(e);
+            activePointers.delete(e.pointerId);
 
-            if (e.button === 2) { // Right click quick erase
-                if (gridPos) removeObjectAt(gridPos.x, gridPos.z);
-                return;
+            let hasShed = false;
+            let hasDemolish = false;
+            for (let state of activePointers.values()) {
+                if (state.tool === 'shed') hasShed = true;
+                if (state.tool === 'demolish') hasDemolish = true;
             }
+            if (!hasShed) ghostMesh.visible = false;
+            if (!hasDemolish) demolishGhostMesh.visible = false;
+        }
 
-            if (e.button === 0 && gridPos && isValidBuildBounds(gridPos)) {
-                isMouseDown = true;
-                dragPath = [{ x: gridPos.x, z: gridPos.z }];
-                dragTileMap = new Map();
-                recordTileSnapshot(gridPos.x, gridPos.z);
-                applyDragPath();
-            }
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (isMouseDown && dragPath.length > 0) {
-                const gridPos = getGridPos(e);
-                if (gridPos && isValidBuildBounds(gridPos)) {
-                    handleTrackDrag(gridPos);
-                }
-            }
-        });
-
-        window.addEventListener('mouseup', () => {
-            isMouseDown = false;
-            dragPath = [];
-            dragTileMap.clear();
-        });
-
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
         window.addEventListener('contextmenu', (e) => e.preventDefault());
 
         // 12. Simulation Loop & Real-Time Waiting Passenger Analytics
@@ -2032,7 +2126,7 @@
             });
 
             rollingAvgWait = totalWaitingCount > 0 ? (totalCurrentWait / totalWaitingCount) : 0;
-            document.getElementById('avg-wait').innerText = rollingAvgWait.toFixed(1) + 's';
+            updateUIStat('val-avg-wait', rollingAvgWait.toFixed(1) + 's');
 
             if (stationCheckTimer > 18 && stations.length < 6) {
                 stationCheckTimer = 0;
@@ -2059,6 +2153,23 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // 13. Idle Timeout System (10 Minutes)
+        const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+        let idleTimer = null;
+
+        function resetIdleTimer() {
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => {
+                window.location.href = 'index.html';
+            }, IDLE_TIMEOUT_MS);
+        }
+
+        ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+            window.addEventListener(evt, resetIdleTimer, { passive: true });
+        });
+
+        resetIdleTimer();
 
         animate();
     </script>
