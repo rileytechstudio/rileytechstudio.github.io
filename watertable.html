@@ -198,6 +198,15 @@
           <path d="M7 5l4 6 8-2M11 11l-3 8M11 11l8 6" stroke="#455a64" stroke-width="1.2" stroke-linejoin="round"/>
         </svg>
       </div>
+
+      <div class="draggable-card" data-type="fish_flakes">
+        <svg width="34" height="32" viewBox="0 0 24 24" fill="none">
+          <rect x="4" y="6" width="6" height="6" fill="#ff7043" rx="1" transform="rotate(12 7 9)"/>
+          <rect x="13" y="4" width="7" height="7" fill="#ffd54f" rx="1" transform="rotate(-8 16 7)"/>
+          <rect x="8" y="14" width="6" height="6" fill="#ff8a65" rx="1" transform="rotate(25 11 17)"/>
+          <rect x="15" y="13" width="5" height="5" fill="#ffa726" rx="1" transform="rotate(-15 17 15)"/>
+        </svg>
+      </div>
     </div>
   </div>
 
@@ -262,6 +271,15 @@
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
           <path d="M6 18l-3-6 4-7 8-2 6 5 1 8-5 4-8-1-3-1z" fill="#78909c" stroke="#37474f" stroke-width="1.8" stroke-linejoin="round"/>
           <path d="M7 5l4 6 8-2M11 11l-3 8M11 11l8 6" stroke="#455a64" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="draggable-card" data-type="fish_flakes">
+        <svg width="34" height="32" viewBox="0 0 24 24" fill="none">
+          <rect x="4" y="6" width="6" height="6" fill="#ff7043" rx="1" transform="rotate(12 7 9)"/>
+          <rect x="13" y="4" width="7" height="7" fill="#ffd54f" rx="1" transform="rotate(-8 16 7)"/>
+          <rect x="8" y="14" width="6" height="6" fill="#ff8a65" rx="1" transform="rotate(25 11 17)"/>
+          <rect x="15" y="13" width="5" height="5" fill="#ffa726" rx="1" transform="rotate(-15 17 15)"/>
         </svg>
       </div>
     </div>
@@ -467,6 +485,9 @@
     waterGeo.rotateX(-Math.PI / 2);
     waterGeo.translate(worldWidth / 2, 0, worldHeight / 2);
 
+    const waterDepthAttribute = new Float32Array(size);
+    waterGeo.setAttribute('waterDepth', new THREE.BufferAttribute(waterDepthAttribute, 1));
+
     const waterMat = new THREE.MeshPhysicalMaterial({
       color: 0x29b6f6,
       transparent: true,
@@ -476,6 +497,33 @@
       transmission: 0.3,
       flatShading: false
     });
+
+    waterMat.onBeforeCompile = (shader) => {
+      shader.vertexShader = `
+        attribute float waterDepth;
+        varying float vWaterDepth;
+        ${shader.vertexShader}
+      `.replace(
+        '#include <begin_vertex>',
+        `
+        #include <begin_vertex>
+        vWaterDepth = waterDepth;
+        `
+      );
+
+      shader.fragmentShader = `
+        varying float vWaterDepth;
+        ${shader.fragmentShader}
+      `.replace(
+        '#include <dithering_fragment>',
+        `
+        #include <dithering_fragment>
+        float shoreEdgeAlpha = smoothstep(0.001, 0.08, vWaterDepth);
+        gl_FragColor.a *= shoreEdgeAlpha;
+        `
+      );
+    };
+
     const waterMesh = new THREE.Mesh(waterGeo, waterMat);
     waterMesh.receiveShadow = true;
     scene.add(waterMesh);
@@ -503,6 +551,231 @@
     );
     drainOutlet.position.set(worldWidth + extWidth + 0.15, 0.4, worldHeight / 2);
     scene.add(drainOutlet);
+
+    // --- WATER SPLASH SYSTEM ---
+    const visualSplashRipples = [];
+
+    function createSplashEffect(x, y, z) {
+      const splashGroup = new THREE.Group();
+      splashGroup.position.set(x, y, z);
+
+      const ringGeo = new THREE.RingGeometry(0.05, 0.12, 16);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xe0f7fa, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+
+      const ringMesh2 = ringMesh.clone();
+      ringMesh2.scale.set(0.5, 0.5, 0.5);
+
+      splashGroup.add(ringMesh, ringMesh2);
+
+      const droplets = [];
+      const dropMat = new THREE.MeshBasicMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.95 });
+      const dropGeo = new THREE.SphereGeometry(0.022, 4, 4);
+
+      for (let dIdx = 0; dIdx < 7; dIdx++) {
+        const drop = new THREE.Mesh(dropGeo, dropMat);
+        const angle = (dIdx / 7) * Math.PI * 2;
+        const spd = 0.35 + Math.random() * 0.45;
+        drop.userData = {
+          vx: Math.cos(angle) * spd,
+          vy: 1.2 + Math.random() * 0.8,
+          vz: Math.sin(angle) * spd
+        };
+        splashGroup.add(drop);
+        droplets.push(drop);
+      }
+
+      scene.add(splashGroup);
+
+      visualSplashRipples.push({
+        group: splashGroup,
+        ring1: ringMesh,
+        ring2: ringMesh2,
+        droplets: droplets,
+        age: 0,
+        maxAge: 0.75
+      });
+    }
+
+    function updateSplashEffects() {
+      for (let i = visualSplashRipples.length - 1; i >= 0; i--) {
+        const splash = visualSplashRipples[i];
+        splash.age += DT;
+
+        const progress = splash.age / splash.maxAge;
+        const fade = Math.max(0, 1.0 - progress);
+
+        const s1 = 1.0 + progress * 7.5;
+        splash.ring1.scale.set(s1, s1, s1);
+        splash.ring1.material.opacity = fade * 0.85;
+
+        const s2 = 0.5 + progress * 5.0;
+        splash.ring2.scale.set(s2, s2, s2);
+        splash.ring2.material.opacity = fade * 0.95;
+
+        splash.droplets.forEach(drop => {
+          drop.position.x += drop.userData.vx * DT;
+          drop.position.y += drop.userData.vy * DT;
+          drop.position.z += drop.userData.vz * DT;
+
+          drop.userData.vy -= 9.8 * DT;
+          drop.material.opacity = fade;
+        });
+
+        if (splash.age >= splash.maxAge) {
+          scene.remove(splash.group);
+          visualSplashRipples.splice(i, 1);
+        }
+      }
+    }
+
+    // --- WATER TOUCH INTERACTION DISTURBANCE ---
+    function addWaterDisturbance(worldX, worldZ, amount = 0.15, radius = 5) {
+      const centerGridX = worldX / L;
+      const centerGridY = worldZ / L;
+
+      const rCells = Math.ceil(radius);
+      const minX = Math.max(1, Math.floor(centerGridX - rCells));
+      const maxX = Math.min(NX - 2, Math.ceil(centerGridX + rCells));
+      const minY = Math.max(1, Math.floor(centerGridY - rCells));
+      const maxY = Math.min(NY - 2, Math.ceil(centerGridY + rCells));
+
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const dx = x - centerGridX;
+          const dy = y - centerGridY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < radius) {
+            const i = idx(x, y);
+            if (d[i] > 0.02) {
+              const falloff = 0.5 * (1 + Math.cos((dist / radius) * Math.PI));
+              d[i] += amount * falloff;
+            }
+          }
+        }
+      }
+
+      splashEvents.push({
+        x: worldX,
+        z: worldZ,
+        radius: 3.5,
+        duration: 0.8
+      });
+    }
+
+    // --- FISH FLAKES SYSTEM (50% LARGER, SQUARE PLANES, 6-8 PER BATCH) ---
+    const activeFlakes = [];
+
+    function createSingleSquareFlakeMesh(colorHex) {
+      // 50% larger square plane geometry (0.084 x 0.084)
+      const geo = new THREE.PlaneGeometry(0.084, 0.084);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshStandardMaterial({ 
+        color: colorHex, 
+        roughness: 0.4, 
+        side: THREE.DoubleSide 
+      });
+      return new THREE.Mesh(geo, mat);
+    }
+
+    function createFlakeClusterMesh() {
+      const group = new THREE.Group();
+      const colors = [0xff7043, 0xffa726, 0xffd54f, 0xff8a65];
+      // Batch of 6-8 flakes per drag & drop
+      const flakeCount = 6 + Math.floor(Math.random() * 3);
+
+      for (let f = 0; f < flakeCount; f++) {
+        const col = colors[Math.floor(Math.random() * colors.length)];
+        const mesh = createSingleSquareFlakeMesh(col);
+
+        // Increased spawn spread by 40%
+        mesh.position.set(
+          (Math.random() - 0.5) * 0.45,
+          0.005,
+          (Math.random() - 0.5) * 0.45
+        );
+        mesh.rotation.y = Math.random() * Math.PI * 2;
+        group.add(mesh);
+      }
+      return group;
+    }
+
+    function spawnFishFlakes(worldX, worldZ) {
+      const colors = [0xff7043, 0xffa726, 0xffd54f, 0xff8a65];
+      // Batch of 6-8 flakes per drop
+      const flakeCount = 6 + Math.floor(Math.random() * 3);
+
+      for (let f = 0; f < flakeCount; f++) {
+        const col = colors[Math.floor(Math.random() * colors.length)];
+        const mesh = createSingleSquareFlakeMesh(col);
+        scene.add(mesh);
+
+        // Increased spawn spread by 40%
+        const flakeX = worldX + (Math.random() - 0.5) * 0.45;
+        const flakeZ = worldZ + (Math.random() - 0.5) * 0.45;
+
+        activeFlakes.push({
+          mesh: mesh,
+          x: flakeX,
+          z: flakeZ,
+          vx: (Math.random() - 0.5) * 0.05,
+          vz: (Math.random() - 0.5) * 0.05
+        });
+      }
+    }
+
+    function updateFishFlakes() {
+      for (let f = activeFlakes.length - 1; f >= 0; f--) {
+        const flake = activeFlakes[f];
+
+        const gx = Math.min(NX - 1, Math.max(0, Math.floor(flake.x / L)));
+        const gy = Math.min(NY - 1, Math.max(0, Math.floor(flake.z / L)));
+        const i = idx(gx, gy);
+
+        const currentDepth = d[i];
+
+        if (currentDepth <= 0.005) {
+          scene.remove(flake.mesh);
+          activeFlakes.splice(f, 1);
+          continue;
+        }
+
+        let flowVx = Vx[i];
+        let flowVy = Vy[i];
+
+        const dR = (gx < NX - 1) ? d[idx(gx + 1, gy)] : 0;
+        const dL = (gx > 0)      ? d[idx(gx - 1, gy)] : 0;
+        const dU = (gy < NY - 1) ? d[idx(gx, gy + 1)] : 0;
+        const dD = (gy > 0)      ? d[idx(gx, gy - 1)] : 0;
+
+        let edgeRepelX = 0;
+        let edgeRepelZ = 0;
+
+        if (dL < 0.03) edgeRepelX += 0.25;
+        if (dR < 0.03) edgeRepelX -= 0.25;
+        if (dD < 0.03) edgeRepelZ += 0.25;
+        if (dU < 0.03) edgeRepelZ -= 0.25;
+
+        flake.vx += (flowVx * 0.8 + edgeRepelX) * DT * 8.0;
+        flake.vz += (flowVy * 0.8 + edgeRepelZ) * DT * 8.0;
+
+        flake.vx *= 0.90;
+        flake.vz *= 0.90;
+
+        flake.x += flake.vx * DT;
+        flake.z += flake.vz * DT;
+
+        const surfaceY = T[i] + currentDepth + 0.01;
+        flake.mesh.position.set(flake.x, surfaceY, flake.z);
+
+        if (flake.x > worldWidth + 1.0) {
+          scene.remove(flake.mesh);
+          activeFlakes.splice(f, 1);
+        }
+      }
+    }
 
     // --- CUSTOM ORIGAMI PAPER BOAT GEOMETRY ---
     function createPaperBoatGeometry() {
@@ -535,6 +808,405 @@
       return geo;
     }
 
+    // --- REVERTED PURE CONICAL BOID FISH SYSTEM WITH HOPPY WIGGLE ---
+    const activeFish = [];
+    const splashEvents = [];
+    const FISH_MIN_DEPTH = 0.12;
+
+    const BOID_SEPARATION_DIST = 0.65;
+    const BOID_NEIGHBOR_RADIUS = 2.0;
+    const WEIGHT_TARGET = 0.60;
+    const WEIGHT_SEPARATION = 0.90;
+    const WEIGHT_ALIGNMENT = 0.35;
+    const WEIGHT_COHESION = 0.30;
+    const BOAT_AVOID_RADIUS = 2.2;
+    const DUCK_ATTRACT_RADIUS = 3.2;
+
+    const FLAKE_ATTRACT_RADIUS = 4.5;
+    const FLAKE_EAT_RADIUS = 0.32;
+    const FISH_FEED_COOLDOWN = 2.0;
+
+    function createFishMesh() {
+      const fishGeo = new THREE.ConeGeometry(0.045, 0.22, 6);
+      fishGeo.rotateX(Math.PI / 2);
+
+      const fishColor = (Math.random() > 0.4) ? 0x2e7d32 : 0x1b5e20;
+      const fishMat = new THREE.MeshStandardMaterial({ color: fishColor, roughness: 0.35 });
+      const mesh = new THREE.Mesh(fishGeo, fishMat);
+
+      mesh.scale.set(1.15, 1.15, 1.15);
+
+      const fishContainer = new THREE.Group();
+      fishContainer.add(mesh);
+
+      return {
+        container: fishContainer,
+        bodyMesh: mesh
+      };
+    }
+
+    function spawnFish() {
+      const validPoints = [];
+      for (let y = 5; y < NY - 5; y += 2) {
+        const i = idx(2, y);
+        if (d[i] >= FISH_MIN_DEPTH) {
+          validPoints.push(y);
+        }
+      }
+
+      if (validPoints.length === 0) return;
+
+      const spawnY = validPoints[Math.floor(Math.random() * validPoints.length)];
+      const startX = -0.5;
+      const startZ = spawnY * L;
+
+      const { container, bodyMesh } = createFishMesh();
+      container.position.set(startX, 0.2, startZ);
+      scene.add(container);
+
+      activeFish.push({
+        container: container,
+        bodyMesh: bodyMesh,
+        x: startX,
+        z: startZ,
+        targetX: 2 * L,
+        targetZ: startZ,
+        vx: 0,
+        vz: 0,
+        heading: 0,
+        state: 'swimming',
+        flopTimer: 0,
+        frightTimer: 0,
+        feedCooldown: 0,
+        hopTargetX: null,
+        hopTargetZ: null,
+        swimSpeed: 0.35 + Math.random() * 0.25
+      });
+    }
+
+    function findDeepWaterTarget(currentGridX, currentGridY) {
+      const candidates = [];
+      const searchRadius = 25;
+
+      const minGX = Math.max(2, currentGridX - searchRadius);
+      const maxGX = Math.min(NX - 3, currentGridX + searchRadius);
+      const minGY = Math.max(2, currentGridY - searchRadius);
+      const maxGY = Math.min(NY - 3, currentGridY + searchRadius);
+
+      for (let gy = minGY; gy <= maxGY; gy += 2) {
+        for (let gx = minGX; gx <= maxGX; gx += 2) {
+          const i = idx(gx, gy);
+          if (d[i] >= FISH_MIN_DEPTH) {
+            candidates.push({ x: gx * L, z: gy * L });
+          }
+        }
+      }
+
+      if (candidates.length > 0) {
+        return candidates[Math.floor(Math.random() * candidates.length)];
+      }
+      return null;
+    }
+
+    function updateFish() {
+      for (let s = splashEvents.length - 1; s >= 0; s--) {
+        splashEvents[s].duration -= DT;
+        if (splashEvents[s].duration <= 0) {
+          splashEvents.splice(s, 1);
+        }
+      }
+
+      for (let k = activeFish.length - 1; k >= 0; k--) {
+        const fish = activeFish[k];
+        const gx = Math.min(NX - 1, Math.max(0, Math.floor(fish.x / L)));
+        const gy = Math.min(NY - 1, Math.max(0, Math.floor(fish.z / L)));
+        const i = idx(gx, gy);
+
+        const currentDepth = d[i];
+        const currentFlowVx = Vx[i];
+        const currentFlowVy = Vy[i];
+
+        if (fish.feedCooldown > 0) {
+          fish.feedCooldown -= DT;
+        }
+
+        // --- STATE 1: STRANDED / HOPPY WIGGLE TOWARD WATER ---
+        if (currentDepth < 0.02) {
+          if (fish.state !== 'flopping') {
+            fish.state = 'flopping';
+            fish.flopTimer = 0;
+
+            const escapeTarget = findDeepWaterTarget(gx, gy);
+            if (escapeTarget) {
+              fish.hopTargetX = escapeTarget.x;
+              fish.hopTargetZ = escapeTarget.z;
+            } else {
+              fish.hopTargetX = fish.x + (Math.random() - 0.5) * 1.5;
+              fish.hopTargetZ = fish.z + (Math.random() - 0.5) * 1.5;
+            }
+          }
+
+          fish.flopTimer += DT;
+
+          const hopCycle = (fish.flopTimer * 12.0) % (Math.PI * 2);
+          const hopHeight = Math.max(0, Math.sin(hopCycle)) * 0.14;
+          const groundY = TSmooth[i] || T[i];
+
+          if (fish.hopTargetX !== null && fish.hopTargetZ !== null) {
+            let dirX = fish.hopTargetX - fish.x;
+            let dirZ = fish.hopTargetZ - fish.z;
+            const dirLen = Math.hypot(dirX, dirZ);
+
+            if (dirLen > 0.05) {
+              dirX /= dirLen;
+              dirZ /= dirLen;
+
+              const hopProgress = Math.max(0, Math.sin(hopCycle));
+              fish.x += dirX * hopProgress * DT * 0.6;
+              fish.z += dirZ * hopProgress * DT * 0.6;
+
+              const hopAngle = Math.atan2(dirZ, dirX);
+              let diff = hopAngle - fish.heading;
+              diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+              fish.heading += diff * 0.25;
+              fish.container.rotation.y = -fish.heading + Math.PI / 2;
+            }
+          }
+
+          fish.container.position.set(fish.x, groundY + hopHeight, fish.z);
+
+          fish.bodyMesh.rotation.z = Math.sin(fish.flopTimer * 28.0) * 0.7;
+          fish.bodyMesh.rotation.x = Math.cos(fish.flopTimer * 24.0) * 0.4;
+
+          if (fish.flopTimer >= 2.0) {
+            scene.remove(fish.container);
+            activeFish.splice(k, 1);
+          }
+          continue;
+        }
+
+        // --- STATE 2: SWIMMING / PATHFINDING WITH ENHANCED BOIDS ---
+        fish.state = 'swimming';
+        fish.hopTargetX = null;
+        fish.hopTargetZ = null;
+        fish.bodyMesh.rotation.z = 0;
+        fish.bodyMesh.rotation.x = 0;
+
+        const targetWaterY = T[i] + currentDepth * 0.45;
+        fish.container.position.y += (targetWaterY - fish.container.position.y) * 0.15;
+
+        // Fish Flake Attraction & Feeding Logic
+        let nearestFlake = null;
+        let minDistToFlake = FLAKE_ATTRACT_RADIUS;
+
+        for (let fIdx = activeFlakes.length - 1; fIdx >= 0; fIdx--) {
+          const flake = activeFlakes[fIdx];
+          const distF = Math.hypot(flake.x - fish.x, flake.z - fish.z);
+
+          if (distF < FLAKE_EAT_RADIUS && fish.feedCooldown <= 0) {
+            scene.remove(flake.mesh);
+            activeFlakes.splice(fIdx, 1);
+            fish.feedCooldown = FISH_FEED_COOLDOWN;
+            continue;
+          }
+
+          if (distF < minDistToFlake && fish.feedCooldown <= 0) {
+            minDistToFlake = distF;
+            nearestFlake = flake;
+          }
+        }
+
+        let flakeSteerVx = 0;
+        let flakeSteerVz = 0;
+
+        if (nearestFlake && fish.frightTimer <= 0 && fish.feedCooldown <= 0) {
+          const dx = nearestFlake.x - fish.x;
+          const dz = nearestFlake.z - fish.z;
+          const force = (FLAKE_ATTRACT_RADIUS - minDistToFlake) / FLAKE_ATTRACT_RADIUS;
+          flakeSteerVx = (dx / minDistToFlake) * force * 2.2;
+          flakeSteerVz = (dz / minDistToFlake) * force * 2.2;
+        }
+
+        const distToTarget = Math.hypot(fish.targetX - fish.x, fish.targetZ - fish.z);
+
+        if (distToTarget < 0.3 || Math.random() < 0.008) {
+          const newTarget = findDeepWaterTarget(gx, gy);
+          if (newTarget) {
+            fish.targetX = newTarget.x;
+            fish.targetZ = newTarget.z;
+          }
+        }
+
+        let targetVx = fish.targetX - fish.x;
+        let targetVz = fish.targetZ - fish.z;
+        const targetLen = Math.hypot(targetVx, targetVz);
+
+        if (targetLen > 0.05) {
+          targetVx = (targetVx / targetLen) * fish.swimSpeed;
+          targetVz = (targetVz / targetLen) * fish.swimSpeed;
+        } else {
+          targetVx = 0;
+          targetVz = 0;
+        }
+
+        let sepVx = 0, sepVz = 0;
+        let alignVx = 0, alignVz = 0;
+        let centerx = 0, centerz = 0;
+        let neighborCount = 0;
+
+        for (let j = 0; j < activeFish.length; j++) {
+          if (j === k) continue;
+          const other = activeFish[j];
+          if (other.state !== 'swimming') continue;
+
+          const dx = fish.x - other.x;
+          const dz = fish.z - other.z;
+          const dist = Math.hypot(dx, dz);
+
+          if (dist > 0 && dist < BOID_NEIGHBOR_RADIUS) {
+            neighborCount++;
+
+            if (dist < BOID_SEPARATION_DIST) {
+              sepVx += (dx / dist) * (BOID_SEPARATION_DIST - dist);
+              sepVz += (dz / dist) * (BOID_SEPARATION_DIST - dist);
+            }
+
+            alignVx += other.vx;
+            alignVz += other.vz;
+
+            centerx += other.x;
+            centerz += other.z;
+          }
+        }
+
+        let boidVx = 0;
+        let boidVz = 0;
+
+        if (neighborCount > 0) {
+          alignVx /= neighborCount;
+          alignVz /= neighborCount;
+
+          centerx /= neighborCount;
+          centerz /= neighborCount;
+          let cohVx = centerx - fish.x;
+          let cohVz = centerz - fish.z;
+          const cohLen = Math.hypot(cohVx, cohVz);
+          if (cohLen > 0) {
+            cohVx = (cohVx / cohLen) * fish.swimSpeed;
+            cohVz = (cohVz / cohLen) * fish.swimSpeed;
+          }
+
+          boidVx = (sepVx * WEIGHT_SEPARATION) + (alignVx * WEIGHT_ALIGNMENT) + (cohVx * WEIGHT_COHESION);
+          boidVz = (sepVz * WEIGHT_SEPARATION) + (alignVz * WEIGHT_ALIGNMENT) + (cohVz * WEIGHT_COHESION);
+        }
+
+        let boatAvoidVx = 0, boatAvoidVz = 0;
+        let duckAttractVx = 0, duckAttractVz = 0;
+
+        for (let obj of floatingObjects) {
+          const dx = fish.x - obj.x;
+          const dz = fish.z - obj.z;
+          const dist = Math.hypot(dx, dz);
+
+          if (obj.type === 'boat' && dist < BOAT_AVOID_RADIUS && dist > 0) {
+            const force = (BOAT_AVOID_RADIUS - dist) / BOAT_AVOID_RADIUS;
+            boatAvoidVx += (dx / dist) * force * 1.6;
+            boatAvoidVz += (dz / dist) * force * 1.6;
+          } else if (obj.type === 'duck' && dist < DUCK_ATTRACT_RADIUS && dist > 0.4) {
+            const force = (DUCK_ATTRACT_RADIUS - dist) / DUCK_ATTRACT_RADIUS;
+            duckAttractVx -= (dx / dist) * force * 0.45;
+            duckAttractVz -= (dz / dist) * force * 0.45;
+          }
+        }
+
+        let fleeVx = 0, fleeVz = 0;
+        for (let splash of splashEvents) {
+          const dx = fish.x - splash.x;
+          const dz = fish.z - splash.z;
+          const dist = Math.hypot(dx, dz);
+
+          if (dist < splash.radius && dist > 0) {
+            fish.frightTimer = 1.4;
+            const force = (splash.radius - dist) / splash.radius;
+            fleeVx += (dx / dist) * force * 3.2;
+            fleeVz += (dz / dist) * force * 3.2;
+          }
+        }
+
+        if (fish.frightTimer > 0) {
+          fish.frightTimer -= DT;
+        }
+
+        let desiredVx = targetVx * WEIGHT_TARGET + boidVx + boatAvoidVx + duckAttractVx + flakeSteerVx + fleeVx;
+        let desiredVz = targetVz * WEIGHT_TARGET + boidVz + boatAvoidVz + duckAttractVz + flakeSteerVz + fleeVz;
+        const totalLen = Math.hypot(desiredVx, desiredVz);
+
+        const effectiveSpeed = (fish.frightTimer > 0) ? fish.swimSpeed * 2.0 : fish.swimSpeed;
+
+        if (totalLen > 0.05) {
+          desiredVx = (desiredVx / totalLen) * effectiveSpeed;
+          desiredVz = (desiredVz / totalLen) * effectiveSpeed;
+
+          fish.vx += (desiredVx - fish.vx) * (fish.frightTimer > 0 ? 0.22 : 0.08);
+          fish.vz += (desiredVz - fish.vz) * (fish.frightTimer > 0 ? 0.22 : 0.08);
+        } else {
+          fish.vx *= 0.90;
+          fish.vz *= 0.90;
+        }
+
+        const lookAheadX = fish.x + fish.vx * 0.8;
+        const lookAheadZ = fish.z + fish.vz * 0.8;
+        const laGx = Math.min(NX - 1, Math.max(0, Math.floor(lookAheadX / L)));
+        const laGy = Math.min(NY - 1, Math.max(0, Math.floor(lookAheadZ / L)));
+
+        if (d[idx(laGx, laGy)] < FISH_MIN_DEPTH) {
+          const escapeTarget = findDeepWaterTarget(gx, gy);
+          if (escapeTarget) {
+            fish.targetX = escapeTarget.x;
+            fish.targetZ = escapeTarget.z;
+          }
+        }
+
+        fish.x += fish.vx * DT;
+        fish.z += fish.vz * DT;
+
+        fish.container.position.x = fish.x;
+        fish.container.position.z = fish.z;
+
+        const actualSpeed = Math.hypot(fish.vx, fish.vz);
+
+        let targetAngle = fish.heading;
+        if (actualSpeed > 0.04) {
+          targetAngle = Math.atan2(fish.vz, fish.vx);
+        } else {
+          const currentSpeed = Math.hypot(currentFlowVx, currentFlowVy);
+          if (currentSpeed > 0.05) {
+            targetAngle = Math.atan2(-currentFlowVy, -currentFlowVx);
+          }
+        }
+
+        let angleDiff = targetAngle - fish.heading;
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        fish.heading += angleDiff * (fish.frightTimer > 0 ? 0.28 : 0.12);
+        fish.container.rotation.y = -fish.heading + Math.PI / 2;
+
+        if (fish.x > worldWidth + 0.8) {
+          scene.remove(fish.container);
+          activeFish.splice(k, 1);
+        }
+      }
+    }
+
+    let nextFishSpawnTime = Date.now() + 1000;
+    function checkFishSpawning() {
+      if (Date.now() >= nextFishSpawnTime) {
+        if (activeFish.length < 18) {
+          spawnFish();
+        }
+        nextFishSpawnTime = Date.now() + 2000 + Math.random() * 3000;
+      }
+    }
+
     // --- DYNAMIC FLOATING ITEMS SETUP ---
     const floatingObjects = [];
 
@@ -557,7 +1229,7 @@
 
     const rockGeo = new THREE.DodecahedronGeometry(0.22, 1);
 
-    // --- LILY PAD WITH FROG CREATION (10% smaller pad, 80% larger frog) ---
+    // --- ANCHORED LILY PAD WITH FROG CREATION & VISUALLY ATTACHED LEGS ---
     function createLilyPadWithFrog() {
       const group = new THREE.Group();
 
@@ -576,6 +1248,7 @@
         new THREE.SphereGeometry(0.11, 8, 8),
         new THREE.MeshStandardMaterial({ color: 0x66bb6a, roughness: 0.3 })
       );
+      frogBody.name = "frogBody";
       frogBody.scale.set(1.0, 0.65, 1.2);
       frogBody.position.y = 0.08;
       frogGroup.add(frogBody);
@@ -598,15 +1271,26 @@
 
       const legGeo = new THREE.SphereGeometry(0.05, 6, 6);
       const legMat = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
-      const leftLeg = new THREE.Mesh(legGeo, legMat);
-      leftLeg.scale.set(1.2, 0.6, 1.8);
-      leftLeg.position.set(-0.1, 0.05, -0.04);
 
-      const rightLeg = new THREE.Mesh(legGeo, legMat);
-      rightLeg.scale.set(1.2, 0.6, 1.8);
-      rightLeg.position.set(0.1, 0.05, -0.04);
+      const leftLegGroup = new THREE.Group();
+      leftLegGroup.name = "leftLegGroup";
+      leftLegGroup.position.set(-0.09, 0.05, -0.04);
 
-      frogGroup.add(leftLeg, rightLeg);
+      const leftLegMesh = new THREE.Mesh(legGeo, legMat);
+      leftLegMesh.scale.set(1.2, 0.6, 1.8);
+      leftLegMesh.position.set(0, 0, -0.05);
+      leftLegGroup.add(leftLegMesh);
+
+      const rightLegGroup = new THREE.Group();
+      rightLegGroup.name = "rightLegGroup";
+      rightLegGroup.position.set(0.09, 0.05, -0.04);
+
+      const rightLegMesh = new THREE.Mesh(legGeo, legMat);
+      rightLegMesh.scale.set(1.2, 0.6, 1.8);
+      rightLegMesh.position.set(0, 0, -0.05);
+      rightLegGroup.add(rightLegMesh);
+
+      frogGroup.add(leftLegGroup, rightLegGroup);
 
       group.add(frogGroup);
       return group;
@@ -641,7 +1325,8 @@
         isHeld: false,
         hasFrog: hasFrog,
         isFrogJumping: false,
-        jumpProgress: 0
+        jumpProgress: 0,
+        splashEmitted: false
       };
 
       floatingObjects.push(itemObj);
@@ -658,7 +1343,7 @@
         const handleMat = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.6 });
         const gripMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.4 });
         const metalMat = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.8, roughness: 0.2 });
-        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.3 }); // Red trowel blade
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.3 });
 
         const handle = new THREE.Mesh(
           new THREE.CylinderGeometry(0.045, 0.04, 0.5, 12),
@@ -724,10 +1409,13 @@
       else if (type === 'rock') {
         mesh = new THREE.Mesh(rockGeo, new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.9 }));
       }
+      else if (type === 'fish_flakes') {
+        mesh = createFlakeClusterMesh();
+      }
 
       if (mesh) {
         mesh.castShadow = true;
-        scene.add(mesh); // GUARANTEED ADD TO SCENE GRAPH
+        scene.add(mesh);
       }
       return mesh;
     }
@@ -876,6 +1564,7 @@
       const gPos = groundGeo.attributes.position;
       const gColor = groundGeo.attributes.color;
       const wPos = waterGeo.attributes.position;
+      const wDepth = waterGeo.attributes.waterDepth;
 
       for (let y = 0; y < NY; y++) {
         for (let x = 0; x < NX; x++) {
@@ -889,6 +1578,8 @@
           const c = sandColor.clone().lerp(vibrantGrassColor, blendFactor);
           gColor.setXYZ(vertexIdx, c.r, c.g, c.b);
 
+          wDepth.setX(vertexIdx, d[i]);
+
           if (d[i] > 0.001) {
             wPos.setY(vertexIdx, smoothT + d[i]);
           } else {
@@ -896,6 +1587,81 @@
           }
         }
       }
+
+      // Adaptive Ground Mesh Triangulation
+      const gIndices = groundGeo.index.array;
+      let gPtr = 0;
+
+      for (let y = 0; y < NY - 1; y++) {
+        for (let x = 0; x < NX - 1; x++) {
+          const a = idx(x, y);
+          const b = idx(x + 1, y);
+          const c = idx(x, y + 1);
+          const dCorner = idx(x + 1, y + 1);
+
+          const hA = (x > 0 && x < NX - 1 && y > 0 && y < NY - 1) ? TSmooth[a] : T[a];
+          const hB = (x + 1 > 0 && x + 1 < NX - 1 && y > 0 && y < NY - 1) ? TSmooth[b] : T[b];
+          const hC = (x > 0 && x < NX - 1 && y + 1 > 0 && y + 1 < NY - 1) ? TSmooth[c] : T[c];
+          const hD = (x + 1 > 0 && x + 1 < NX - 1 && y + 1 > 0 && y + 1 < NY - 1) ? TSmooth[dCorner] : T[dCorner];
+
+          const diffAD = Math.abs(hA - hD);
+          const diffBC = Math.abs(hB - hC);
+
+          if (diffAD < diffBC) {
+            gIndices[gPtr++] = a;
+            gIndices[gPtr++] = c;
+            gIndices[gPtr++] = dCorner;
+
+            gIndices[gPtr++] = a;
+            gIndices[gPtr++] = dCorner;
+            gIndices[gPtr++] = b;
+          } else {
+            gIndices[gPtr++] = a;
+            gIndices[gPtr++] = c;
+            gIndices[gPtr++] = b;
+
+            gIndices[gPtr++] = b;
+            gIndices[gPtr++] = c;
+            gIndices[gPtr++] = dCorner;
+          }
+        }
+      }
+      groundGeo.index.needsUpdate = true;
+
+      // Adaptive Water Mesh Triangulation
+      const indices = waterGeo.index.array;
+      let ptr = 0;
+
+      for (let y = 0; y < NY - 1; y++) {
+        for (let x = 0; x < NX - 1; x++) {
+          const a = idx(x, y);
+          const b = idx(x + 1, y);
+          const c = idx(x, y + 1);
+          const dCorner = idx(x + 1, y + 1);
+
+          const diffAD = Math.abs(d[a] - d[dCorner]);
+          const diffBC = Math.abs(d[b] - d[c]);
+
+          if (diffAD < diffBC) {
+            indices[ptr++] = a;
+            indices[ptr++] = c;
+            indices[ptr++] = dCorner;
+
+            indices[ptr++] = a;
+            indices[ptr++] = dCorner;
+            indices[ptr++] = b;
+          } else {
+            indices[ptr++] = a;
+            indices[ptr++] = c;
+            indices[ptr++] = b;
+
+            indices[ptr++] = b;
+            indices[ptr++] = c;
+            indices[ptr++] = dCorner;
+          }
+        }
+      }
+      waterGeo.index.needsUpdate = true;
 
       const extPos = waterExtGeo.attributes.position;
       for (let y = 0; y < NY; y++) {
@@ -913,6 +1679,7 @@
       gPos.needsUpdate = true;
       gColor.needsUpdate = true;
       wPos.needsUpdate = true;
+      wDepth.needsUpdate = true;
       groundGeo.computeVertexNormals();
       waterGeo.computeVertexNormals();
 
@@ -950,7 +1717,6 @@
         }
 
         if (obj.type === 'rock') {
-          // Rock sits directly on the riverbed / terrain floor
           const targetY = T[i] + 0.12;
           obj.mesh.position.y += (targetY - obj.mesh.position.y) * 0.18;
 
@@ -1054,22 +1820,61 @@
           obj.vx *= 0.92;
           obj.vz *= 0.92;
 
-          // Handle Frog Jump Animation
+          // --- FROG JUMP MOTION ENGINE WITH VISUALLY ATTACHED LEGS ---
           if (obj.isFrogJumping && obj.hasFrog) {
-            obj.jumpProgress += DT * 2.2;
+            obj.jumpProgress += DT * 1.8;
             const frogSubGroup = obj.mesh.getObjectByName('frogGroup');
             
             if (frogSubGroup) {
-              const jumpArc = Math.sin(obj.jumpProgress * Math.PI) * 0.6;
-              frogSubGroup.position.z += 0.025;
-              frogSubGroup.position.y = 0.08 + jumpArc;
+              const p = Math.min(1.0, obj.jumpProgress);
 
-              if (obj.jumpProgress > 0.6) {
-                const fadeScale = Math.max(0, 1 - (obj.jumpProgress - 0.6) * 2.5) * 1.8;
+              const jumpArcY = Math.sin(p * Math.PI) * 0.85;
+              const forwardZ = p * 0.75;
+
+              frogSubGroup.position.y = 0.08 + jumpArcY;
+              frogSubGroup.position.z = forwardZ;
+
+              frogSubGroup.rotation.x = Math.sin((p - 0.25) * Math.PI) * -0.65;
+
+              const leftLeg = frogSubGroup.getObjectByName('leftLegGroup');
+              const rightLeg = frogSubGroup.getObjectByName('rightLegGroup');
+
+              if (leftLeg && rightLeg) {
+                if (p < 0.25) {
+                  const crouch = (p / 0.25);
+                  leftLeg.rotation.x = crouch * 0.65;
+                  rightLeg.rotation.x = crouch * 0.65;
+                } else if (p < 0.75) {
+                  leftLeg.rotation.x = -1.15;
+                  rightLeg.rotation.x = -1.15;
+                } else {
+                  const land = (p - 0.75) / 0.25;
+                  leftLeg.rotation.x = -1.15 + land * 1.15;
+                  rightLeg.rotation.x = -1.15 + land * 1.15;
+                }
+              }
+
+              if (p >= 0.85 && !obj.splashEmitted) {
+                obj.splashEmitted = true;
+                const splashWorldX = obj.x;
+                const splashWorldZ = obj.z + forwardZ;
+
+                createSplashEffect(splashWorldX, targetY + 0.05, splashWorldZ);
+
+                splashEvents.push({
+                  x: splashWorldX,
+                  z: splashWorldZ,
+                  radius: 3.8,
+                  duration: 0.95
+                });
+              }
+
+              if (p > 0.85) {
+                const fadeScale = Math.max(0, 1 - (p - 0.85) * 6.6) * 1.8;
                 frogSubGroup.scale.set(fadeScale, fadeScale, fadeScale);
               }
 
-              if (obj.jumpProgress >= 1.0) {
+              if (p >= 1.0) {
                 obj.mesh.remove(frogSubGroup);
                 obj.hasFrog = false;
                 obj.isFrogJumping = false;
@@ -1188,7 +1993,6 @@
       return null;
     }
 
-    // Step 1: Drag card from Palette to place tool/toy in world (Guaranteed 3D Mesh Rendering)
     document.querySelectorAll('.draggable-card').forEach(card => {
       card.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -1201,7 +2005,7 @@
         const proxyMesh = create3DToolMesh(type);
         
         if (hitPos) {
-          const hoverY = ['duck', 'boat', 'rock'].includes(type) ? hitPos.y + 0.8 : hitPos.y + 0.35;
+          const hoverY = ['duck', 'boat', 'rock', 'fish_flakes'].includes(type) ? hitPos.y + 0.8 : hitPos.y + 0.35;
           proxyMesh.position.set(hitPos.x, hoverY, hitPos.z);
           proxyMesh.visible = !isPointerOverUI(e.clientX, e.clientY);
         } else {
@@ -1222,7 +2026,6 @@
       });
     });
 
-    // Step 2: Touch and drag an ALREADY PLACED tool or toy on the map
     window.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.ui-palette')) return;
 
@@ -1260,6 +2063,14 @@
           mesh: null,
           targetObj: hitItem
         });
+      } else if (hitPos) {
+        addWaterDisturbance(hitPos.x, hitPos.z, 0.18, 5);
+        activePointers.set(e.pointerId, {
+          action: 'touch_water',
+          type: 'water',
+          worldPos: hitPos,
+          targetObj: null
+        });
       }
     });
 
@@ -1275,8 +2086,7 @@
             if (pointerData.mesh) {
               pointerData.mesh.visible = !overUI;
 
-              // Hover height (+0.8 units) clearly visible in 3D space with cast shadow on ground
-              const hoverY = ['duck', 'boat', 'rock'].includes(pointerData.type) ? hitPos.y + 0.8 : hitPos.y + 0.35;
+              const hoverY = ['duck', 'boat', 'rock', 'fish_flakes'].includes(pointerData.type) ? hitPos.y + 0.8 : hitPos.y + 0.35;
               pointerData.mesh.position.set(hitPos.x, hoverY, hitPos.z);
             }
 
@@ -1317,6 +2127,11 @@
             pointerData.targetObj.mesh.position.set(hitPos.x, hitPos.y + 0.8, hitPos.z);
           }
         }
+        else if (pointerData.action === 'touch_water') {
+          if (hitPos) {
+            addWaterDisturbance(hitPos.x, hitPos.z, 0.08, 4);
+          }
+        }
       }
     });
 
@@ -1329,8 +2144,9 @@
           if (pointerData.worldPos && !overUI) {
             if (['shovel', 'bucket'].includes(pointerData.type)) {
               spawnPlacedTool(pointerData.type, pointerData.worldPos.x, pointerData.worldPos.z);
+            } else if (pointerData.type === 'fish_flakes') {
+              spawnFishFlakes(pointerData.worldPos.x, pointerData.worldPos.z);
             } else {
-              // Spawn item elevated so it drops smoothly to the water/ground
               const newItem = spawnItem(pointerData.type, pointerData.worldPos.x, pointerData.worldPos.z);
               newItem.mesh.position.set(pointerData.worldPos.x, pointerData.worldPos.y + 0.8, pointerData.worldPos.z);
             }
@@ -1412,6 +2228,7 @@
 
       processActiveTools();
       checkFrogSpawning();
+      checkFishSpawning();
 
       for (let s = 0; s < 2; s++) {
         stepWaterSimulation();
@@ -1419,6 +2236,9 @@
 
       updateMeshes();
       updateFloatingObjects();
+      updateFish();
+      updateFishFlakes();
+      updateSplashEffects();
 
       renderer.render(scene, camera);
     }
