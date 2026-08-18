@@ -1192,12 +1192,12 @@
                 let rotIndex;
 
                 if (isTall) {
-                    if (rx > 0) rotIndex = 0;      // Platform faces West
-                    else if (rx < 0) rotIndex = 2; // Platform faces East
+                    if (rx > 0) rotIndex = 0;
+                    else if (rx < 0) rotIndex = 2;
                     else rotIndex = Math.random() < 0.5 ? 0 : 2;
                 } else {
-                    if (rz > 0) rotIndex = 3;      // Platform faces North
-                    else if (rz < 0) rotIndex = 1; // Platform faces South
+                    if (rz > 0) rotIndex = 3;
+                    else if (rz < 0) rotIndex = 1;
                     else rotIndex = Math.random() < 0.5 ? 1 : 3;
                 }
 
@@ -1355,9 +1355,9 @@
             return Infinity;
         }
 
-        // Reverses a train, updating its curve, orientation, and trail
-        function reverseTrain(train) {
-            train.pauseTimer = 1.2;
+        // Reverses a train, matching original end-of-rail behavior cleanly
+        function reverseTrain(train, pauseDuration = 1.2) {
+            train.pauseTimer = pauseDuration;
             train.exchangeState = null;
 
             const oldEntry = train.entryDir;
@@ -1368,17 +1368,19 @@
             train.currentCurve = getCellCurve(train.x, train.z, train.entryDir, train.exitDir);
             train.dist = 0;
 
-            train.locomotive.rotation.y += Math.PI;
+            if (train.locomotive) {
+                train.locomotive.rotation.y += Math.PI;
 
-            train.trail = [{
-                pos: train.locomotive.position.clone(),
-                rot: train.locomotive.rotation.y
-            }];
+                train.trail = [{
+                    pos: train.locomotive.position.clone(),
+                    rot: train.locomotive.rotation.y
+                }];
 
-            const chimneyPos = train.locomotive.position.clone();
-            chimneyPos.y += 0.8;
-            for (let k = 0; k < 4; k++) {
-                emitSmokeParticle(chimneyPos);
+                const chimneyPos = train.locomotive.position.clone();
+                chimneyPos.y += 0.8;
+                for (let k = 0; k < 4; k++) {
+                    emitSmokeParticle(chimneyPos);
+                }
             }
         }
 
@@ -1469,20 +1471,31 @@
             }
         }
 
-        function isOpposingTrainAhead(train) {
+        function checkTrainAhead(train) {
             let currX = train.x;
             let currZ = train.z;
             let dir = train.exitDir;
 
-            for (let step = 1; step <= 3; step++) {
+            for (let step = 1; step <= 2; step++) {
                 const nextX = currX + DIRS[dir].dx;
                 const nextZ = currZ + DIRS[dir].dz;
 
                 for (let other of trains) {
                     if (other === train) continue;
-                    const distToLoco = other.locomotive.position.distanceTo(new THREE.Vector3(nextX, 0, nextZ));
-                    if (distToLoco < 0.85) {
-                        return true;
+
+                    const otherLocoX = Math.round(other.locomotive.position.x);
+                    const otherLocoZ = Math.round(other.locomotive.position.z);
+                    const otherCar1X = Math.round(other.car1.position.x);
+                    const car1Z = Math.round(other.car1.position.z);
+                    const otherCar2X = Math.round(other.car2.position.x);
+                    const car2Z = Math.round(other.car2.position.z);
+
+                    const isLocoOnTile = (otherLocoX === nextX && otherLocoZ === nextZ) || (other.x === nextX && other.z === nextZ);
+                    const isCarOnTile = (otherCar1X === nextX && car1Z === nextZ) || (otherCar2X === nextX && car2Z === nextZ);
+
+                    if (isLocoOnTile || isCarOnTile) {
+                        const isHeadOn = isLocoOnTile && (other.exitDir === DIRS[dir].opp || DIRS[other.entryDir]?.opp === dir);
+                        return { blocked: true, isHeadOn, otherTrain: other };
                     }
                 }
 
@@ -1499,7 +1512,7 @@
                     break;
                 }
             }
-            return false;
+            return { blocked: false, isHeadOn: false, otherTrain: null };
         }
 
         function updateTrain(train, delta) {
@@ -1658,10 +1671,44 @@
                 train.curveLength = train.currentCurve.getLength();
             }
 
-            if (train.dist >= train.curveLength - 0.1) {
-                if (isOpposingTrainAhead(train)) {
-                    reverseTrain(train);
-                    return;
+            if (train.dist >= train.curveLength - 0.15) {
+                const status = checkTrainAhead(train);
+                if (status.blocked) {
+                    if (!status.isHeadOn) {
+                        train.pauseTimer = 0.3;
+                        return;
+                    } else {
+                        const other = status.otherTrain;
+                        const pSelf = train.passengers.length;
+                        const pOther = other ? other.passengers.length : 0;
+
+                        let shouldSelfReverse = false;
+                        if (pSelf < pOther) {
+                            shouldSelfReverse = true;
+                        } else if (pSelf > pOther) {
+                            shouldSelfReverse = false;
+                        } else {
+                            shouldSelfReverse = trains.indexOf(train) < trains.indexOf(other);
+                        }
+
+                        if (shouldSelfReverse) {
+                            train.waitCount = (train.waitCount || 0) + 1;
+                            if (train.waitCount >= 2) {
+                                train.waitCount = 0;
+                                reverseTrain(train, 0.8);
+                                if (other) other.pauseTimer = 1.4;
+                                return;
+                            } else {
+                                train.pauseTimer = 0.3;
+                                return;
+                            }
+                        } else {
+                            train.pauseTimer = 0.4;
+                            return;
+                        }
+                    }
+                } else {
+                    train.waitCount = 0;
                 }
             }
 
@@ -1680,11 +1727,8 @@
                     train.entryDir = DIRS[train.exitDir].opp;
                     train.currentCurve = null;
                 } else {
-                    train.dist = 0;
-                    const temp = train.entryDir;
-                    train.entryDir = train.exitDir;
-                    train.exitDir = temp;
-                    train.currentCurve = null;
+                    // Dead end: reverse in place
+                    reverseTrain(train, 0.0);
                 }
             }
 
@@ -1751,7 +1795,7 @@
             }
         }
 
-        // Head-On Collision Handler: Randomly select ONLY ONE train to reverse direction
+        // Head-On Collision Handler: Select train with FEWER passengers to reverse
         function checkTrainCollisions() {
             for (let i = 0; i < trains.length; i++) {
                 for (let j = i + 1; j < trains.length; j++) {
@@ -1763,12 +1807,24 @@
                     const p1 = t1.locomotive.position;
                     const p2 = t2.locomotive.position;
 
-                    if (p1.distanceTo(p2) < 0.75) {
-                        const chosen = Math.random() < 0.5 ? t1 : t2;
-                        const other = (chosen === t1) ? t2 : t1;
+                    if (p1.distanceTo(p2) < 0.85) {
+                        const p1Count = t1.passengers.length;
+                        const p2Count = t2.passengers.length;
 
-                        reverseTrain(chosen);
-                        other.pauseTimer = 1.2;
+                        let reversingTrain, waitingTrain;
+                        if (p1Count < p2Count) {
+                            reversingTrain = t1;
+                            waitingTrain = t2;
+                        } else if (p2Count < p1Count) {
+                            reversingTrain = t2;
+                            waitingTrain = t1;
+                        } else {
+                            reversingTrain = t1;
+                            waitingTrain = t2;
+                        }
+
+                        reverseTrain(reversingTrain, 0.8);
+                        waitingTrain.pauseTimer = 1.4;
                     }
                 }
             }
