@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta 
+    name="viewport" 
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" 
+  />
+  <title>Sky Dodge - Mobile Portrait</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0b0f19;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      touch-action: none;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      display: block;
+      background: linear-gradient(180deg, #101c3d 0%, #080d1a 100%);
+    }
+
+    /* UI Overlay */
+    #ui {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      color: #ffffff;
+      font-size: 1.1rem;
+      font-weight: 700;
+      pointer-events: none;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Orientation Warning Layer (Active in Landscape) */
+    #orientation-blocker {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 25, 0.96);
+      z-index: 9999;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #ffffff;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #orientation-blocker .phone-icon {
+      width: 48px;
+      height: 72px;
+      border: 3px solid #38bdf8;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      animation: rotatePhone 2s ease-in-out infinite;
+    }
+
+    @keyframes rotatePhone {
+      0% { transform: rotate(90deg); }
+      50%, 100% { transform: rotate(0deg); }
+    }
+
+    /* Media query to force portrait notice if browser turns landscape */
+    @media (orientation: landscape) {
+      #orientation-blocker {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Force Portrait Overlay -->
+  <div id="orientation-blocker">
+    <div class="phone-icon"></div>
+    <h2 style="margin-bottom: 8px;">Please Rotate Your Device</h2>
+    <p style="color: #94a3b8; font-size: 0.95rem;">This game is designed to be played in portrait mode.</p>
+  </div>
+
+  <div id="game-container">
+    <div id="ui">
+      <div>Score: <span id="score-val">0</span></div>
+      <div>High: <span id="high-val">0</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <script>
+    // --- Screen Orientation Lock API ---
+    async function lockPortrait() {
+      try {
+        if (screen.orientation && screen.orientation.lock) {
+          await screen.orientation.lock('portrait-primary');
+        }
+      } catch (err) {
+        // Many mobile browsers restrict this unless full-screen or installed as PWA
+        console.warn('Orientation lock not supported or blocked:', err.message);
+      }
+    }
+
+    // Attempt orientation lock on first touch interaction
+    window.addEventListener('touchstart', () => lockPortrait(), { once: true });
+
+    // --- Game Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreVal = document.getElementById('score-val');
+    const highVal = document.getElementById('high-val');
+
+    let width, height;
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('skydodge_hi') || '0', 10);
+    highVal.textContent = highScore;
+
+    let gameState = 'START'; // 'START', 'PLAYING', 'GAMEOVER'
+    let frames = 0;
+
+    const player = {
+      x: width / 2,
+      y: height - 120,
+      radius: 18,
+      targetX: width / 2,
+      speed: 0.25,
+      color: '#38bdf8'
+    };
+
+    let obstacles = [];
+    let particles = [];
+    let stars = [];
+
+    // Background stars setup
+    for (let i = 0; i < 40; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 1.5 + 0.5
+      });
+    }
+
+    // --- Touch Controls ---
+    function updatePlayerTarget(clientX) {
+      player.targetX = Math.max(player.radius, Math.min(width - player.radius, clientX));
+    }
+
+    window.addEventListener('touchstart', (e) => {
+      if (gameState === 'START' || gameState === 'GAMEOVER') {
+        resetGame();
+        return;
+      }
+      updatePlayerTarget(e.touches[0].clientX);
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (gameState === 'PLAYING') {
+        updatePlayerTarget(e.touches[0].clientX);
+      }
+    }, { passive: false });
+
+    // Mouse fallback for testing on desktop
+    window.addEventListener('pointermove', (e) => {
+      if (gameState === 'PLAYING') {
+        updatePlayerTarget(e.clientX);
+      }
+    });
+
+    window.addEventListener('pointerdown', () => {
+      if (gameState === 'START' || gameState === 'GAMEOVER') {
+        resetGame();
+      }
+    });
+
+    function resetGame() {
+      score = 0;
+      scoreVal.textContent = score;
+      obstacles = [];
+      particles = [];
+      player.x = width / 2;
+      player.targetX = width / 2;
+      player.y = height - 120;
+      gameState = 'PLAYING';
+    }
+
+    function createExplosion(x, y, color) {
+      for (let i = 0; i < 15; i++) {
+        particles.push({
+          x, y,
+          vx: (Math.random() - 0.5) * 8,
+          vy: (Math.random() - 0.5) * 8,
+          radius: Math.random() * 3 + 1,
+          color,
+          alpha: 1
+        });
+      }
+    }
+
+    function spawnObstacle() {
+      const radius = Math.random() * 14 + 14;
+      const isGold = Math.random() < 0.18; // 18% chance of bonus orb
+      obstacles.push({
+        x: Math.random() * (width - radius * 2) + radius,
+        y: -radius,
+        radius,
+        speed: Math.random() * 2 + 3 + (score * 0.05),
+        isGold,
+        color: isGold ? '#facc15' : '#f43f5e'
+      });
+    }
+
+    // --- Game Loop ---
+    function update() {
+      frames++;
+
+      // Starfield background
+      stars.forEach(star => {
+        star.y += star.speed;
+        if (star.y > height) {
+          star.y = 0;
+          star.x = Math.random() * width;
+        }
+      });
+
+      if (gameState === 'PLAYING') {
+        // Smooth player movement
+        player.x += (player.targetX - player.x) * player.speed;
+
+        // Spawn obstacles
+        const spawnInterval = Math.max(25, 60 - Math.floor(score / 3));
+        if (frames % spawnInterval === 0) {
+          spawnObstacle();
+        }
+
+        // Update obstacles
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          const obs = obstacles[i];
+          obs.y += obs.speed;
+
+          // Collision detection
+          const dx = player.x - obs.x;
+          const dy = player.y - obs.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < player.radius + obs.radius) {
+            if (obs.isGold) {
+              score += 5;
+              scoreVal.textContent = score;
+              createExplosion(obs.x, obs.y, '#facc15');
+              obstacles.splice(i, 1);
+              continue;
+            } else {
+              createExplosion(player.x, player.y, player.color);
+              gameState = 'GAMEOVER';
+              if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('skydodge_hi', highScore);
+                highVal.textContent = highScore;
+              }
+              break;
+            }
+          }
+
+          // Off-screen cleanup & score
+          if (obs.y - obs.radius > height) {
+            if (!obs.isGold) {
+              score++;
+              scoreVal.textContent = score;
+            }
+            obstacles.splice(i, 1);
+          }
+        }
+      }
+
+      // Update explosion particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.03;
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Stars
+      ctx.fillStyle = '#475569';
+      stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Particles
+      particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Obstacles
+      obstacles.forEach(obs => {
+        ctx.beginPath();
+        ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+        ctx.fillStyle = obs.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = obs.color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // Player
+      if (gameState !== 'GAMEOVER') {
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fillStyle = player.color;
+        ctx.shadowBlur = 14;
+        ctx.shadowColor = player.color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Player core
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius * 0.45, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+
+      // Overlays
+      if (gameState === 'START') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('SKY DODGE', width / 2, height / 2 - 30);
+
+        ctx.font = '16px sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('Tap anywhere to start', width / 2, height / 2 + 15);
+        ctx.fillText('Dodge red orbs • Collect gold (+5)', width / 2, height / 2 + 45);
+      } else if (gameState === 'GAMEOVER') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 30px sans-serif';
+        ctx.fillText('GAME OVER', width / 2, height / 2 - 20);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '18px sans-serif';
+        ctx.fillText(`Score: ${score}`, width / 2, height / 2 + 20);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '15px sans-serif';
+        ctx.fillText('Tap to play again', width / 2, height / 2 + 60);
+      }
+
+      requestAnimationFrame(() => {
+        update();
+        draw();
+      });
+    }
+
+    draw();
+  </script>
+</body>
+</html>
