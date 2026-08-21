@@ -1,0 +1,3447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00A4E2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Picture Bingo">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Baloo+2:wght@700;800&family=Bangers&family=Bebas+Neue&family=Black+Ops+One&family=Chewy&family=Chicle&family=Comic+Neue:wght@700&family=Creepster&family=Eater&family=Frijole&family=Fredoka:wght@600;700&family=Great+Vibes&family=Henny+Penny&family=Impact&family=Irish+Grover&family=Lobster&family=Luckiest+Guy&family=Montserrat:wght@700;900&family=Mountains+of+Christmas:wght@700&family=Nosifer&family=Nunito:wght@800;900&family=Oswald:wght@700&family=Outfit:wght@700;800&family=Pacifico&family=Poppins:wght@700;800&family=Press+Start+2P&family=Righteous&family=Sacramento&family=Titan+One&family=Ultra&display=swap" rel="stylesheet">
+  <!-- JSZip for batch downloading all images as a zip archive -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- jsPDF for generating printable multi-page Bingo Card PDFs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Untainted Base64 Sample Images Data -->
+  <script src="reference_files/sample_images_data.js"></script>
+  <style>
+    :root {
+      --primary-bg: #f4f7fc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --brand-color: #00a4e2;
+      --brand-dark: #363a89;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --shadow-sm: 0 2px 4px rgba(0,0,0,0.04);
+      --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Fredoka', 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--primary-bg);
+      color: var(--text-main);
+      padding: 30px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1350px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--brand-dark);
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+    }
+
+    /* Layout Grid */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Controls Panel */
+    .controls-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .controls-card::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .controls-card::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .controls-card::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .controls-card::-webkit-scrollbar-thumb:hover {
+      background-color: var(--brand-color);
+    }
+
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      background-color: #f8fafc;
+      transition: all 0.2s ease;
+    }
+
+    input[type="text"]:focus, select:focus {
+      outline: none;
+      border-color: var(--brand-color);
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(0, 164, 226, 0.15);
+    }
+
+    /* Color Pickers */
+    .colors-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8fafc;
+      padding: 8px 12px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+    }
+
+    .color-picker-wrapper input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      background: none;
+    }
+
+    .color-picker-wrapper input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .color-picker-wrapper input[type="color"]::-webkit-color-swatch {
+      border: 1px solid rgba(0,0,0,0.15);
+      border-radius: 6px;
+    }
+
+    .color-hex {
+      font-family: monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      text-transform: uppercase;
+      width: 100%;
+      border: none;
+      background: transparent;
+    }
+
+    .color-hex:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    /* Drag & Drop Zone */
+    .dropzone {
+      border: 2px dashed #cbd5e1;
+      background: #f8fafc;
+      border-radius: var(--radius-lg);
+      padding: 22px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--brand-color);
+      background: #f0f9ff;
+    }
+
+    .dropzone-icon {
+      font-size: 2rem;
+      margin-bottom: 6px;
+      color: var(--brand-color);
+    }
+
+    .dropzone p {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .dropzone span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background-color: var(--brand-color);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 164, 226, 0.25);
+    }
+
+    .btn-primary:hover {
+      background-color: #0090c7;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: #e2e8f0;
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background-color: #cbd5e1;
+    }
+
+    .btn-sample {
+      background-color: #eff6ff;
+      color: #1d4ed8;
+      border: 1.5px solid #bfdbfe;
+    }
+
+    .btn-sample:hover {
+      background-color: #dbeafe;
+    }
+
+    .btn-danger {
+      background-color: #fee2e2;
+      color: #dc2626;
+    }
+
+    .btn-danger:hover {
+      background-color: #fca5a5;
+    }
+
+    /* Action bar */
+    .gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      background: var(--card-bg);
+      padding: 16px 20px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .gallery-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .gallery-counter {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      background: #f1f5f9;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    /* Image Grid */
+    .images-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .image-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .image-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .canvas-container {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background-color: #f1f5f9;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .canvas-container canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .card-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .card-actions .btn {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+    }
+
+    /* Empty state */
+    .empty-state {
+      grid-column: 1 / -1;
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 60px 20px;
+      text-align: center;
+      border: 2px dashed var(--border-color);
+    }
+
+    .empty-state h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex !important;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      max-width: 680px;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .modal-content canvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    /* Status banner */
+    .status-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--brand-dark);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 2000;
+    }
+
+    /* View Tabs */
+    .view-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      background: #e2e8f0;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      background: #cbd5e1;
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: var(--brand-dark);
+      color: #ffffff;
+      border-color: var(--brand-dark);
+      box-shadow: 0 4px 12px rgba(54, 58, 137, 0.25);
+    }
+
+    .pdf-preview-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pdf-preview-wrapper {
+      width: 100%;
+      max-width: 680px;
+      background: #f8fafc;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      justify-content: center;
+    }
+
+    .pdf-preview-wrapper canvas {
+      max-width: 100%;
+      height: auto !important;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; flex-wrap: wrap;">
+        <img src="reference_files/riley stroke.png" alt="Riley Children's Health Logo" style="height: 52px; width: auto; object-fit: contain;">
+        <h1 style="margin-bottom: 0;">Riley Picture Bingo Generator</h1>
+      </div>
+      <p>Assemble custom branded PNG cards & printable 5x5 Bingo Cards with live PDF preview.</p>
+    </header>
+
+    <div class="app-layout">
+      <!-- Left Sidebar Controls -->
+      <div class="controls-card">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <div class="section-title" style="margin-bottom: 0;">Image Import</div>
+            <img src="reference_files/riley stroke.png" alt="Riley Logo" style="height: 22px; width: auto; opacity: 0.85;">
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">Import 24 images or select files / drag & drop.</p>
+          
+          <div class="dropzone" id="dropzone">
+            <p>Drag & drop images here</p>
+            <span>or click to browse files (Max 24 most recent)</span>
+          </div>
+          <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
+          <input type="file" id="pptx-file-picker" accept=".pptx" style="display: none;">
+
+          <button type="button" onclick="handleLoadSamplesClick(event)" id="btn-load-samples" class="btn btn-sample" style="width: 100%; margin-top: 10px;">
+            Load 24 Sample Input Images
+          </button>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color);">
+
+        <!-- Color Controls -->
+        <div>
+          <div class="section-title">Accent Colors</div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px;">Cards alternate between Color 1 and Color 2 accent layouts on every other card.</p>
+          <div class="colors-grid" style="margin-top: 8px;">
+            <div class="form-group">
+              <label>Accent Color A</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="color1" value="#00A4E2">
+                <input type="text" class="color-hex" id="color1-hex" value="#00A4E2">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Accent Color B</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="color2" value="#363A89">
+                <input type="text" class="color-hex" id="color2-hex" value="#363A89">
+              </div>
+            </div>
+          </div>
+          <button type="button" onclick="handleSwapColorsClick(event)" id="btn-swap-colors" class="btn btn-secondary" style="width: 100%; margin-top: 8px; font-size: 0.85rem; padding: 6px 10px;">
+            Swap Accent Colors (A ⇆ B)
+          </button>
+        </div>
+
+        <!-- Text & Typography -->
+        <div>
+          <div class="section-title">Top Header Text</div>
+          <div class="form-group" style="margin-top: 8px;">
+            <label for="header-title">Header Title</label>
+            <input type="text" id="header-title" value="State Fair Bingo" placeholder="Enter header title...">
+          </div>
+
+          <div class="form-group" style="margin-top: 10px;">
+            <label for="font-family">Font Style</label>
+            <select id="font-family">
+              <optgroup label="🎃 Halloween & Spooky">
+                <option value="Creepster">Creepster (Spooky Slime)</option>
+                <option value="Nosifer">Nosifer (Dripping Blood)</option>
+                <option value="Frijole">Frijole (Grunge Spooky)</option>
+                <option value="Eater">Eater (Monster Bones)</option>
+              </optgroup>
+              <optgroup label="🎄 Christmas & Festive">
+                <option value="Mountains of Christmas">Mountains of Christmas (Holiday Snow)</option>
+                <option value="Henny Penny">Henny Penny (Whimsical Festive)</option>
+                <option value="Irish Grover">Irish Grover (Lucky Clover)</option>
+              </optgroup>
+              <optgroup label="💖 Valentine & Script">
+                <option value="Great Vibes">Great Vibes (Elegant Cursive)</option>
+                <option value="Sacramento">Sacramento (Sweet Handwriting)</option>
+                <option value="Lobster">Lobster (Bold Retro Script)</option>
+                <option value="Pacifico">Pacifico (Brush Script)</option>
+              </optgroup>
+              <optgroup label="🎂 Playful & Party">
+                <option value="Fredoka" selected>Fredoka (Default Rounded)</option>
+                <option value="Luckiest Guy">Luckiest Guy (Heavy Cartoon)</option>
+                <option value="Comic Neue">Comic Neue (Friendly Comic)</option>
+                <option value="Chewy">Chewy (Chunky Playful)</option>
+                <option value="Chicle">Chicle (Bouncy Bubble)</option>
+                <option value="Titan One">Titan One (Punchy Heavy)</option>
+                <option value="Baloo 2">Baloo 2 (Soft Rounded)</option>
+                <option value="Nunito">Nunito (Friendly Rounded)</option>
+              </optgroup>
+              <optgroup label="🎮 Retro & Gaming">
+                <option value="Press Start 2P">Press Start 2P (Retro 8-Bit)</option>
+                <option value="Bangers">Bangers (Comic Loud)</option>
+                <option value="Black Ops One">Black Ops One (Military Stencil)</option>
+                <option value="Righteous">Righteous (Futuristic Bold)</option>
+              </optgroup>
+              <optgroup label="⭐ Bold & Modern">
+                <option value="Montserrat">Montserrat (Modern Geometric)</option>
+                <option value="Bebas Neue">Bebas Neue (Tall Display)</option>
+                <option value="Oswald">Oswald (Strong Condensed)</option>
+                <option value="Anton">Anton (Extra Bold)</option>
+                <option value="Poppins">Poppins (Clean Geometric)</option>
+                <option value="Outfit">Outfit (Modern Sans)</option>
+                <option value="Impact">Impact (Classic Thick)</option>
+                <option value="Arial">Arial (Clean Standard)</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+
+        <!-- Layout Options -->
+        <div>
+          <div class="section-title">Image Fitting</div>
+          <div class="form-group" style="margin-top: 8px;">
+            <label for="fit-mode">Image Fit Mode</label>
+            <select id="fit-mode">
+              <option value="cover" selected>Cover (Fill & Crop Center)</option>
+              <option value="contain">Contain (Fit Whole Image)</option>
+              <option value="fill">Stretch to Fill</option>
+            </select>
+          </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color);">
+
+        <!-- Printable Bingo PDF Section -->
+        <div>
+          <div class="section-title">Printable Bingo PDF</div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">Generates shuffled 5x5 Bingo Cards matching "Fair week bingo.pdf".</p>
+          
+          <div class="form-group">
+            <label for="pdf-count">Number of Unique Cards</label>
+            <select id="pdf-count">
+              <option value="1">1 Card</option>
+              <option value="2" selected>2 Cards (Default)</option>
+              <option value="3">3 Cards</option>
+              <option value="5">5 Cards</option>
+              <option value="10">10 Cards</option>
+              <option value="15">15 Cards</option>
+              <option value="20">20 Cards</option>
+              <option value="24">24 Cards</option>
+              <option value="50">50 Cards</option>
+            </select>
+          </div>
+
+          <div class="colors-grid" style="margin-top: 10px;">
+            <div class="form-group">
+              <label>Sheet Banner A</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="sheet-banner-color" value="#004D49">
+                <input type="text" class="color-hex" id="sheet-banner-hex" value="#004D49">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Sheet Banner B</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="sheet-banner-color2" value="#363A89">
+                <input type="text" class="color-hex" id="sheet-banner-hex2" value="#363A89">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 10px;">
+            <label>FREE Space Header Color</label>
+            <div class="color-picker-wrapper">
+              <input type="color" id="free-space-color" value="#00A859">
+              <input type="text" class="color-hex" id="free-space-hex" value="#00A859">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 10px;">
+            <label>BINGO Title Color</label>
+            <div class="color-picker-wrapper">
+              <input type="color" id="bingo-title-color" value="#FFFFFF">
+              <input type="text" class="color-hex" id="bingo-title-hex" value="#FFFFFF">
+            </div>
+          </div>
+
+          <button type="button" onclick="handleGeneratePdfClick(event)" id="btn-generate-pdf" class="btn btn-primary" style="width: 100%; margin-top: 12px; background-color: #0e4d4e;">
+           Download 2 Shuffled Bingo Cards (PDF)
+          </button>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color);">
+
+        <!-- PowerPoint Export Section -->
+        <div>
+          <div class="section-title">PowerPoint Export (.pptx)</div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">Generates a 29-slide presentation based on "Bingo x State Fair Week.pptx" with the Slide 2 video preserved.</p>
+          
+
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="title-img-input">Title Page Image (Slides 1, 3, 28)</label>
+            <input type="file" id="title-img-input" accept="image/*" style="font-size: 0.82rem; padding: 6px 10px;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="other-img-input">Card Pages Image (Slides 4-27)</label>
+            <input type="file" id="other-img-input" accept="image/*" style="font-size: 0.82rem; padding: 6px 10px;">
+          </div>
+
+          <div class="colors-grid" style="margin-bottom: 10px;">
+            <div class="form-group">
+              <label for="pptx-text-color">Title Text Color</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="pptx-text-color" value="#ffffff">
+                <input type="text" class="color-hex" id="pptx-text-hex" value="#FFFFFF">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="pptx-subtext-color">Subtitle Color</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="pptx-subtext-color" value="#FFD700">
+                <input type="text" class="color-hex" id="pptx-subtext-hex" value="#FFD700">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="pptx-title-position">Title Text Location</label>
+            <select id="pptx-title-position" style="font-size: 0.85rem; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-main); width: 100%;">
+              <option value="top-center">Top Center</option>
+              <option value="middle-center" selected>Middle Center (Default)</option>
+              <option value="bottom-center">Bottom Center</option>
+              <option value="top-left">Top Left</option>
+              <option value="middle-left">Middle Left</option>
+              <option value="bottom-left">Bottom Left</option>
+              <option value="top-right">Top Right</option>
+              <option value="middle-right">Middle Right</option>
+              <option value="bottom-right">Bottom Right</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="pptx-font-family">PowerPoint Font</label>
+            <select id="pptx-font-family" style="font-size: 0.85rem; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-main); width: 100%;">
+              <optgroup label="🎃 Halloween & Spooky">
+                <option value="Creepster">Creepster (Spooky Slime)</option>
+                <option value="Nosifer">Nosifer (Dripping Blood)</option>
+                <option value="Frijole">Frijole (Grunge Spooky)</option>
+                <option value="Eater">Eater (Monster Bones)</option>
+              </optgroup>
+              <optgroup label="🎄 Christmas & Festive">
+                <option value="Mountains of Christmas">Mountains of Christmas (Holiday Snow)</option>
+                <option value="Henny Penny">Henny Penny (Whimsical Festive)</option>
+                <option value="Irish Grover">Irish Grover (Lucky Clover)</option>
+              </optgroup>
+              <optgroup label="💖 Valentine & Script">
+                <option value="Great Vibes">Great Vibes (Elegant Cursive)</option>
+                <option value="Sacramento">Sacramento (Sweet Handwriting)</option>
+                <option value="Lobster">Lobster (Bold Retro Script)</option>
+                <option value="Pacifico">Pacifico (Brush Script)</option>
+              </optgroup>
+              <optgroup label="🎂 Playful & Party">
+                <option value="Fredoka" selected>Fredoka (Default Rounded)</option>
+                <option value="Luckiest Guy">Luckiest Guy (Heavy Cartoon)</option>
+                <option value="Comic Neue">Comic Neue (Friendly Comic)</option>
+                <option value="Chewy">Chewy (Chunky Playful)</option>
+                <option value="Chicle">Chicle (Bouncy Bubble)</option>
+                <option value="Titan One">Titan One (Punchy Heavy)</option>
+                <option value="Baloo 2">Baloo 2 (Soft Rounded)</option>
+                <option value="Nunito">Nunito (Friendly Rounded)</option>
+              </optgroup>
+              <optgroup label="🎮 Retro & Gaming">
+                <option value="Press Start 2P">Press Start 2P (Retro 8-Bit)</option>
+                <option value="Bangers">Bangers (Comic Loud)</option>
+                <option value="Black Ops One">Black Ops One (Military Stencil)</option>
+                <option value="Righteous">Righteous (Futuristic Bold)</option>
+              </optgroup>
+              <optgroup label="⭐ Bold & Modern">
+                <option value="Montserrat">Montserrat (Modern Geometric)</option>
+                <option value="Bebas Neue">Bebas Neue (Tall Display)</option>
+                <option value="Oswald">Oswald (Strong Condensed)</option>
+                <option value="Anton">Anton (Extra Bold)</option>
+                <option value="Poppins">Poppins (Clean Geometric)</option>
+                <option value="Outfit">Outfit (Modern Sans)</option>
+                <option value="Impact">Impact (Classic Thick)</option>
+                <option value="Arial">Arial (Clean Standard)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="pptx-font-size">Title Text Size: <span id="pptx-font-size-val">64px</span></label>
+            <input type="range" id="pptx-font-size" min="24" max="120" value="64" style="width: 100%; accent-color: var(--brand-color);">
+          </div>
+
+
+
+          <button type="button" onclick="handleGeneratePptxClick(event)" id="btn-generate-pptx" class="btn btn-primary" style="width: 100%; margin-top: 10px; background-color: #d9381e;">
+            Download PowerPoint (.pptx)
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Right Main Content Area -->
+      <div class="gallery-container">
+        <!-- Persistent Top Quick Download Bar -->
+        <div style="background: var(--card-bg); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 16px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-weight: 800; font-size: 1rem; color: var(--brand-dark);">Quick Downloads</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">One-click download for PDF sheets, PowerPoint deck, or ZIP archive</div>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" onclick="handleGeneratePdfClick(event)" id="btn-generate-pdf-top" class="btn btn-primary btn-trigger-pdf" style="background-color: #0e4d4e; font-size: 0.9rem; padding: 10px 16px;">
+              📄 Download Bingo Cards (PDF)
+            </button>
+            <button type="button" onclick="handleGeneratePptxClick(event)" id="btn-generate-pptx-top" class="btn btn-primary btn-trigger-pptx" style="background-color: #d9381e; font-size: 0.9rem; padding: 10px 16px;">
+              📊 Download PowerPoint (.pptx)
+            </button>
+            <button type="button" onclick="handleDownloadZipClick(event)" id="btn-download-zip-top" class="btn btn-primary btn-trigger-zip" style="background-color: #00a4e2; font-size: 0.9rem; padding: 10px 16px;">
+              📦 Download All Cards (.ZIP)
+            </button>
+          </div>
+        </div>
+
+        <!-- View Navigation Tabs -->
+        <div class="view-tabs">
+          <button type="button" onclick="handleTabClick('png')" class="tab-btn active" id="tab-btn-png">PNG Cards Grid (<span id="tab-png-count">0</span>)</button>
+          <button type="button" onclick="handleTabClick('pdf')" class="tab-btn" id="tab-btn-pdf">Bingo PDF Live Preview</button>
+          <button type="button" onclick="handleTabClick('pptx')" class="tab-btn" id="tab-btn-pptx">PowerPoint Deck Preview</button>
+        </div>
+
+        <!-- View 1: PNG Grid -->
+        <div id="view-png-cards">
+          <div class="gallery-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="gallery-title">Generated Composite PNGs</span>
+              <span class="gallery-counter" id="image-count">0 Images</span>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="button" onclick="handleClearAllClick(event)" id="btn-clear-all" class="btn btn-secondary" style="display: none;">Clear All</button>
+              <button type="button" onclick="handleDownloadZipClick(event)" id="btn-download-zip" class="btn btn-primary btn-trigger-zip" style="display: none;">
+              Download All (ZIP)
+              </button>
+            </div>
+          </div>
+
+          <div class="images-grid" id="images-grid">
+            <div class="empty-state">
+              <span style="font-size: 3rem; display: block; margin-bottom: 10px;"></span>
+              <h3>No Images Loaded Yet</h3>
+              <p>Upload your images or click <strong>"Load 24 Sample Input Images"</strong> on the left panel to test immediately.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 2: PDF Live Preview -->
+        <div id="view-pdf-preview" style="display: none;">
+          <div class="gallery-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="gallery-title">Printable Bingo Cards Live Preview</span>
+              <span class="gallery-counter">US Letter Print-Ready</span>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="button" onclick="handleReshufflePreviewClick(event)" id="btn-reshuffle-preview" class="btn btn-secondary">Reshuffle Order</button>
+              <button type="button" onclick="handleGeneratePdfClick(event)" id="btn-generate-pdf-tab" class="btn btn-primary btn-trigger-pdf" style="background-color: #0e4d4e;">
+              Download PDF
+              </button>
+            </div>
+          </div>
+
+          <div class="pdf-preview-card">
+            <p style="font-size: 0.9rem; color: var(--text-muted);">
+              Live preview of <strong>BingoCard #1</strong>. Updates automatically when you customize colors, text, font, or images.
+            </p>
+            <div class="pdf-preview-wrapper">
+              <div id="pdf-preview-container">
+                <div class="empty-state" style="border: none; padding: 40px 10px;">
+                  <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;"></span>
+                  <h3>No Preview Available</h3>
+                  <p>Upload 24 images to generate printable Bingo Cards preview.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 3: PowerPoint Deck Live Preview -->
+        <div id="view-pptx-preview" style="display: none;">
+          <div class="gallery-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="gallery-title">PowerPoint Deck Preview (29 Slides)</span>
+              <span class="gallery-counter">16:9 Widescreen Broadcast</span>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="button" onclick="handleReshufflePptxClick(event)" id="btn-reshuffle-pptx" class="btn btn-secondary">Reshuffle Deck Order</button>
+              <button type="button" onclick="handleGeneratePptxClick(event)" id="btn-generate-pptx-tab" class="btn btn-primary btn-trigger-pptx" style="background-color: #d9381e;">
+              Download PowerPoint (.pptx)
+              </button>
+            </div>
+          </div>
+
+          <div class="pdf-preview-card">
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
+              Live preview of all 29 PowerPoint slides in <strong>Bingo x State Fair Week.pptx</strong>. Slide 2 preserves embedded video playback.
+            </p>
+            <div id="pptx-preview-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+              <div class="empty-state" style="border: none; padding: 40px 10px; grid-column: 1 / -1;">
+                <h3>Need 24 Images for PowerPoint Deck Preview</h3>
+                <p>Upload 24 images or click <strong>"Load 24 Sample Input Images"</strong> on the sidebar.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview & Framing Adjustment Modal -->
+  <div class="modal-overlay" id="preview-modal">
+    <div class="modal-content" style="max-width: 760px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 12px;">
+        <h3 id="modal-title" style="color: var(--brand-dark); font-size: 1.25rem;">Card Framing & Positioning</h3>
+        <button class="btn btn-secondary" id="btn-close-modal" style="padding: 4px 10px; font-size: 1rem;">✕</button>
+      </div>
+
+      <div style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap; align-items: flex-start;">
+        <div id="modal-canvas-wrapper" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; align-items: center;"></div>
+        
+        <div id="modal-controls-sidebar" style="width: 260px; display: flex; flex-direction: column; gap: 14px; background: #f8fafc; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div class="form-group">
+            <label style="font-size: 0.82rem;">Image Framing Mode</label>
+            <select id="modal-fit-mode" style="font-size: 0.85rem; padding: 6px 10px; background: var(--bg-main);">
+              <option value="cover">Crop to Fit (Default)</option>
+              <option value="fill">Stretch to Fill</option>
+            </select>
+          </div>
+
+          <div id="modal-zoom-group" class="form-group">
+            <label style="font-size: 0.82rem;">Zoom Level: <span id="modal-zoom-val" style="font-weight: 700; color: var(--brand-dark);">100%</span></label>
+            <input type="range" id="modal-zoom-input" min="100" max="300" value="100" style="width: 100%; accent-color: var(--brand-color);">
+          </div>
+
+          <div id="modal-drag-tip" style="font-size: 0.78rem; color: var(--text-muted); background: #ffffff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0; line-height: 1.35;">
+            🖐️ <strong>Click & Drag</strong> directly on the photo above to reposition it within the box.
+          </div>
+
+          <button id="modal-reset-btn" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 10px; width: 100%;">
+            Reset Framing & Position
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; width: 100%; justify-content: flex-end; margin-top: 16px;">
+        <a id="btn-modal-download" class="btn btn-primary" download="card.png">Download PNG</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-toast" id="status-toast">Notification</div>
+
+  <script>
+    // Sample images list matching "import images" directory
+    const SAMPLE_IMAGE_NAMES = [
+      "4H Competitions.png",
+      "Cheese Sculpture.png",
+      "Collosseum.png",
+      "Corn on the Cob.png",
+      "Covered Bridge.png",
+      "Cows.png",
+      "Dairy Barn.png",
+      "Dog Show.png",
+      "Draft Horses.png",
+      "Fair Queen.png",
+      "Ferris Wheel.png",
+      "Free Stage.png",
+      "Fried Foods.png",
+      "Games.png",
+      "Glass Barn.png",
+      "Hooks Museum.png",
+      "Hot Air Balloon Race.png",
+      "Little Hands on the Farm.png",
+      "Pig Races.png",
+      "Pioneer Village.png",
+      "Sky Ride.png",
+      "State Fair Midway.png",
+      "Tractor Parade.png",
+      "Tractor Shuttle.png"
+    ];
+
+    // App state
+    const state = {
+      images: [], // array of { id, file, title, imgElement, fitMode, zoom, offsetX, offsetY }
+      pptxShuffle: null, // shuffled order array for PowerPoint card slides (4-27)
+      color1: "#00A4E2",
+      color2: "#363A89",
+      sheetBannerColor: "#004D49",
+      sheetBannerColor2: "#363A89",
+      freeSpaceColor: "#00A859",
+      bingoTitleColor: "#FFFFFF",
+      headerTitle: "State Fair Bingo",
+      fontFamily: "Fredoka",
+      fitMode: "cover",
+      titlePageImgBase64: null,
+      otherPagesImgBase64: null,
+      titlePageImgElement: null,
+      otherPagesImgElement: null,
+      zoneLogoImgElement: null,
+      zoneLogoBase64: null,
+      pptxTemplateBuffer: null,
+      pptxTextColor: "#ffffff",
+      pptxSubtextColor: "#FFD700",
+      pptxFontFamily: "Fredoka",
+      pptxTitlePosition: "middle-center",
+      pptxFontSize: 64
+    };
+
+    // Fail-safe Global Window Button Click Handlers
+    window.handleLoadSamplesClick = async function(e) {
+      if (e) e.preventDefault();
+      showToast("Loading 24 sample images...");
+      const loadedCount = await loadSampleImagesProgrammatically();
+      if (loadedCount > 0) {
+        showToast(`Successfully loaded ${loadedCount} sample images!`);
+      } else {
+        showToast("Opening file picker to select images...");
+        const fi = document.getElementById('file-input');
+        if (fi) fi.click();
+      }
+    };
+
+    window.handleSwapColorsClick = function(e) {
+      if (e) e.preventDefault();
+      const temp = state.color1;
+      state.color1 = state.color2;
+      state.color2 = temp;
+      const c1In = document.getElementById('color1');
+      const c1Hex = document.getElementById('color1-hex');
+      const c2In = document.getElementById('color2');
+      const c2Hex = document.getElementById('color2-hex');
+      if (c1In) c1In.value = state.color1;
+      if (c1Hex) c1Hex.value = state.color1.toUpperCase();
+      if (c2In) c2In.value = state.color2;
+      if (c2Hex) c2Hex.value = state.color2.toUpperCase();
+      renderAll();
+    };
+
+    window.handleGeneratePdfClick = function(e) {
+      if (e) e.preventDefault();
+      generateBingoPDF();
+    };
+
+    window.handleGeneratePptxClick = function(e) {
+      if (e) e.preventDefault();
+      
+      // On local file:// protocol where Chrome restricts direct fetch:
+      if (window.location.protocol === 'file:' && !state.pptxTemplateBuffer) {
+        showToast("Local file mode: Please select 'Bingo x State Fair Week.pptx' template file...");
+        const picker = document.getElementById('pptx-file-picker');
+        if (picker) {
+          picker.click();
+          return;
+        }
+      }
+
+      generatePowerPointPPTX();
+    };
+
+    window.handleDownloadZipClick = function(e) {
+      if (e) e.preventDefault();
+      triggerZipDownload();
+    };
+
+    window.handleTabClick = function(tabName) {
+      const tabPng = document.getElementById('tab-btn-png');
+      const tabPdf = document.getElementById('tab-btn-pdf');
+      const tabPptx = document.getElementById('tab-btn-pptx');
+      const viewPng = document.getElementById('view-png-cards');
+      const viewPdf = document.getElementById('view-pdf-preview');
+      const viewPptx = document.getElementById('view-pptx-preview');
+
+      if (tabPng) tabPng.classList.toggle('active', tabName === 'png');
+      if (tabPdf) tabPdf.classList.toggle('active', tabName === 'pdf');
+      if (tabPptx) tabPptx.classList.toggle('active', tabName === 'pptx');
+
+      if (viewPng) viewPng.style.display = tabName === 'png' ? 'block' : 'none';
+      if (viewPdf) viewPdf.style.display = tabName === 'pdf' ? 'block' : 'none';
+      if (viewPptx) viewPptx.style.display = tabName === 'pptx' ? 'block' : 'none';
+
+      if (tabName === 'pdf') renderBingoPdfPreview();
+      if (tabName === 'pptx') renderPptxDeckPreview();
+    };
+
+    window.handleClearAllClick = function(e) {
+      if (e) e.preventDefault();
+      if (confirm("Are you sure you want to clear all loaded images?")) {
+        state.images = [];
+        updateUI();
+        showToast("Cleared all images.");
+      }
+    };
+
+    window.handleReshufflePreviewClick = function(e) {
+      if (e) e.preventDefault();
+      if (state.images.length >= 24) {
+        state.previewShuffles = null;
+        renderBingoPdfPreview();
+        showToast("Reshuffled preview order for all cards!");
+      } else {
+        showToast("Load at least 24 images to reshuffle.");
+      }
+    };
+
+    window.handleReshufflePptxClick = function(e) {
+      if (e) e.preventDefault();
+      if (state.images.length >= 24) {
+        state.pptxShuffle = shuffleArray(state.images.map((_, idx) => idx));
+        renderPptxDeckPreview();
+        showToast("Reshuffled PowerPoint deck slide order!");
+      } else {
+        showToast("Load at least 24 images to reshuffle PowerPoint deck.");
+      }
+    };
+
+    window.handleCloseModalClick = function(e) {
+      if (e) e.preventDefault();
+      currentModalItem = null;
+      const pm = document.getElementById('preview-modal');
+      if (pm) pm.classList.remove('active');
+    };
+
+    // DOM References
+    const fileInput = document.getElementById('file-input');
+    const dropzone = document.getElementById('dropzone');
+    const btnLoadSamples = document.getElementById('btn-load-samples');
+    const color1Input = document.getElementById('color1');
+    const color1Hex = document.getElementById('color1-hex');
+    const color2Input = document.getElementById('color2');
+    const color2Hex = document.getElementById('color2-hex');
+    const sheetBannerColorInput = document.getElementById('sheet-banner-color');
+    const sheetBannerHexInput = document.getElementById('sheet-banner-hex');
+    const sheetBannerColorInput2 = document.getElementById('sheet-banner-color2');
+    const sheetBannerHexInput2 = document.getElementById('sheet-banner-hex2');
+    const freeSpaceColorInput = document.getElementById('free-space-color');
+    const freeSpaceHexInput = document.getElementById('free-space-hex');
+    const bingoTitleColorInput = document.getElementById('bingo-title-color');
+    const bingoTitleHexInput = document.getElementById('bingo-title-hex');
+
+    const titleImgInput = document.getElementById('title-img-input');
+    const otherImgInput = document.getElementById('other-img-input');
+    const pptxTextColorInput = document.getElementById('pptx-text-color');
+    const pptxTextHexInput = document.getElementById('pptx-text-hex');
+    const pptxSubtextColorInput = document.getElementById('pptx-subtext-color');
+    const pptxSubtextHexInput = document.getElementById('pptx-subtext-hex');
+    const pptxFontFamilySelect = document.getElementById('pptx-font-family');
+    const pptxTitlePositionSelect = document.getElementById('pptx-title-position');
+    const pptxFontSizeInput = document.getElementById('pptx-font-size');
+    const pptxFontSizeVal = document.getElementById('pptx-font-size-val');
+    const btnGeneratePptx = document.getElementById('btn-generate-pptx');
+    const headerTitleInput = document.getElementById('header-title');
+    const fontFamilySelect = document.getElementById('font-family');
+    const fitModeSelect = document.getElementById('fit-mode');
+    const imagesGrid = document.getElementById('images-grid');
+    const imageCount = document.getElementById('image-count');
+    const btnDownloadZip = document.getElementById('btn-download-zip');
+    const btnClearAll = document.getElementById('btn-clear-all');
+    const previewModal = document.getElementById('preview-modal');
+    const modalCanvasWrapper = document.getElementById('modal-canvas-wrapper');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnModalDownload = document.getElementById('btn-modal-download');
+    const toast = document.getElementById('status-toast');
+    const tabBtnPng = document.getElementById('tab-btn-png');
+    const tabBtnPdf = document.getElementById('tab-btn-pdf');
+    const tabBtnPptx = document.getElementById('tab-btn-pptx');
+    const viewPngCards = document.getElementById('view-png-cards');
+    const viewPdfPreview = document.getElementById('view-pdf-preview');
+    const viewPptxPreview = document.getElementById('view-pptx-preview');
+    const tabPngCount = document.getElementById('tab-png-count');
+    const btnReshufflePreview = document.getElementById('btn-reshuffle-preview');
+    const btnReshufflePptx = document.getElementById('btn-reshuffle-pptx');
+    const btnGeneratePdf = document.getElementById('btn-generate-pdf');
+    const btnGeneratePdfTop = document.getElementById('btn-generate-pdf-top');
+    const btnGeneratePptxTop = document.getElementById('btn-generate-pptx-top');
+    const pdfCountSelect = document.getElementById('pdf-count');
+    const btnSwapColors = document.getElementById('btn-swap-colors');
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3200);
+    }
+
+    // Helper: strip extension for display label
+    function formatImageTitle(filename) {
+      return filename.replace(/\.[^/.]+$/, "");
+    }
+
+    // Helper: Polyfill / fallback for roundRect in Canvas 2D
+    function drawRoundRectPath(ctx, x, y, width, height, radius) {
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(x, y, width, height, radius);
+      } else {
+        ctx.beginPath();
+        let r = Array.isArray(radius) ? radius[0] : radius;
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + width - r, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+        ctx.lineTo(x + width, y + height - r);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+        ctx.lineTo(x + r, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+    }
+
+    // Helper to build valid Canvas 2D font specifier
+    function getCanvasFont(sizePx) {
+      const font = state.fontFamily;
+      const isGeneric = ['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui'].includes(font.toLowerCase());
+      const fontSpec = isGeneric ? font : `"${font}"`;
+      return `bold ${sizePx}px ${fontSpec}, 'Fredoka', 'Nunito', sans-serif`;
+    }
+
+    // Helper: Dynamic font sizing to scale text up to maxFontSize or down to minFontSize to fit maxW
+    function fitTextFontSize(ctx, text, maxW, maxFontSize = 64, minFontSize = 16) {
+      let fontSize = maxFontSize;
+      ctx.font = getCanvasFont(fontSize);
+      while (fontSize > minFontSize) {
+        if (ctx.measureText(text).width <= maxW) {
+          break;
+        }
+        fontSize -= 1;
+        ctx.font = getCanvasFont(fontSize);
+      }
+      return fontSize;
+    }
+
+    // Currently active preview item for modal
+    let currentModalItem = null;
+
+    // Listen for web font loads to refresh canvases automatically
+    if (document.fonts) {
+      document.fonts.ready.then(() => renderAll());
+      document.fonts.addEventListener('loadingdone', () => renderAll());
+    }
+
+    // Control events
+    color1Input.addEventListener('input', (e) => {
+      state.color1 = e.target.value;
+      color1Hex.value = e.target.value.toUpperCase();
+      renderAll();
+    });
+    color1Hex.addEventListener('change', (e) => {
+      let hex = e.target.value.trim();
+      if (!hex.startsWith('#')) hex = '#' + hex;
+      if (/^#[0-9A-F]{6}$/i.test(hex)) {
+        state.color1 = hex;
+        color1Input.value = hex;
+        renderAll();
+      }
+    });
+
+    color2Input.addEventListener('input', (e) => {
+      state.color2 = e.target.value;
+      color2Hex.value = e.target.value.toUpperCase();
+      renderAll();
+    });
+    color2Hex.addEventListener('change', (e) => {
+      let hex = e.target.value.trim();
+      if (!hex.startsWith('#')) hex = '#' + hex;
+      if (/^#[0-9A-F]{6}$/i.test(hex)) {
+        state.color2 = hex;
+        color2Input.value = hex;
+        renderAll();
+      }
+    });
+
+    if (sheetBannerColorInput && sheetBannerHexInput) {
+      sheetBannerColorInput.addEventListener('input', (e) => {
+        state.sheetBannerColor = e.target.value;
+        sheetBannerHexInput.value = e.target.value.toUpperCase();
+        renderAll();
+      });
+      sheetBannerHexInput.addEventListener('change', (e) => {
+        let hex = e.target.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          state.sheetBannerColor = hex;
+          sheetBannerColorInput.value = hex;
+          renderAll();
+        }
+      });
+    }
+
+    if (sheetBannerColorInput2 && sheetBannerHexInput2) {
+      sheetBannerColorInput2.addEventListener('input', (e) => {
+        state.sheetBannerColor2 = e.target.value;
+        sheetBannerHexInput2.value = e.target.value.toUpperCase();
+        renderAll();
+      });
+      sheetBannerHexInput2.addEventListener('change', (e) => {
+        let hex = e.target.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          state.sheetBannerColor2 = hex;
+          sheetBannerColorInput2.value = hex;
+          renderAll();
+        }
+      });
+    }
+
+    if (freeSpaceColorInput && freeSpaceHexInput) {
+      freeSpaceColorInput.addEventListener('input', (e) => {
+        state.freeSpaceColor = e.target.value;
+        freeSpaceHexInput.value = e.target.value.toUpperCase();
+        renderAll();
+      });
+      freeSpaceHexInput.addEventListener('change', (e) => {
+        let hex = e.target.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          state.freeSpaceColor = hex;
+          freeSpaceColorInput.value = hex;
+          renderAll();
+        }
+      });
+    }
+
+    if (bingoTitleColorInput && bingoTitleHexInput) {
+      bingoTitleColorInput.addEventListener('input', (e) => {
+        state.bingoTitleColor = e.target.value;
+        bingoTitleHexInput.value = e.target.value.toUpperCase();
+        renderBingoPdfPreview();
+      });
+      bingoTitleHexInput.addEventListener('change', (e) => {
+        let hex = e.target.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          state.bingoTitleColor = hex;
+          bingoTitleColorInput.value = hex;
+          renderBingoPdfPreview();
+        }
+      });
+    }
+
+    const pptxFilePicker = document.getElementById('pptx-file-picker');
+    if (pptxFilePicker) {
+      pptxFilePicker.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            state.pptxTemplateBuffer = evt.target.result;
+            showToast("PowerPoint template loaded! Generating deck now...");
+            generatePowerPointPPTX();
+          };
+          reader.readAsArrayBuffer(file);
+        }
+      });
+    }
+
+    if (titleImgInput) {
+      titleImgInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            state.titlePageImgBase64 = evt.target.result.split(',')[1];
+            const img = new Image();
+            img.onload = () => {
+              state.titlePageImgElement = img;
+              renderPptxDeckPreview();
+              showToast("Loaded custom Title Page image!");
+            };
+            img.src = evt.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    if (otherImgInput) {
+      otherImgInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            state.otherPagesImgBase64 = evt.target.result.split(',')[1];
+            const img = new Image();
+            img.onload = () => {
+              state.otherPagesImgElement = img;
+              renderPptxDeckPreview();
+              showToast("Loaded custom Card Pages background image!");
+            };
+            img.src = evt.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    if (pptxTextColorInput && pptxTextHexInput) {
+      pptxTextColorInput.addEventListener('input', (e) => {
+        state.pptxTextColor = e.target.value;
+        pptxTextHexInput.value = e.target.value.toUpperCase();
+        renderPptxDeckPreview();
+      });
+      pptxTextHexInput.addEventListener('change', (e) => {
+        let hex = e.target.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          state.pptxTextColor = hex;
+          pptxTextColorInput.value = hex;
+          renderPptxDeckPreview();
+        }
+      });
+    }
+
+    if (pptxSubtextColorInput && pptxSubtextHexInput) {
+      pptxSubtextColorInput.addEventListener('input', (e) => {
+        state.pptxSubtextColor = e.target.value;
+        pptxSubtextHexInput.value = e.target.value.toUpperCase();
+        renderPptxDeckPreview();
+      });
+      pptxSubtextHexInput.addEventListener('change', (e) => {
+        let hex = e.target.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          state.pptxSubtextColor = hex;
+          pptxSubtextColorInput.value = hex;
+          renderPptxDeckPreview();
+        }
+      });
+    }
+
+    if (pptxFontFamilySelect) {
+      pptxFontFamilySelect.addEventListener('change', (e) => {
+        state.pptxFontFamily = e.target.value;
+        renderPptxDeckPreview();
+      });
+    }
+
+    if (pptxTitlePositionSelect) {
+      pptxTitlePositionSelect.addEventListener('change', (e) => {
+        state.pptxTitlePosition = e.target.value;
+        renderPptxDeckPreview();
+      });
+    }
+
+    if (pptxFontSizeInput && pptxFontSizeVal) {
+      pptxFontSizeInput.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.pptxFontSize = val;
+        pptxFontSizeVal.textContent = `${val}px`;
+        renderPptxDeckPreview();
+      });
+    }
+
+    headerTitleInput.addEventListener('input', (e) => {
+      state.headerTitle = e.target.value;
+      renderAll();
+    });
+
+    fontFamilySelect.addEventListener('change', async (e) => {
+      state.fontFamily = e.target.value;
+      
+      // Ensure web font is loaded before rendering
+      if (document.fonts) {
+        try {
+          await document.fonts.load(getCanvasFont(40));
+        } catch (err) {
+          console.warn("Font loading:", err);
+        }
+      }
+      
+      renderAll();
+      
+      if (previewModal.classList.contains('active') && currentModalItem) {
+        openPreviewModal(currentModalItem);
+      }
+    });
+
+    fitModeSelect.addEventListener('change', (e) => {
+      state.fitMode = e.target.value;
+      renderAll();
+    });
+
+    // File Input / Drag & Drop
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleFiles(e.target.files);
+        fileInput.value = '';
+      }
+    });
+
+    // Helper: Fetch local file as Blob (supports file:// XHR fallback)
+    function fetchLocalBlob(url) {
+      return new Promise(async (resolve) => {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const blob = await res.blob();
+            if (blob && blob.size > 0) return resolve(blob);
+          }
+        } catch (e) {}
+
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', url, true);
+          xhr.responseType = 'blob';
+          xhr.onload = function() {
+            if ((this.status === 200 || this.status === 0) && this.response && this.response.size > 0) {
+              resolve(this.response);
+            } else {
+              resolve(null);
+            }
+          };
+          xhr.onerror = () => resolve(null);
+          xhr.send();
+        } catch (err) {
+          resolve(null);
+        }
+      });
+    }
+
+    // Helper: Load a single sample image converting to Data URI to prevent file:// canvas tainting
+    function loadSingleSampleImage(fileName) {
+      return new Promise(async (resolve) => {
+        const title = formatImageTitle(fileName);
+
+        // 1. Instant untainted Base64 Data URI from pre-compiled SAMPLE_IMAGES_DATA
+        if (window.SAMPLE_IMAGES_DATA && window.SAMPLE_IMAGES_DATA[fileName]) {
+          const dataUrl = window.SAMPLE_IMAGES_DATA[fileName];
+          const img = new Image();
+          img.onload = () => {
+            state.images.push({
+              id: 'img_' + Math.random().toString(36).substr(2, 9),
+              file: null,
+              title: title,
+              imgElement: img,
+              dataUrl: dataUrl,
+              fitMode: 'cover',
+              zoom: 1.0,
+              offsetX: 0,
+              offsetY: 0
+            });
+            resolve(true);
+          };
+          img.onerror = () => resolve(false);
+          img.src = dataUrl;
+          return;
+        }
+
+        const encodedName = encodeURI(fileName);
+        const pathsToTry = [
+          `reference_files/import images/${encodedName}`,
+          `reference_files/import images/${fileName}`,
+          `./reference_files/import images/${encodedName}`,
+          `./reference_files/import images/${fileName}`
+        ];
+
+        for (const srcPath of pathsToTry) {
+          const blob = await fetchLocalBlob(srcPath);
+          if (blob) {
+            const dataUrl = await new Promise((res) => {
+              const reader = new FileReader();
+              reader.onload = (e) => res(e.target.result);
+              reader.onerror = () => res(null);
+              reader.readAsDataURL(blob);
+            });
+
+            if (dataUrl) {
+              const img = new Image();
+              img.onload = () => {
+                state.images.push({
+                  id: 'img_' + Math.random().toString(36).substr(2, 9),
+                  file: null,
+                  title: title,
+                  imgElement: img,
+                  dataUrl: dataUrl,
+                  fitMode: 'cover',
+                  zoom: 1.0,
+                  offsetX: 0,
+                  offsetY: 0
+                });
+                resolve(true);
+              };
+              img.onerror = () => {};
+              img.src = dataUrl;
+              return;
+            }
+          }
+        }
+
+        // Direct img src fallback if fetch/xhr fail
+        for (const srcPath of pathsToTry) {
+          const loaded = await new Promise((res) => {
+            const img = new Image();
+            img.onload = () => {
+              state.images.push({
+                id: 'img_' + Math.random().toString(36).substr(2, 9),
+                file: null,
+                title: title,
+                imgElement: img,
+                fitMode: 'cover',
+                zoom: 1.0,
+                offsetX: 0,
+                offsetY: 0
+              });
+              res(true);
+            };
+            img.onerror = () => res(false);
+            img.src = srcPath;
+          });
+          if (loaded) return resolve(true);
+        }
+
+        resolve(false);
+      });
+    }
+
+
+
+    async function handleFiles(files) {
+      const fileList = Array.from(files).filter(f => f.type.startsWith('image/'));
+      if (!fileList.length) return;
+
+      showToast(`Loading ${fileList.length} image(s)...`);
+      for (const file of fileList) {
+        await addFileToState(file);
+      }
+
+      if (state.images.length >= 24) {
+        showToast("Capped to the 24 most recent images!");
+      }
+      updateUI();
+    }
+
+    function addFileToState(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            state.images.push({
+              id: 'img_' + Math.random().toString(36).substr(2, 9),
+              file: file,
+              title: formatImageTitle(file.name),
+              imgElement: img,
+              fitMode: 'cover',
+              zoom: 1.0,
+              offsetX: 0,
+              offsetY: 0
+            });
+
+            // Retain only the 24 most recent images
+            if (state.images.length > 24) {
+              state.images = state.images.slice(-24);
+            }
+            resolve();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    btnClearAll.addEventListener('click', () => {
+      state.images = [];
+      updateUI();
+      showToast("Cleared all images.");
+    });
+
+    // Swap Colors Button Listener
+    if (btnSwapColors) {
+      btnSwapColors.addEventListener('click', () => {
+        const temp = state.color1;
+        state.color1 = state.color2;
+        state.color2 = temp;
+        color1Input.value = state.color1;
+        color1Hex.value = state.color1.toUpperCase();
+        color2Input.value = state.color2;
+        color2Hex.value = state.color2.toUpperCase();
+        renderAll();
+        showToast("Swapped Accent Colors!");
+      });
+    }
+
+    // Canvas Renderer function (accepts optional c1, c2 for alternating accent layouts)
+    function drawCompositeCanvas(item, canvas, c1 = state.color1, c2 = state.color2) {
+      const size = 640;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      ctx.clearRect(0, 0, size, size);
+
+      // 1. Fill Card Frame Background (Color A / c1)
+      ctx.fillStyle = c1;
+      ctx.fillRect(0, 0, size, size);
+
+      // Card Margins & Inner Photo Box Dimensions
+      const margin = 24;
+      const topTitleSpace = 80;
+      const bottomPillSpace = 84;
+
+      const cardW = size - (margin * 2);
+      const cardH = size - (margin * 2);
+
+      // 2. Top Header Title Text (Dynamically scaled to fit header width)
+      const maxTitleW = cardW - 16;
+      const titleFontSize = fitTextFontSize(ctx, state.headerTitle, maxTitleW, 64, 20);
+      ctx.save();
+      ctx.font = getCanvasFont(titleFontSize);
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(state.headerTitle, size / 2, margin + (topTitleSpace / 2) - 6);
+      ctx.restore();
+
+      // 3. Inner Photo Container Box
+      const photoBoxX = margin;
+      const photoBoxY = margin + topTitleSpace;
+      const photoBoxW = cardW;
+      const photoBoxH = cardH - topTitleSpace - bottomPillSpace;
+      const radius = 18;
+
+      ctx.save();
+      drawRoundRectPath(ctx, photoBoxX, photoBoxY, photoBoxW, photoBoxH, radius);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = c2;
+      ctx.stroke();
+
+      // 4. Draw User Image with Cover (Crop to Fit) / Fill (Stretch) scaling & per-item Zoom/Pan Offsets
+      ctx.save();
+      drawRoundRectPath(ctx, photoBoxX, photoBoxY, photoBoxW, photoBoxH, radius);
+      ctx.clip();
+
+      if (item.imgElement) {
+        const img = item.imgElement;
+        const nw = img.naturalWidth || img.width;
+        const nh = img.naturalHeight || img.height;
+
+        if (nw && nh) {
+          const fitMode = item.fitMode || 'cover';
+          const zoom = item.zoom || 1.0;
+          const offX = item.offsetX || 0;
+          const offY = item.offsetY || 0;
+
+          if (fitMode === 'fill') {
+            // Stretch to Fill frame space completely
+            ctx.drawImage(img, photoBoxX, photoBoxY, photoBoxW, photoBoxH);
+          } else {
+            // Crop to Fit (Cover) with custom Zoom and Drag Offsets
+            const targetRatio = photoBoxW / photoBoxH;
+            const imgRatio = nw / nh;
+            let baseW, baseH;
+
+            if (imgRatio > targetRatio) {
+              baseH = photoBoxH;
+              baseW = photoBoxH * imgRatio;
+            } else {
+              baseW = photoBoxW;
+              baseH = photoBoxW / imgRatio;
+            }
+
+            const drawW = baseW * zoom;
+            const drawH = baseH * zoom;
+
+            const dx = photoBoxX + (photoBoxW - drawW) / 2 + offX;
+            const dy = photoBoxY + (photoBoxH - drawH) / 2 + offY;
+
+            ctx.drawImage(img, dx, dy, drawW, drawH);
+          }
+        }
+      }
+      ctx.restore();
+
+      // 5. Bottom Footer Pill
+      const pillH = 78;
+      const pillY = margin + cardH - pillH;
+
+      ctx.save();
+      drawRoundRectPath(ctx, margin, pillY, cardW, pillH, [0, 0, radius, radius]);
+      ctx.fillStyle = c2;
+      ctx.fill();
+
+      // Bottom Image Name Text (Dynamically scaled to fit pill width)
+      const maxPillW = cardW - 32;
+      const pillFontSize = fitTextFontSize(ctx, item.title, maxPillW, 44, 14);
+      ctx.font = getCanvasFont(pillFontSize);
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(item.title, size / 2, pillY + (pillH / 2));
+      ctx.restore();
+    }
+
+    // Helper: Attach click-and-drag panning events directly to canvas for framing adjustment
+    function makeCanvasDraggable(canvas, item, onUpdate) {
+      let isDragging = false;
+      let hasDragged = false;
+      let startX = 0;
+      let startY = 0;
+      let initialOffX = 0;
+      let initialOffY = 0;
+
+      canvas.style.cursor = (item.fitMode || 'cover') === 'fill' ? 'pointer' : 'grab';
+
+      canvas.addEventListener('mousedown', (e) => {
+        if ((item.fitMode || 'cover') === 'fill') return;
+        isDragging = true;
+        hasDragged = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        initialOffX = item.offsetX || 0;
+        initialOffY = item.offsetY || 0;
+        canvas.style.cursor = 'grabbing';
+      });
+
+      const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          hasDragged = true;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const scale = 640 / (rect.width || 1);
+
+        item.offsetX = initialOffX + (dx * scale);
+        item.offsetY = initialOffY + (dy * scale);
+
+        if (onUpdate) onUpdate();
+      };
+
+      const handleMouseUp = () => {
+        if (isDragging) {
+          isDragging = false;
+          canvas.style.cursor = (item.fitMode || 'cover') === 'fill' ? 'pointer' : 'grab';
+        }
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+
+      return () => hasDragged;
+    }
+
+    // Render Gallery
+    function updateUI() {
+      state.pptxShuffle = null; // Reset PPTX deck shuffle order when images update
+
+      // Enforce max 24 images capacity, keeping the 24 most recent
+      if (state.images.length > 24) {
+        state.images = state.images.slice(-24);
+      }
+
+      imageCount.textContent = `${state.images.length} / 24 Images`;
+      if (tabPngCount) tabPngCount.textContent = `${state.images.length} / 24`;
+      
+      if (state.images.length === 0) {
+        imagesGrid.innerHTML = `
+          <div class="empty-state">
+            <span style="font-size: 3rem; display: block; margin-bottom: 10px;"></span>
+            <h3>No Images Loaded Yet</h3>
+            <p>Upload your images or click <strong>"Load 24 Sample Input Images"</strong> on the left panel to test immediately.</p>
+          </div>
+        `;
+        btnDownloadZip.style.display = 'none';
+        btnClearAll.style.display = 'none';
+        renderBingoPdfPreview();
+        return;
+      }
+
+      btnDownloadZip.style.display = 'inline-flex';
+      btnClearAll.style.display = 'inline-flex';
+
+      imagesGrid.innerHTML = '';
+
+      state.images.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.dataset.id = item.id;
+
+        const container = document.createElement('div');
+        container.className = 'canvas-container';
+        
+        const canvas = document.createElement('canvas');
+        drawCompositeCanvas(item, canvas);
+
+        // Click & Drag repositioning on gallery card canvas
+        const getHasDragged = makeCanvasDraggable(canvas, item, () => {
+          drawCompositeCanvas(item, canvas);
+          renderBingoPdfPreview();
+          renderPptxDeckPreview();
+        });
+
+        // Click canvas opens adjustment modal if not dragged
+        canvas.addEventListener('click', (e) => {
+          if (!getHasDragged()) {
+            openPreviewModal(item, canvas);
+          }
+        });
+
+        container.appendChild(canvas);
+
+        const cardInputs = document.createElement('div');
+        cardInputs.className = 'card-inputs';
+        cardInputs.style.display = 'flex';
+        cardInputs.style.flexDirection = 'column';
+        cardInputs.style.gap = '8px';
+
+        // Title Input
+        const label = document.createElement('label');
+        label.textContent = 'Image Name (Bottom Text)';
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.value = item.title;
+        titleInput.addEventListener('input', (e) => {
+          item.title = e.target.value;
+          drawCompositeCanvas(item, canvas);
+          renderBingoPdfPreview();
+          renderPptxDeckPreview();
+        });
+
+        // Per-Item Framing Mode Select
+        const fitRow = document.createElement('div');
+        fitRow.style.display = 'flex';
+        fitRow.style.alignItems = 'center';
+        fitRow.style.justifyContent = 'space-between';
+        fitRow.style.gap = '8px';
+
+        const fitLabel = document.createElement('label');
+        fitLabel.style.fontSize = '0.78rem';
+        fitLabel.textContent = 'Framing';
+
+        const fitSelect = document.createElement('select');
+        fitSelect.style.fontSize = '0.8rem';
+        fitSelect.style.padding = '4px 8px';
+        fitSelect.style.borderRadius = 'var(--radius-sm)';
+        fitSelect.style.border = '1px solid var(--border-color)';
+        fitSelect.style.background = 'var(--bg-main)';
+
+        fitSelect.innerHTML = `
+          <option value="cover" ${(item.fitMode || 'cover') === 'cover' ? 'selected' : ''}>Crop to Fit</option>
+          <option value="fill" ${item.fitMode === 'fill' ? 'selected' : ''}>Stretch to Fill</option>
+        `;
+
+        // Per-Item Zoom Slider
+        const zoomRow = document.createElement('div');
+        zoomRow.style.display = (item.fitMode || 'cover') === 'fill' ? 'none' : 'flex';
+        zoomRow.style.flexDirection = 'column';
+        zoomRow.style.gap = '4px';
+
+        const zoomLabel = document.createElement('label');
+        zoomLabel.style.fontSize = '0.78rem';
+        const currentZoomPct = Math.round((item.zoom || 1.0) * 100);
+        zoomLabel.innerHTML = `Zoom: <span class="zoom-val" style="color: var(--brand-dark);">${currentZoomPct}%</span>`;
+
+        const zoomInput = document.createElement('input');
+        zoomInput.type = 'range';
+        zoomInput.min = '100';
+        zoomInput.max = '300';
+        zoomInput.value = currentZoomPct;
+        zoomInput.style.width = '100%';
+        zoomInput.style.accentColor = 'var(--brand-color)';
+
+        fitSelect.addEventListener('change', (e) => {
+          item.fitMode = e.target.value;
+          zoomRow.style.display = item.fitMode === 'fill' ? 'none' : 'flex';
+          canvas.style.cursor = item.fitMode === 'fill' ? 'pointer' : 'grab';
+          drawCompositeCanvas(item, canvas);
+          renderBingoPdfPreview();
+          renderPptxDeckPreview();
+        });
+
+        zoomInput.addEventListener('input', (e) => {
+          const val = parseInt(e.target.value, 10);
+          item.zoom = val / 100;
+          zoomLabel.querySelector('.zoom-val').textContent = `${val}%`;
+          drawCompositeCanvas(item, canvas);
+          renderBingoPdfPreview();
+          renderPptxDeckPreview();
+        });
+
+        zoomRow.appendChild(zoomLabel);
+        zoomRow.appendChild(zoomInput);
+
+        fitRow.appendChild(fitLabel);
+        fitRow.appendChild(fitSelect);
+
+        cardInputs.appendChild(label);
+        cardInputs.appendChild(titleInput);
+        cardInputs.appendChild(fitRow);
+        cardInputs.appendChild(zoomRow);
+
+        const cardActions = document.createElement('div');
+        cardActions.className = 'card-actions';
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'btn btn-primary';
+        downloadBtn.innerHTML = 'Download';
+        downloadBtn.addEventListener('click', () => downloadSinglePNG(item, canvas));
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn btn-danger';
+        removeBtn.innerHTML = '🗑️ Delete';
+        removeBtn.title = 'Remove image card';
+        removeBtn.addEventListener('click', () => {
+          state.images = state.images.filter(i => i.id !== item.id);
+          updateUI();
+        });
+
+        cardActions.appendChild(downloadBtn);
+        cardActions.appendChild(removeBtn);
+
+        card.appendChild(container);
+        card.appendChild(cardInputs);
+        card.appendChild(cardActions);
+
+        imagesGrid.appendChild(card);
+      });
+    }
+
+    function renderAll() {
+      state.images.forEach(item => {
+        const card = imagesGrid.querySelector(`[data-id="${item.id}"]`);
+        if (card) {
+          const canvas = card.querySelector('canvas');
+          if (canvas) drawCompositeCanvas(item, canvas);
+        }
+      });
+      renderBingoPdfPreview();
+      renderPptxDeckPreview();
+    }
+
+    // Tab Navigation Handling
+    if (tabBtnPng && tabBtnPdf && tabBtnPptx) {
+      tabBtnPng.addEventListener('click', () => {
+        tabBtnPng.classList.add('active');
+        tabBtnPdf.classList.remove('active');
+        tabBtnPptx.classList.remove('active');
+        viewPngCards.style.display = 'block';
+        viewPdfPreview.style.display = 'none';
+        viewPptxPreview.style.display = 'none';
+      });
+
+      tabBtnPdf.addEventListener('click', () => {
+        tabBtnPdf.classList.add('active');
+        tabBtnPng.classList.remove('active');
+        tabBtnPptx.classList.remove('active');
+        viewPngCards.style.display = 'none';
+        viewPdfPreview.style.display = 'block';
+        viewPptxPreview.style.display = 'none';
+        renderBingoPdfPreview();
+      });
+
+      tabBtnPptx.addEventListener('click', () => {
+        tabBtnPptx.classList.add('active');
+        tabBtnPng.classList.remove('active');
+        tabBtnPdf.classList.remove('active');
+        viewPngCards.style.display = 'none';
+        viewPdfPreview.style.display = 'none';
+        viewPptxPreview.style.display = 'block';
+        renderPptxDeckPreview();
+      });
+    }
+
+    if (btnReshufflePreview) {
+      btnReshufflePreview.addEventListener('click', () => {
+        if (state.images.length >= 24) {
+          state.previewShuffles = null;
+          renderBingoPdfPreview();
+          showToast("Reshuffled preview order for all cards!");
+        } else {
+          showToast("Load at least 24 images to reshuffle.");
+        }
+      });
+    }
+
+    if (btnReshufflePptx) {
+      btnReshufflePptx.addEventListener('click', () => {
+        if (state.images.length >= 24) {
+          state.pptxShuffle = shuffleArray(state.images);
+          renderPptxDeckPreview();
+          showToast("Reshuffled PowerPoint deck slide order!");
+        } else {
+          showToast("Load at least 24 images to reshuffle PowerPoint deck.");
+        }
+      });
+    }
+
+    // Modal
+    function openPreviewModal(item, sourceCanvas) {
+      currentModalItem = item;
+      modalCanvasWrapper.innerHTML = '';
+      const previewCanvas = document.createElement('canvas');
+      drawCompositeCanvas(item, previewCanvas);
+      modalCanvasWrapper.appendChild(previewCanvas);
+
+      document.getElementById('modal-title').textContent = `${state.headerTitle} - ${item.title}`;
+      try {
+        btnModalDownload.href = previewCanvas.toDataURL('image/png');
+        btnModalDownload.download = `${item.title.replace(/\s+/g, '_')}_composite.png`;
+      } catch (err) {
+        console.warn("Modal canvas download link error:", err);
+      }
+
+      previewModal.classList.add('active');
+    }
+
+    btnCloseModal.addEventListener('click', () => {
+      currentModalItem = null;
+      previewModal.classList.remove('active');
+    });
+    previewModal.addEventListener('click', (e) => {
+      if (e.target === previewModal) {
+        currentModalItem = null;
+        previewModal.classList.remove('active');
+      }
+    });
+
+    // Downloads
+    function downloadSinglePNG(item, canvas) {
+      try {
+        const link = document.createElement('a');
+        link.download = `${item.title.replace(/\s+/g, '_')}_composite.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast(`Downloaded ${item.title} PNG!`);
+      } catch (err) {
+        console.error("Single PNG download error:", err);
+        showToast("Download failed: Canvas tainted under file:// protocol. Please re-upload image files directly.");
+      }
+    }
+
+    let isGeneratingZip = false;
+    async function triggerZipDownload() {
+      if (isGeneratingZip) return;
+      if (!window.JSZip) {
+        showToast("JSZip library loading... please try again.");
+        return;
+      }
+      if (!state.images.length) {
+        showToast("Load or upload images first to download ZIP.");
+        return;
+      }
+
+      isGeneratingZip = true;
+      showToast("Generating ZIP of all images...");
+
+      try {
+        const zip = new JSZip();
+        const folder = zip.folder("composite_images");
+
+        state.images.forEach((item, index) => {
+          const tempCanvas = document.createElement('canvas');
+          drawCompositeCanvas(item, tempCanvas);
+          const dataUrl = tempCanvas.toDataURL('image/png');
+          const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+          const filename = `${String(index + 1).padStart(2, '0')}_${item.title.replace(/[^\w\s-]/gi, '').trim().replace(/\s+/g, '_')}.png`;
+          folder.file(filename, base64Data, { base64: true });
+        });
+
+        const content = await zip.generateAsync({ type: "blob" });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = "composite_images.zip";
+        link.click();
+        showToast("Downloaded all PNGs in composite_images.zip!");
+      } catch (err) {
+        console.error("ZIP Generation Error:", err);
+        showToast("ZIP Download failed: " + err.message);
+      } finally {
+        isGeneratingZip = false;
+      }
+    }
+
+    if (btnDownloadZip) {
+      btnDownloadZip.addEventListener('click', triggerZipDownload);
+    }
+
+    // Helper: Fisher-Yates array shuffle for 10 distinct card orders
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Helper: Load 24 sample images programmatically
+    let isLoadingSamples = false;
+    async function loadSampleImagesProgrammatically() {
+      if (isLoadingSamples) return state.images.length;
+      isLoadingSamples = true;
+      state.images = [];
+      let loadedCount = 0;
+      for (const fileName of SAMPLE_IMAGE_NAMES) {
+        const success = await loadSingleSampleImage(fileName);
+        if (success) loadedCount++;
+      }
+      isLoadingSamples = false;
+      if (loadedCount > 0) updateUI();
+      return loadedCount;
+    }
+
+    // Render PowerPoint Deck Live Preview (29 Widescreen 16:9 Slides)
+    function renderPptxDeckPreview() {
+      const container = document.getElementById('pptx-preview-container');
+      if (!container) return;
+
+      if (state.images.length < 24) {
+        container.innerHTML = `
+          <div class="empty-state" style="border: none; padding: 40px 10px; grid-column: 1 / -1;">
+            <h3>Need 24 Images for PowerPoint Deck Preview</h3>
+            <p>Upload 24 images or click <strong>"Load 24 Sample Input Images"</strong> on the sidebar.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Ensure state.pptxShuffle has exactly 24 shuffled images for random slide order
+      if (!state.pptxShuffle || state.pptxShuffle.length !== state.images.length) {
+        state.pptxShuffle = shuffleArray(state.images);
+      }
+
+      container.innerHTML = '';
+
+      for (let i = 1; i <= 29; i++) {
+        const slideCard = document.createElement('div');
+        slideCard.style.background = '#ffffff';
+        slideCard.style.borderRadius = 'var(--radius-md)';
+        slideCard.style.padding = '12px';
+        slideCard.style.border = '1px solid var(--border-color)';
+        slideCard.style.boxShadow = 'var(--shadow-sm)';
+        slideCard.style.display = 'flex';
+        slideCard.style.flexDirection = 'column';
+        slideCard.style.gap = '8px';
+
+        const label = document.createElement('div');
+        label.style.display = 'flex';
+        label.style.justifyContent = 'space-between';
+        label.style.alignItems = 'center';
+        label.style.fontSize = '0.82rem';
+        label.style.fontWeight = '700';
+        label.style.color = 'var(--text-main)';
+
+        let slideTitle = `Slide ${i}`;
+        if (i === 1) slideTitle = 'Slide 1: Title';
+        else if (i === 2) slideTitle = 'Slide 2: Video (media1.mp4)';
+        else if (i === 3) slideTitle = 'Slide 3: Transition';
+        else if (i >= 4 && i <= 27) {
+          const cardObj = state.pptxShuffle[i - 4];
+          const cardName = cardObj ? cardObj.title : `Card #${i - 3}`;
+          slideTitle = `Slide ${i}: ${cardName}`;
+        }
+        else if (i === 28) slideTitle = 'Slide 28: Closing';
+        else if (i === 29) slideTitle = 'Slide 29: Info';
+
+        label.innerHTML = `<span>${slideTitle}</span> <span style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">16:9</span>`;
+
+        const canvas = drawPptxSlideCanvas(i);
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.borderRadius = '6px';
+        canvas.style.border = '1px solid #cbd5e1';
+
+        slideCard.appendChild(label);
+        slideCard.appendChild(canvas);
+        container.appendChild(slideCard);
+      }
+    }
+
+    // Helper: Draw individual 16:9 PowerPoint Slide canvas (1280 x 720 px)
+    function drawPptxSlideCanvas(slideNum) {
+      const w = 1280;
+      const h = 720;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      // 1. Draw Slide Background (Custom uploaded background or default Sheet Banner colors A & B)
+      if (slideNum === 1 || slideNum === 3 || slideNum === 28) {
+        if (state.titlePageImgElement) {
+          ctx.drawImage(state.titlePageImgElement, 0, 0, w, h);
+        } else {
+          ctx.fillStyle = state.sheetBannerColor || "#004D49";
+          ctx.fillRect(0, 0, w, h);
+        }
+      } else if (slideNum >= 4 && slideNum <= 27) {
+        if (state.otherPagesImgElement) {
+          ctx.drawImage(state.otherPagesImgElement, 0, 0, w, h);
+        } else {
+          ctx.fillStyle = state.sheetBannerColor2 || "#363A89";
+          ctx.fillRect(0, 0, w, h);
+        }
+      } else {
+        ctx.fillStyle = "#05161d";
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      const fontName = state.pptxFontFamily || state.fontFamily || 'Fredoka';
+      const textColor = state.pptxTextColor || '#ffffff';
+
+      if (slideNum === 1 || slideNum === 3 || slideNum === 28) {
+        // Title / Transition / Closing Slides
+        ctx.save();
+        ctx.fillStyle = textColor;
+
+        let align = 'center';
+        let tx = w / 2;
+        let ty = 140; // Top default
+
+        const pos = state.pptxTitlePosition || 'top-center';
+        if (pos.includes('left')) {
+          align = 'left';
+          tx = 100;
+        } else if (pos.includes('right')) {
+          align = 'right';
+          tx = w - 100;
+        } else {
+          align = 'center';
+          tx = w / 2;
+        }
+
+        if (pos.includes('middle')) {
+          ty = 330;
+        } else if (pos.includes('bottom')) {
+          ty = 540;
+        } else {
+          ty = 140;
+        }
+
+        ctx.textAlign = align;
+        ctx.textBaseline = 'middle';
+        
+        const titleText = state.headerTitle || "State Fair Bingo";
+        const maxTitleW = align === 'center' ? (w - 180) : (w - 220);
+        
+        // Title text 80% larger
+        const userFontSize = Math.round((state.pptxFontSize || 64) * 1.80);
+        const titleFontSize = fitTextFontSize(ctx, titleText, maxTitleW, userFontSize, 24);
+
+        ctx.font = `bold ${titleFontSize}px '${fontName}', Fredoka, sans-serif`;
+        ctx.fillText(titleText, tx, ty);
+
+        // Subtitle text 50% larger (32px * 1.50 = 48px)
+        const subFontSize = Math.round(32 * 1.50); // 48px
+        ctx.font = `bold ${subFontSize}px '${fontName}', Fredoka, sans-serif`;
+        const subtextColor = state.pptxSubtextColor || '#FFD700';
+        ctx.fillStyle = subtextColor;
+        const subText = slideNum === 28 ? "Thanks for Playing" : "Coming Up Next";
+        ctx.fillText(subText, tx, ty + 80);
+        ctx.restore();
+      } else if (slideNum === 2) {
+        // Embedded Video Slide
+        ctx.fillStyle = "#05161d";
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = "#00A4E2";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(100, 80, w - 200, h - 160);
+
+        ctx.fillStyle = "rgba(0, 164, 226, 0.2)";
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2 - 20, 60, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#00A4E2";
+        ctx.beginPath();
+        ctx.moveTo(w / 2 - 15, h / 2 - 50);
+        ctx.lineTo(w / 2 + 35, h / 2 - 20);
+        ctx.lineTo(w / 2 - 15, h / 2 + 10);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.save();
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.font = `bold 28px '${fontName}', Fredoka, sans-serif`;
+        ctx.fillText("Embedded Video: media1.mp4 (82.4MB)", w / 2, h - 120);
+        ctx.font = `20px sans-serif`;
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("Preserved untouched on Slide 2", w / 2, h - 90);
+        ctx.restore();
+      } else if (slideNum >= 4 && slideNum <= 27) {
+        // Card Slides 1-24: Ordered randomly using state.pptxShuffle
+        const photoIdx = slideNum - 4;
+        const shuffledList = (state.pptxShuffle && state.pptxShuffle.length === state.images.length)
+          ? state.pptxShuffle
+          : state.images;
+
+        if (shuffledList[photoIdx]) {
+          const item = shuffledList[photoIdx];
+          const cardCanvas = document.createElement('canvas');
+          drawCompositeCanvas(item, cardCanvas, state.color1, state.color2);
+
+          const baseSize = h / 3; // 240px
+          const cardSize = Math.round(baseSize * 1.30 * 1.15); // 359px (15% larger than 312px)
+          const cardX = w - cardSize - 30; // Top right positioning (891px)
+          const cardY = 30; // Top margin 30px
+
+          ctx.drawImage(cardCanvas, cardX, cardY, cardSize, cardSize);
+        }
+      } else if (slideNum === 29) {
+        // Info Slide: Independent Vibrant Purple to Sunset Orange/Pink Gradient Background
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, '#363A89');   // Deep Purple
+        grad.addColorStop(0.5, '#D9381E'); // Vibrant Crimson/Magenta
+        grad.addColorStop(1, '#FF6B4A');   // Warm Sunset Orange/Pink
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.save();
+        // Independent fixed text colors: White & Bright Cyan
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold 56px '${fontName}', Fredoka, sans-serif`;
+        ctx.fillText("Thanks for playing", w / 2, h / 2 - 40);
+
+        ctx.font = `bold 32px '${fontName}', Fredoka, sans-serif`;
+        ctx.fillStyle = "#00A4E2";
+        ctx.fillText("Riley Kids TV CH5 Live @ 2:30 weekdays", w / 2, h / 2 + 30);
+        ctx.restore();
+      }
+
+      return canvas;
+    }
+
+    // Render Live Preview of All Generated Bingo Cards matching pdf-count
+    function renderBingoPdfPreview() {
+      const container = document.getElementById('pdf-preview-container');
+      if (!container) return;
+
+      if (state.images.length < 24) {
+        container.innerHTML = `
+          <div class="empty-state" style="border: none; padding: 40px 10px;">
+            <h3>Need 24 Images for PDF Preview</h3>
+            <p>Upload 24 images or click <strong>"Load 24 Sample Input Images"</strong> on the sidebar.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const cardCountSelect = document.getElementById('pdf-count');
+      const cardCount = parseInt(cardCountSelect ? cardCountSelect.value : "2", 10) || 2;
+
+      // Ensure state.previewShuffles has exactly cardCount shuffled index permutations
+      if (!state.previewShuffles || state.previewShuffles.length !== cardCount || (state.previewShuffles[0] && state.previewShuffles[0].length !== state.images.length)) {
+        state.previewShuffles = [];
+        for (let i = 0; i < cardCount; i++) {
+          state.previewShuffles.push(shuffleArray(state.images.map((_, idx) => idx)));
+        }
+      }
+
+      container.innerHTML = '';
+
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.gap = '32px';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.width = '100%';
+
+      for (let i = 0; i < cardCount; i++) {
+        const box = document.createElement('div');
+        box.style.width = '100%';
+        box.style.maxWidth = '600px';
+
+        const label = document.createElement('h4');
+        label.textContent = `Card #${i + 1} Preview`;
+        label.style.marginBottom = '8px';
+        label.style.color = 'var(--brand-dark)';
+        label.style.fontSize = '1.05rem';
+        label.style.fontWeight = '700';
+
+        // Map index permutations to live state.images objects so edits update live
+        const currentCardImages = (state.previewShuffles[i] || []).map(idx => state.images[idx]).filter(Boolean);
+
+        // Alternate sheet banner colors: Card 1 (i=0) uses Banner Color A, Card 2 (i=1) uses Banner Color B
+        const bannerColor = (i % 2 === 1) ? state.sheetBannerColor2 : state.sheetBannerColor;
+        const cardCanvas = drawBingoCardCanvas(currentCardImages, state.color1, bannerColor);
+        
+        box.appendChild(label);
+        box.appendChild(cardCanvas);
+        wrapper.appendChild(box);
+      }
+
+      container.appendChild(wrapper);
+    }
+
+    // Color Theory Helpers for Dynamic Banner Gradients & Complementary Text Colors
+    function hexToRgb(hex) {
+      let c = (hex || '#004D49').replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16) || 0;
+      return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+    }
+
+    function rgbToHex(r, g, b) {
+      const toHex = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    function adjustLightness(hex, factor) {
+      const { r, g, b } = hexToRgb(hex);
+      if (factor > 1) {
+        const f = factor - 1;
+        return rgbToHex(r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f);
+      } else {
+        return rgbToHex(r * factor, g * factor, b * factor);
+      }
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h = 0, s = 0, l = (max + min) / 2;
+
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return { h: h * 360, s: s * 100, l: l * 100 };
+    }
+
+    function hslToHex(h, s, l) {
+      h = ((h % 360) + 360) % 360;
+      s /= 100; l /= 100;
+      const k = n => (n + h / 30) % 12;
+      const a = s * Math.min(l, 1 - l);
+      const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+      return rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
+    }
+
+    function getBannerTextPalette(baseHex) {
+      const { h, s, l } = rgbToHsl(hexToRgb(baseHex).r, hexToRgb(baseHex).g, hexToRgb(baseHex).b);
+      const compHue = (h + 180) % 360; // Complementary hue on color wheel
+      
+      const accent1 = hslToHex(compHue, Math.max(s, 85), 58); // High vibrancy complementary accent
+      const accent2 = hslToHex((compHue + 30) % 360, Math.max(s, 80), 65); // Warm secondary accent
+      const shadowColor = adjustLightness(baseHex, 0.45);
+      const textPrimary = l < 65 ? "#FFFFFF" : "#0F172A";
+
+      return { accent1, accent2, shadowColor, textPrimary };
+    }
+
+    // Render single 5x5 Bingo Card canvas (1700 x 2200 px) with shrunk margins, enlarged cards, & aligned block banners
+    function drawBingoCardCanvas(shuffledImages, gridBgColor = state.color1, bannerColor = state.sheetBannerColor) {
+      const w = 1700;
+      const h = 2200;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      // Compute multi-color gradient shades matching "Bingo Sheet Template .pdf"
+      const startColor = adjustLightness(gridBgColor, 1.15); // Bright Sky Blue/Cyan
+      const palette = getBannerTextPalette(bannerColor);
+
+      // 1. Page Background (Clean White)
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid & Block Boundaries Alignment (Side margin = 70px, Block Width = 1560px)
+      const sideMargin = 70;
+      const blockW = w - (sideMargin * 2); // 1560px
+
+      // 2. Top Header Block (Y: 40 to 320px, Height = 280px, aligned to 70px side margins)
+      const topBlockY = 40;
+      const topBlockH = 280;
+      const topRadius = 24;
+
+      ctx.save();
+      const topGrad = ctx.createLinearGradient(sideMargin, topBlockY, sideMargin + blockW, topBlockY + topBlockH);
+      topGrad.addColorStop(0, startColor);
+      topGrad.addColorStop(0.48, bannerColor);
+      topGrad.addColorStop(1, adjustLightness(bannerColor, 0.78));
+
+      // Draw rounded top banner card
+      drawRoundRectPath(ctx, sideMargin, topBlockY, blockW, topBlockH, topRadius);
+      ctx.fillStyle = topGrad;
+      ctx.fill();
+
+      // 2A. Left Giant 3D Title "BINGO" (Centered vertically in top block)
+      const bingoX = sideMargin + 45; // 115px
+      const bingoY = topBlockY + 115; // Y=155px
+      const fontStyle = `'Fredoka', 'Fredoka One', 'Bungee', '${state.fontFamily}', sans-serif`;
+
+      ctx.save();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.font = `900 250px ${fontStyle}`;
+      if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = "18px";
+      }
+
+      // Layer 1: Light cyan/accent drop shadow offset (+14px, +14px)
+      ctx.fillStyle = adjustLightness(palette.accent1, 1.4);
+      ctx.fillText("BINGO", bingoX + 14, bingoY + 14);
+
+      // Layer 2: Dark outline offset (+7px, +7px)
+      ctx.fillStyle = "#000000";
+      ctx.fillText("BINGO", bingoX + 7, bingoY + 7);
+
+      // Layer 3: Main User Selected BINGO Title Text Color (default #FFFFFF)
+      ctx.fillStyle = state.bingoTitleColor || "#FFFFFF";
+      ctx.fillText("BINGO", bingoX, bingoY);
+      ctx.restore();
+
+      // 2B. Right Stacked "TODAY AT 2:30" Box
+      ctx.save();
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const rightBoxX = sideMargin + blockW - 45; // 1585px
+      ctx.fillStyle = palette.textPrimary;
+
+      ctx.font = `900 88px 'HKModular-Bold', 'Bebas Neue', '${state.fontFamily}', Fredoka, sans-serif`;
+      ctx.fillText("TODAY", rightBoxX, topBlockY + 62);
+      ctx.fillText("AT", rightBoxX, topBlockY + 128);
+
+      ctx.font = `900 100px 'HKModular-Bold', 'Bebas Neue', '${state.fontFamily}', Fredoka, sans-serif`;
+      ctx.fillText("2:30", rightBoxX, topBlockY + 195);
+      ctx.restore();
+
+      // 2C. Bottom Sub-strip of Top Banner (Y: topBlockY + 230 to topBlockY + 280px, height 50px)
+      ctx.save();
+      const stripY = topBlockY + 230;
+      const stripH = 50;
+      drawRoundRectPath(ctx, sideMargin, stripY, blockW, stripH, [0, 0, topRadius, topRadius]);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+      ctx.fill();
+
+      ctx.textBaseline = 'middle';
+      const stripCenterY = stripY + (stripH / 2);
+
+      // Left: "presented by KIDS-TV5 From the Child Life Zone"
+      ctx.textAlign = 'left';
+      ctx.font = `bold 26px 'OpenSans-Bold', '${state.fontFamily}', sans-serif`;
+      ctx.fillStyle = palette.textPrimary;
+      ctx.fillText("presented by ", sideMargin + 35, stripCenterY);
+      const presW = ctx.measureText("presented by ").width;
+
+      ctx.font = `bold 35px 'OpenSans-Bold', '${state.fontFamily}', sans-serif`;
+      ctx.fillStyle = palette.accent1;
+      ctx.fillText("KIDS-TV5", sideMargin + 35 + presW, stripCenterY);
+      const kidsW = ctx.measureText("KIDS-TV5").width;
+
+      ctx.font = `bold 26px 'OpenSans-Bold', '${state.fontFamily}', sans-serif`;
+      ctx.fillStyle = palette.textPrimary;
+      ctx.fillText(" From the Child Life Zone", sideMargin + 35 + presW + kidsW, stripCenterY);
+
+      // Right: "when you win, collect your prize from the unit secretary!"
+      ctx.font = `bold 24px 'OpenSans-Bold', '${state.fontFamily}', sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.fillText("when you win, collect your prize from the unit secretary!", sideMargin + blockW - 35, stripCenterY);
+      ctx.restore();
+
+      ctx.restore(); // Restore Top Banner Card clip/state
+
+      // 3. Middle 5x5 Grid Area (Tile size = 284px square, centered horizontally at gridX = 90px, Y: 338 to 1822px)
+      const gridX = 90;    // Centered horizontally: (1700 - 1520) / 2 = 90px left & right margins
+      const gridY = 338;   // Top margin below top banner block (Y=320px)
+      const tileW = 284;   // Enlarged 284px square tile (~7% larger)
+      const tileH = 284;   // Enlarged 284px square tile (~7% larger)
+      const gapX  = 25;    // Horizontal gap between columns (5*284 + 4*25 = 1520px)
+      const gapY  = 16;    // Vertical gap between rows (5*284 + 4*16 = 1484px -> ends at Y=1822px, 38px gap before footer)
+
+      let imageIdx = 0;
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          const slotX = gridX + c * (tileW + gapX);
+          const slotY = gridY + r * (tileH + gapY);
+
+          if (r === 2 && c === 2) {
+            // Center FREE SPACE Tile
+            drawFreeSpaceTile(ctx, slotX, slotY, tileW, tileH);
+          } else {
+            // Render composite PNG tile using standard photo colors
+            if (shuffledImages[imageIdx]) {
+              const item = shuffledImages[imageIdx];
+              const cardCanvas = document.createElement('canvas');
+              drawCompositeCanvas(item, cardCanvas, state.color1, state.color2);
+              ctx.drawImage(cardCanvas, slotX, slotY, tileW, tileH);
+            }
+            imageIdx++;
+          }
+        }
+      }
+
+      // 4. Bottom Footer Block (Y: 1860 to 2100px, Shrunk Height = 240px, aligned to 70px side margins)
+      const bottomBlockY = 1860;
+      const bottomBlockH = 240;
+      const bottomRadius = 24;
+
+      ctx.save();
+      const bottomGrad = ctx.createLinearGradient(sideMargin, bottomBlockY, sideMargin + blockW, bottomBlockY + bottomBlockH);
+      bottomGrad.addColorStop(0, startColor);
+      bottomGrad.addColorStop(0.48, bannerColor);
+      bottomGrad.addColorStop(1, adjustLightness(bannerColor, 0.78));
+
+      // Draw rounded bottom footer card
+      drawRoundRectPath(ctx, sideMargin, bottomBlockY, blockW, bottomBlockH, bottomRadius);
+      ctx.fillStyle = bottomGrad;
+      ctx.fill();
+
+      // 4A. Left Call-In Details (Vertically centered in shrunk 240px footer block)
+      ctx.save();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      // Header line: CALL IN WHEN YOU WIN!
+      ctx.font = `italic 900 64px 'CooperHewitt-HeavyItalic', 'Bangers', '${state.fontFamily}', Fredoka, sans-serif`;
+      
+      // Shadow / Outline
+      ctx.fillStyle = palette.shadowColor;
+      ctx.fillText("CALL IN WHEN YOU WIN!", sideMargin + 43, bottomBlockY + 57);
+
+      ctx.fillStyle = palette.accent1;
+      ctx.fillText("CALL IN WHEN YOU WIN!", sideMargin + 40, bottomBlockY + 55);
+
+      // Line 2 & 3: Phone details
+      ctx.font = `bold 48px 'LeagueSpartan-Bold', '${state.fontFamily}', Fredoka, sans-serif`;
+      ctx.fillStyle = palette.textPrimary;
+      ctx.fillText("317-948-0506 OR", sideMargin + 40, bottomBlockY + 125);
+      ctx.fillText("80506 ON YOUR ROOM PHONE", sideMargin + 40, bottomBlockY + 185);
+      ctx.restore();
+
+      // 4B. Right Stacked KIDS TV5 Logo Text (Vertically centered in shrunk 240px footer block)
+      ctx.save();
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const logoRightX = sideMargin + blockW - 40; // 1590px
+      ctx.font = `900 102px 'BarlowSemiCondensed-Black', 'Bebas Neue', 'Impact', '${state.fontFamily}', Fredoka, sans-serif`;
+
+      // Outline
+      ctx.strokeStyle = palette.textPrimary;
+      ctx.lineWidth = 10;
+      ctx.strokeText("KIDS", logoRightX, bottomBlockY + 75);
+      ctx.strokeText("TV5", logoRightX, bottomBlockY + 170);
+
+      // Fill Complementary Logo Color (palette.accent2)
+      ctx.fillStyle = palette.accent2;
+      ctx.fillText("KIDS", logoRightX, bottomBlockY + 75);
+      ctx.fillText("TV5", logoRightX, bottomBlockY + 170);
+
+      ctx.restore();
+      ctx.restore(); // Restore Bottom Footer Card
+
+      return canvas;
+    }
+
+    // Helper: Load Child Life Zone logo image for FREE SPACE center tile (uses Base64 Data URI to prevent canvas tainting)
+    async function loadZoneLogo() {
+      if (window.ZONE_LOGO_DATA_URL) {
+        const dataUrl = window.ZONE_LOGO_DATA_URL;
+        const img = new Image();
+        img.onload = () => {
+          state.zoneLogoImgElement = img;
+          state.zoneLogoBase64 = dataUrl;
+          renderBingoPdfPreview();
+        };
+        img.src = dataUrl;
+        return;
+      }
+
+      const fileName = 'reference_files/zone logo transparent color.png';
+      const encodedName = encodeURI(fileName);
+      const pathsToTry = [
+        encodedName,
+        fileName,
+        `./${encodedName}`,
+        `./${fileName}`
+      ];
+
+      for (const srcPath of pathsToTry) {
+        const blob = await fetchLocalBlob(srcPath);
+        if (blob) {
+          const dataUrl = await new Promise((res) => {
+            const reader = new FileReader();
+            reader.onload = (e) => res(e.target.result);
+            reader.onerror = () => res(null);
+            reader.readAsDataURL(blob);
+          });
+
+          if (dataUrl) {
+            const img = new Image();
+            img.onload = () => {
+              state.zoneLogoImgElement = img;
+              state.zoneLogoBase64 = dataUrl;
+              renderBingoPdfPreview();
+            };
+            img.src = dataUrl;
+            return;
+          }
+        }
+      }
+
+      // Direct Image src fallback
+      for (const srcPath of pathsToTry) {
+        const loaded = await new Promise((res) => {
+          const img = new Image();
+          img.onload = () => {
+            state.zoneLogoImgElement = img;
+            res(true);
+          };
+          img.onerror = () => res(false);
+          img.src = srcPath;
+        });
+        if (loaded) {
+          renderBingoPdfPreview();
+          return;
+        }
+      }
+    }
+    loadZoneLogo();
+
+    // Render FREE SPACE center tile matching card structure with Child Life Zone logo & extra bold FREE/SPACE text
+    function drawFreeSpaceTile(ctx, x, y, w, h, c1 = state.color1, c2 = state.color2) {
+      ctx.save();
+
+      // Scale factor relative to standard 640px composite card
+      const scale = w / 640;
+
+      // 1. Fill Card Frame Background (c1)
+      ctx.fillStyle = c1;
+      drawRoundRectPath(ctx, x, y, w, h, 14 * Math.max(0.4, scale));
+      ctx.fill();
+
+      // Card Margins & Inner Photo Box Dimensions
+      const margin = 24 * scale;
+      const topTitleSpace = 84 * scale;
+      const bottomPillSpace = 88 * scale;
+
+      const cardW = w - (margin * 2);
+      const cardH = h - (margin * 2);
+
+      // 2. Top Header Title Text "FREE" (Bigger & Bolder: 76px extra thick)
+      const topFontSize = Math.round(76 * scale);
+      ctx.save();
+      ctx.font = `900 ${Math.max(14, topFontSize)}px 'Fredoka', '${state.fontFamily}', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Drop shadow for header text
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillText("FREE", x + w / 2 + (3 * scale), y + margin + (topTitleSpace / 2) + (3 * scale));
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText("FREE", x + w / 2, y + margin + (topTitleSpace / 2));
+      ctx.restore();
+
+      // 3. Inner Photo Container Box
+      const photoBoxX = x + margin;
+      const photoBoxY = y + margin + topTitleSpace;
+      const photoBoxW = cardW;
+      const photoBoxH = cardH - topTitleSpace - bottomPillSpace;
+      const radius = 18 * scale;
+
+      ctx.save();
+      drawRoundRectPath(ctx, photoBoxX, photoBoxY, photoBoxW, photoBoxH, radius);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.lineWidth = 8 * scale;
+      ctx.strokeStyle = c2;
+      ctx.stroke();
+
+      // 4. Draw Center Child Life Zone Logo inside Photo Container
+      ctx.save();
+      drawRoundRectPath(ctx, photoBoxX, photoBoxY, photoBoxW, photoBoxH, radius);
+      ctx.clip();
+
+      // Soft Brand Background inside Photo Box
+      const freeGrad = ctx.createLinearGradient(photoBoxX, photoBoxY, photoBoxX + photoBoxW, photoBoxY + photoBoxH);
+      freeGrad.addColorStop(0, "#ffffff");
+      freeGrad.addColorStop(1, adjustLightness(state.freeSpaceColor || "#00A859", 1.35));
+      ctx.fillStyle = freeGrad;
+      ctx.fillRect(photoBoxX, photoBoxY, photoBoxW, photoBoxH);
+
+      if (state.zoneLogoImgElement) {
+        // Draw Child Life Zone Logo ("zone logo transparent color.png")
+        const img = state.zoneLogoImgElement;
+        const nw = img.naturalWidth || img.width || 300;
+        const nh = img.naturalHeight || img.height || 300;
+
+        const maxLogoW = photoBoxW * 0.88;
+        const maxLogoH = photoBoxH * 0.88;
+        const logoRatio = nw / nh;
+
+        let drawW, drawH;
+        if (maxLogoW / maxLogoH > logoRatio) {
+          drawH = maxLogoH;
+          drawW = maxLogoH * logoRatio;
+        } else {
+          drawW = maxLogoW;
+          drawH = maxLogoW / logoRatio;
+        }
+
+        const logoX = photoBoxX + (photoBoxW - drawW) / 2;
+        const logoY = photoBoxY + (photoBoxH - drawH) / 2;
+
+        ctx.drawImage(img, logoX, logoY, drawW, drawH);
+      } else {
+        // Fallback: Vibrant 3D Gold Star
+        const starCenterX = photoBoxX + photoBoxW / 2;
+        const starCenterY = photoBoxY + photoBoxH / 2;
+        const outerR = Math.min(photoBoxW, photoBoxH) * 0.38;
+        const innerR = outerR * 0.48;
+
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const outerAngle = (i * 72 - 90) * Math.PI / 180;
+          const innerAngle = ((i * 72 + 36) - 90) * Math.PI / 180;
+          const ox = starCenterX + outerR * Math.cos(outerAngle);
+          const oy = starCenterY + outerR * Math.sin(outerAngle);
+          const ix = starCenterX + innerR * Math.cos(innerAngle);
+          const iy = starCenterY + innerR * Math.sin(innerAngle);
+
+          if (i === 0) ctx.moveTo(ox, oy);
+          else ctx.lineTo(ox, oy);
+          ctx.lineTo(ix, iy);
+        }
+        ctx.closePath();
+
+        ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+        ctx.shadowBlur = 12 * scale;
+        ctx.shadowOffsetY = 4 * scale;
+
+        ctx.fillStyle = "#FFF200";
+        ctx.fill();
+        ctx.lineWidth = 3 * scale;
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.restore();
+
+      // 5. Bottom Footer Title Pill ("SPACE" - Bigger & Bolder: 68px extra thick)
+      const pillH = 84 * scale;
+      const pillY = y + margin + cardH - pillH;
+
+      ctx.save();
+      drawRoundRectPath(ctx, photoBoxX, pillY, photoBoxW, pillH, [0, 0, radius, radius]);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.76)";
+      ctx.fill();
+
+      // Border line above pill
+      ctx.beginPath();
+      ctx.moveTo(photoBoxX, pillY);
+      ctx.lineTo(photoBoxX + photoBoxW, pillY);
+      ctx.strokeStyle = c2;
+      ctx.lineWidth = 4 * scale;
+      ctx.stroke();
+
+      // Title Text "SPACE"
+      const bottomFontSize = Math.round(68 * scale);
+      ctx.font = `900 ${Math.max(14, bottomFontSize)}px 'Fredoka', '${state.fontFamily}', sans-serif`;
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText("SPACE", x + w / 2, pillY + (pillH / 2));
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    // PDF Generator Handler (Alternates Sheet Banner Color A and B on every other page)
+    let isGeneratingPdf = false;
+    async function generateBingoPDF() {
+      if (isGeneratingPdf) return;
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        showToast("PDF generator library loading... please try again.");
+        return;
+      }
+
+      isGeneratingPdf = true;
+
+      try {
+        // Auto-load 24 sample images if empty
+        if (state.images.length < 24) {
+          showToast("Auto-loading sample images for Bingo PDF...");
+          await loadSampleImagesProgrammatically();
+        }
+
+        if (state.images.length < 24) {
+          showToast("Need at least 24 images to fill 5x5 Bingo Cards.");
+          return;
+        }
+
+        const cardCountSelect = document.getElementById('pdf-count');
+        const cardCount = parseInt(cardCountSelect ? cardCountSelect.value : "2", 10) || 2;
+
+        showToast(`Generating ${cardCount} shuffled Bingo Cards PDF...`);
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'pt',
+          format: [612, 792] // US Letter dimensions in points
+        });
+
+        for (let i = 0; i < cardCount; i++) {
+          showToast(`Rendering Bingo Card ${i + 1} of ${cardCount}...`);
+
+          const currentCardImages = (state.previewShuffles && state.previewShuffles[i] && state.previewShuffles[i].length === state.images.length)
+            ? state.previewShuffles[i].map(idx => state.images[idx]).filter(Boolean)
+            : state.images;
+
+          // Alternate sheet banner color on every other page: Card 1 (i=0) uses Banner A, Card 2 (i=1) uses Banner B
+          const bannerColor = (i % 2 === 1) ? state.sheetBannerColor2 : state.sheetBannerColor;
+          const cardCanvas = drawBingoCardCanvas(currentCardImages, state.color1, bannerColor);
+          const imgData = cardCanvas.toDataURL('image/jpeg', 0.92);
+
+          if (i > 0) {
+            pdf.addPage([612, 792], 'portrait');
+          }
+
+          pdf.addImage(imgData, 'JPEG', 0, 0, 612, 792);
+        }
+
+        pdf.save(`Fair_Week_Bingo_${cardCount}_Shuffled_Cards.pdf`);
+        showToast(`Successfully downloaded ${cardCount} shuffled Bingo Cards PDF!`);
+      } catch (pdfErr) {
+        console.error("PDF Generation Error:", pdfErr);
+        showToast("PDF Download failed: " + pdfErr.message);
+      } finally {
+        isGeneratingPdf = false;
+      }
+    }
+
+    // Helper: Load PPTX template file ArrayBuffer safely (supports http:// and cached file buffer)
+    async function loadPptxTemplateArrayBuffer() {
+      if (state.pptxTemplateBuffer) {
+        return state.pptxTemplateBuffer;
+      }
+
+      const fileName = 'reference_files/Bingo x State Fair Week.pptx';
+      const encodedName = encodeURI(fileName);
+      const pathsToTry = [
+        fileName,
+        encodedName,
+        `./${encodedName}`,
+        `./${fileName}`
+      ];
+
+      for (const p of pathsToTry) {
+        try {
+          const res = await fetch(p);
+          if (res.ok) {
+            const buf = await res.arrayBuffer();
+            if (buf && buf.byteLength > 0) {
+              state.pptxTemplateBuffer = buf;
+              return buf;
+            }
+          }
+        } catch (e) {}
+      }
+
+      // XHR fallback for local servers
+      const tryXHR = () => new Promise((resolve) => {
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', encodedName, true);
+          xhr.responseType = 'arraybuffer';
+          xhr.onload = function() {
+            if ((this.status === 200 || this.status === 0) && this.response && this.response.byteLength > 0) {
+              resolve(this.response);
+            } else {
+              resolve(null);
+            }
+          };
+          xhr.onerror = () => resolve(null);
+          xhr.send();
+        } catch (err) {
+          resolve(null);
+        }
+      });
+
+      const xhrBuf = await tryXHR();
+      if (xhrBuf) {
+        state.pptxTemplateBuffer = xhrBuf;
+        return xhrBuf;
+      }
+
+      throw new Error('PowerPoint template file not loaded. If running locally via file:///, please select "Bingo x State Fair Week.pptx" in the sidebar options.');
+    }
+
+    // Helper: XML Special Character Escaper for PPTX XML Text Node injection
+    function escapeXml(str) {
+      return (str || '').replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&apos;');
+    }
+
+    // Helper: Generate solid color JPEG Base64 for PPTX background media replacement
+    function createSolidColorJpegBase64(colorHex, width = 1280, height = 720) {
+      const c = document.createElement('canvas');
+      c.width = width;
+      c.height = height;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = colorHex || "#363A89";
+      ctx.fillRect(0, 0, width, height);
+      return c.toDataURL('image/jpeg', 0.90).replace(/^data:image\/jpeg;base64,/, "");
+    }
+
+    // PowerPoint (.pptx) Presentation Generator Handler
+    let isGeneratingPptx = false;
+    async function generatePowerPointPPTX() {
+      if (isGeneratingPptx) return;
+      if (!window.JSZip) {
+        showToast("JSZip library loading... please try again.");
+        return;
+      }
+
+      isGeneratingPptx = true;
+
+      try {
+        // Auto-load 24 sample images if empty
+        if (state.images.length < 24) {
+          showToast("Auto-loading sample images for PowerPoint deck...");
+          await loadSampleImagesProgrammatically();
+        }
+
+        if (state.images.length < 24) {
+          showToast("Need 24 images to fill 24 PowerPoint card slides.");
+          return;
+        }
+
+        showToast("Loading PowerPoint template (Bingo x State Fair Week.pptx)...");
+
+        let templateArrayBuffer;
+        try {
+          templateArrayBuffer = await loadPptxTemplateArrayBuffer();
+        } catch (bufErr) {
+          showToast("Local file mode: Please select 'Bingo x State Fair Week.pptx'...");
+          const picker = document.getElementById('pptx-file-picker');
+          if (picker) picker.click();
+          return;
+        }
+
+        showToast("Injecting composite photo cards, slide backgrounds & updating titles...");
+
+        const zip = await JSZip.loadAsync(templateArrayBuffer);
+
+        // Ensure state.pptxShuffle has 24 shuffled index permutations for random slide order
+        if (!state.pptxShuffle || state.pptxShuffle.length !== state.images.length) {
+          state.pptxShuffle = shuffleArray(state.images.map((_, idx) => idx));
+        }
+
+        // 1. Replace 24 composite card PNG images in ppt/media/ (image3.png ... image26.png) using live state.images
+        for (let i = 0; i < 24; i++) {
+          const targetIdx = (state.pptxShuffle && state.pptxShuffle.length === state.images.length)
+            ? state.pptxShuffle[i]
+            : i;
+          const item = state.images[targetIdx] || state.images[i];
+          if (item) {
+            const tempCanvas = document.createElement('canvas');
+            drawCompositeCanvas(item, tempCanvas);
+            const dataUrl = tempCanvas.toDataURL('image/png');
+            const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+
+            const targetMediaName = `ppt/media/image${i + 3}.png`;
+            zip.file(targetMediaName, base64Data, { base64: true });
+          }
+        }
+
+        // 2. Replace Title Page Background (image1.jpeg) with custom image or Title Page background color (Sheet Banner Color A)
+        const titleBgColor = state.sheetBannerColor || state.color1 || '#004D49';
+        const titleBgBase64 = state.titlePageImgBase64 || createSolidColorJpegBase64(titleBgColor);
+        zip.file('ppt/media/image1.jpeg', titleBgBase64, { base64: true });
+
+        // 3. Replace Card Pages Background (image2.jpeg / image2.png) with custom image or Card Pages background color (Sheet Banner Color B)
+        const otherBgColor = state.sheetBannerColor2 || state.color2 || '#363A89';
+        const otherBgBase64 = state.otherPagesImgBase64 || createSolidColorJpegBase64(otherBgColor);
+        if (zip.file('ppt/media/image2.png')) {
+          zip.file('ppt/media/image2.png', otherBgBase64, { base64: true });
+        }
+        if (zip.file('ppt/media/image2.jpeg')) {
+          zip.file('ppt/media/image2.jpeg', otherBgBase64, { base64: true });
+        }
+
+        // 3b. Update slide relationships so Slides 4..27 target image2.png for Card Page Background
+        const relKeys = Object.keys(zip.files).filter(k => /^ppt\/slides\/_rels\/slide\d+\.xml\.rels$/i.test(k));
+        for (const relKey of relKeys) {
+          const m = relKey.match(/slide(\d+)\.xml\.rels$/i);
+          if (m) {
+            const num = parseInt(m[1], 10);
+            if (num >= 4 && num <= 27) {
+              let relContent = await zip.files[relKey].async('string');
+              relContent = relContent.replace(/Target="\.\.\/media\/image1\.jpeg"/g, 'Target="../media/image2.png"');
+              zip.file(relKey, relContent);
+            }
+          }
+        }
+
+        // 4. Embedded Font Handler (Embed TrueType font directly into PPTX for 100% font rendering fidelity across computers)
+        const fontName = state.pptxFontFamily || state.fontFamily || 'Fredoka';
+        try {
+          const fontUrl = 'https://fonts.gstatic.com/s/fredoka/v14/u-4v1qyJl05x-QMB_Zj7.ttf';
+          const fontRes = await fetch(fontUrl);
+          if (fontRes.ok) {
+            const fontBuffer = await fontRes.arrayBuffer();
+            if (fontBuffer && fontBuffer.byteLength > 0) {
+              zip.file('ppt/fonts/font1.fntdata', fontBuffer);
+
+              if (zip.file('ppt/presentation.xml')) {
+                let presXml = await zip.file('ppt/presentation.xml').async('string');
+                if (!presXml.includes('embeddedFontLst')) {
+                  const fontTag = `<p:embeddedFontLst><p:embeddedFont><p:font typeface="${escapeXml(fontName)}" panose="02000506050000020004" pitchFamily="2" charset="0"/><p:regular r:id="rIdEmbeddedFont1"/><p:bold r:id="rIdEmbeddedFont1"/></p:embeddedFont></p:embeddedFontLst>`;
+                  presXml = presXml.replace('</p:presentation>', `${fontTag}</p:presentation>`);
+                  zip.file('ppt/presentation.xml', presXml);
+                }
+              }
+
+              if (zip.file('ppt/_rels/presentation.xml.rels')) {
+                let relsXml = await zip.file('ppt/_rels/presentation.xml.rels').async('string');
+                if (!relsXml.includes('rIdEmbeddedFont1')) {
+                  const relTag = `<Relationship Id="rIdEmbeddedFont1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font1.fntdata"/>`;
+                  relsXml = relsXml.replace('</Relationships>', `${relTag}</Relationships>`);
+                  zip.file('ppt/_rels/presentation.xml.rels', relsXml);
+                }
+              }
+            }
+          }
+        } catch (fontErr) {
+          console.warn("Font embedding notice:", fontErr);
+        }
+
+        // 5. Dynamically update PowerPoint XML text, font family, text size, colors, and positions in slide files
+        const titleText = state.headerTitle || "State Fair Bingo";
+        const subtitleText = state.pptxSubtitleText || "Coming Up Next";
+        const fontSizePt = state.pptxFontSize || 64;
+        const fontSizeEmu = fontSizePt * 100;
+
+        const cleanHex = (hex, defaultHex) => {
+          let h = (hex || defaultHex).replace('#', '').trim();
+          if (h.length === 3) h = h.split('').map(c => c + c).join('');
+          return h.toUpperCase();
+        };
+
+        const textColorHex = cleanHex(state.pptxTextColor, 'FFFFFF');
+        const subtextColorHex = cleanHex(state.pptxSubtextColor, 'FFD700');
+
+        // Position & Alignment Mapping
+        const pos = state.pptxTitlePosition || 'middle-center';
+        let targetAlgn = 'ctr';
+        let targetAnchor = 'ctr';
+
+        if (pos.includes('left')) {
+          targetAlgn = 'l';
+        } else if (pos.includes('right')) {
+          targetAlgn = 'r';
+        } else {
+          targetAlgn = 'ctr';
+        }
+
+        if (pos.includes('top')) {
+          targetAnchor = 't';
+        } else if (pos.includes('bottom')) {
+          targetAnchor = 'b';
+        } else {
+          targetAnchor = 'ctr';
+        }
+
+        const slideKeys = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k));
+        for (const key of slideKeys) {
+          let xmlContent = await zip.files[key].async('string');
+          
+          const slideMatch = key.match(/slide(\d+)\.xml$/i);
+          const slideNum = slideMatch ? parseInt(slideMatch[1], 10) : 0;
+
+          // Strip text run stroke outlines (<a:ln ...> ... </a:ln>) to avoid double stroke outlines
+          xmlContent = xmlContent.replace(/(<a:rPr\b[^>]*>)\s*<a:ln\b.*?<\/a:ln>/gi, '$1');
+
+          // Process Title and Subtitle shapes on Title/Transition/Closing slides (Slides 1, 3, 28)
+          if (slideNum === 1 || slideNum === 3 || slideNum === 28) {
+            // Title Shape replacement (Set Title fill color strictly to textColorHex - White #FFFFFF)
+            xmlContent = xmlContent.replace(/(<p:sp\b[^>]*>(?:(?!<\/p:sp>)[\s\S])*?(?:Title 1|State Fair Bingo)(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>)/gi, (shapeXml) => {
+              let updated = shapeXml;
+              if (updated.includes('State Fair Bingo')) {
+                updated = updated.replace(/<a:t>State Fair Bingo<\/a:t>/g, `<a:t>${escapeXml(titleText)}</a:t>`);
+              }
+              updated = updated.replace(/<a:solidFill><a:schemeClr val="[^"]+"\/><\/a:solidFill>/g, `<a:solidFill><a:srgbClr val="${textColorHex}"/></a:solidFill>`);
+              updated = updated.replace(/<a:solidFill><a:srgbClr val="[^"]+"\/><\/a:solidFill>/g, `<a:solidFill><a:srgbClr val="${textColorHex}"/></a:solidFill>`);
+              return updated;
+            });
+
+            // Subtitle Shape replacement (Set Subtitle fill color strictly to subtextColorHex - Gold #FFD700)
+            xmlContent = xmlContent.replace(/(<p:sp\b[^>]*>(?:(?!<\/p:sp>)[\s\S])*?(?:Subtitle 2|Coming Up Next|Thanks for Playing)(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>)/gi, (shapeXml) => {
+              let updated = shapeXml;
+              if (updated.includes('Coming Up Next')) {
+                updated = updated.replace(/<a:t>Coming Up Next<\/a:t>/g, `<a:t>${escapeXml(subtitleText)}</a:t>`);
+              }
+              updated = updated.replace(/<a:solidFill><a:schemeClr val="[^"]+"\/><\/a:solidFill>/g, `<a:solidFill><a:srgbClr val="${subtextColorHex}"/></a:solidFill>`);
+              updated = updated.replace(/<a:solidFill><a:srgbClr val="[^"]+"\/><\/a:solidFill>/g, `<a:solidFill><a:srgbClr val="${subtextColorHex}"/></a:solidFill>`);
+              return updated;
+            });
+          }
+
+          // Update Card Titles on Card Slides 4..27
+          if (slideNum >= 4 && slideNum <= 27) {
+            const cardObj = (state.pptxShuffle && state.pptxShuffle[slideNum - 4]) || state.images[slideNum - 4];
+            if (cardObj && cardObj.title) {
+              if (/<a:t>[^<]*<\/a:t>/.test(xmlContent)) {
+                xmlContent = xmlContent.replace(/<a:t>[^<]*<\/a:t>/g, `<a:t>${escapeXml(cardObj.title)}</a:t>`);
+              }
+            }
+          }
+
+          // Update Font Family across all XML text runs
+          xmlContent = xmlContent.replace(/typeface="[^"]+"/g, `typeface="${escapeXml(fontName)}"`);
+
+          // Update Font Size in Title text runs
+          xmlContent = xmlContent.replace(/sz="\d+"/g, `sz="${fontSizeEmu}"`);
+
+          // Update Alignment & Vertical Anchor
+          xmlContent = xmlContent.replace(/<a:pPr algn="[^"]+"/g, `<a:pPr algn="${targetAlgn}"`);
+          xmlContent = xmlContent.replace(/<a:bodyPr ([^>]*)anchor="[^"]+"/g, `<a:bodyPr $1anchor="${targetAnchor}"`);
+
+          zip.file(key, xmlContent);
+        }
+
+        showToast("Generating PowerPoint file (.pptx)...");
+        const content = await zip.generateAsync({ type: "blob" });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = "Bingo_x_State_Fair_Week_Branded.pptx";
+        link.click();
+
+        showToast("Successfully downloaded PowerPoint presentation deck!");
+      } catch (err) {
+        console.error("PPTX Generation Error:", err);
+        showToast("Failed to generate PowerPoint: " + err.message);
+      } finally {
+        isGeneratingPptx = false;
+      }
+    }
+
+    // Bind PDF Buttons & dynamic label update
+    if (pdfCountSelect) {
+      pdfCountSelect.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (btnGeneratePdf) {
+          btnGeneratePdf.textContent = `Download ${val} Shuffled Bingo Card${val === '1' ? '' : 's'} (PDF)`;
+        }
+        state.previewShuffles = null;
+        renderBingoPdfPreview();
+      });
+    }
+
+
+
+    // Register PWA Service Worker for offline capability & standalone installability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
+          .catch(err => console.warn('[PWA] Service Worker registration:', err));
+      });
+    }
+
+    // Initial UI render
+    updateUI();
+  </script>
+</body>
+</html>
