@@ -40,12 +40,18 @@
       top: env(safe-area-inset-top, 12px);
       left: 0;
       width: 100%;
-      padding: 12px 20px;
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       pointer-events: none;
       z-index: 10;
+    }
+
+    .hud-left, .hud-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .hud-box {
@@ -54,15 +60,32 @@
       -webkit-backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 16px;
-      padding: 8px 16px;
+      padding: 8px 14px;
       color: #ffffff;
       font-weight: 800;
       font-size: 1.1rem;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     }
 
+    .hud-btn {
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      transition: transform 0.1s ease, background 0.15s ease;
+    }
+
+    .hud-btn:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.25);
+    }
+
     .score-title {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: #94a3b8;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -70,12 +93,12 @@
 
     .lives-container {
       display: flex;
-      gap: 6px;
+      gap: 5px;
     }
 
     .life-heart {
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       fill: #ff4757;
       filter: drop-shadow(0 2px 4px rgba(255, 71, 87, 0.5));
     }
@@ -86,13 +109,13 @@
       opacity: 0.5;
     }
 
-    /* Game Over & Start Overlays */
+    /* Game Over & Start & Pause Overlays */
     .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(5, 7, 20, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(5, 7, 20, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -102,7 +125,7 @@
       text-align: center;
       color: #ffffff;
       opacity: 1;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.25s ease;
     }
 
     .overlay.hidden {
@@ -111,7 +134,7 @@
     }
 
     .title {
-      font-size: 2.5rem;
+      font-size: 2.4rem;
       font-weight: 900;
       letter-spacing: -1px;
       background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
@@ -123,7 +146,7 @@
 
     .subtitle {
       color: #94a3b8;
-      font-size: 1rem;
+      font-size: 0.95rem;
       margin-bottom: 2rem;
       max-width: 300px;
       line-height: 1.4;
@@ -131,7 +154,7 @@
 
     .btn-play {
       padding: 16px 40px;
-      font-size: 1.3rem;
+      font-size: 1.25rem;
       font-weight: 800;
       color: #ffffff;
       background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
@@ -141,6 +164,7 @@
       cursor: pointer;
       touch-action: manipulation;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
+      margin-bottom: 0.75rem;
     }
 
     .btn-play:active {
@@ -149,7 +173,6 @@
     }
 
     .btn-home {
-      margin-top: 1rem;
       background: transparent;
       border: 1px solid rgba(255, 255, 255, 0.2);
       padding: 10px 24px;
@@ -191,28 +214,49 @@
 
   <!-- HUD -->
   <div class="hud">
-    <div class="hud-box">
-      <div class="score-title">SCORE</div>
-      <div id="scoreVal">0</div>
+    <div class="hud-left">
+      <div class="hud-box">
+        <div class="score-title">SCORE</div>
+        <div id="scoreVal">0</div>
+      </div>
+      <div class="hud-box">
+        <div class="score-title" style="margin-bottom: 4px;">ARMOR</div>
+        <div class="lives-container" id="livesBox">
+          <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </div>
+      </div>
     </div>
-    <div class="hud-box">
-      <div class="score-title" style="margin-bottom: 4px;">ARMOR</div>
-      <div class="lives-container" id="livesBox">
-        <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-        <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-        <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+
+    <div class="hud-right">
+      <!-- Pause Icon Button -->
+      <div class="hud-box hud-btn" id="pauseBtn" title="Pause Game">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff">
+          <rect x="5" y="3" width="4" height="18" rx="1"/>
+          <rect x="15" y="3" width="4" height="18" rx="1"/>
+        </svg>
       </div>
     </div>
   </div>
 
-  <div class="controls-hint" id="hint">Drag anywhere to steer airplane & shoot</div>
+  <div class="controls-hint" id="hint">Touch & drag to steer • Hold screen to shoot • Tap ⏸ to pause</div>
 
   <!-- Start Overlay -->
   <div class="overlay" id="startOverlay">
     <h1 class="title">SKY INVADERS</h1>
-    <p class="subtitle">Fly forward through the clouds and blast incoming alien UFOs!</p>
+    <p class="subtitle">Touch & hold to steer your airplane and blast UFO sorties in formation!</p>
     <button class="btn-play" id="startBtn">START FLIGHT</button>
-    <a href="index.html" class="btn-home">Back to Arcade</a>
+    <a href="index.html" class="btn-home">Back to Launcher</a>
+  </div>
+
+  <!-- Pause Overlay -->
+  <div class="overlay hidden" id="pauseOverlay">
+    <h1 class="title" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text;">GAME PAUSED</h1>
+    <p class="subtitle">Take a breather pilot!</p>
+    <button class="btn-play" id="resumeBtn">RESUME FLIGHT</button>
+    <button class="btn-play" id="pauseRestartBtn" style="background: linear-gradient(135deg, #475569, #334155); font-size: 1rem; padding: 12px 30px;">Restart</button>
+    <a href="index.html" class="btn-home" style="margin-top: 0.5rem;">Back to Launcher</a>
   </div>
 
   <!-- Game Over Overlay -->
@@ -220,11 +264,11 @@
     <h1 class="title" style="background: linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip: text;">GAME OVER</h1>
     <p class="subtitle" id="finalScoreText">Final Score: 0</p>
     <button class="btn-play" id="restartBtn">FLY AGAIN</button>
-    <a href="index.html" class="btn-home">Back to Arcade</a>
+    <a href="index.html" class="btn-home">Back to Launcher</a>
   </div>
 
   <script>
-    // --- Web Audio Synthesizer ---
+    // --- Web Audio Synthesizer (Half Volume) ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
@@ -245,24 +289,24 @@
         osc.type = 'square';
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        gain.gain.setValueAtTime(0.075, now); // Reduced by half
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
       } else if (type === 'explosion') {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(120, now);
         osc.frequency.exponentialRampToValueAtTime(20, now + 0.3);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        gain.gain.setValueAtTime(0.15, now); // Reduced by half
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.3);
         osc.start(now);
         osc.stop(now + 0.3);
       } else if (type === 'hit') {
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(300, now);
         osc.frequency.linearRampToValueAtTime(100, now + 0.15);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        gain.gain.setValueAtTime(0.10, now); // Reduced by half
+        gain.gain.linearRampToValueAtTime(0.005, now + 0.15);
         osc.start(now);
         osc.stop(now + 0.15);
       }
@@ -284,7 +328,7 @@
     window.addEventListener('resize', resize);
     resize();
 
-    let state = 'START'; // START, PLAYING, GAMEOVER
+    let state = 'START'; // START, PLAYING, PAUSED, GAMEOVER
     let score = 0;
     let lives = 3;
     let frameCount = 0;
@@ -297,7 +341,7 @@
       targetY: height - 120,
       width: 44,
       height: 48,
-      speed: 0.18, // Smooth interpolation factor
+      speed: 0.35, // Faster, responsive tracking
       tilt: 0
     };
 
@@ -308,8 +352,8 @@
     let clouds = [];
     let stars = [];
 
-    // Generate Forward Scrolling Background (Stars & Clouds)
-    for (let i = 0; i < 40; i++) {
+    // Forward Scrolling Background (Stars & Clouds)
+    for (let i = 0; i < 45; i++) {
       stars.push({
         x: Math.random() * width,
         y: Math.random() * height,
@@ -329,28 +373,30 @@
       });
     }
 
-    // Touch & Mouse Input Handlers
+    // Touch & Pointer Input Handlers
     let isTouching = false;
-    let touchOffsetX = 0;
 
-    function handlePointerStart(clientX, clientY) {
-      if (state !== 'PLAYING') return;
+    function handlePointerStart(clientX, clientY, isNav = false) {
+      if (isNav || state !== 'PLAYING') return;
       initAudio();
       isTouching = true;
-      touchOffsetX = clientX - player.x;
-      player.targetX = clientX - touchOffsetX;
+      player.targetX = clientX;
       player.targetY = clientY - 40;
     }
 
     function handlePointerMove(clientX, clientY) {
       if (!isTouching || state !== 'PLAYING') return;
-      player.targetX = clientX - touchOffsetX;
+      player.targetX = clientX;
       player.targetY = clientY - 40;
     }
 
     function handlePointerEnd() {
       isTouching = false;
     }
+
+    // Stop HUD touches from triggering flight target move
+    document.querySelector('.hud').addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+    document.querySelector('.hud').addEventListener('mousedown', (e) => e.stopPropagation());
 
     window.addEventListener('touchstart', (e) => {
       const touch = e.touches[0];
@@ -369,53 +415,119 @@
     window.addEventListener('mousemove', (e) => handlePointerMove(e.clientX, e.clientY));
     window.addEventListener('mouseup', handlePointerEnd);
 
-    // Keyboard support fallback
+    // Keyboard support
     const keys = {};
     window.addEventListener('keydown', (e) => keys[e.code] = true);
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-    // --- Game Logic Updates ---
-    function spawnEnemy() {
+    // --- UFO Sortie / Squadron Spawner (Smaller UFOs attacking in groups) ---
+    function spawnSortie() {
+      const formations = ['V_FORMATION', 'LINE_ROW', 'DIAGONAL_STREAK', 'CLUSTER'];
+      const formation = formations[Math.floor(Math.random() * formations.length)];
+      
       const types = ['ufo_small', 'ufo_medium', 'ufo_fast'];
       const type = types[Math.floor(Math.random() * types.length)];
       
-      let radius = 20;
-      let speed = 2.5;
+      // Smaller radii for smaller targets
+      let radius = 11;
+      let speed = 2.4;
       let hp = 1;
 
       if (type === 'ufo_medium') {
-        radius = 28;
+        radius = 15;
         speed = 1.8;
         hp = 2;
       } else if (type === 'ufo_fast') {
-        radius = 16;
-        speed = 4.2;
+        radius = 9;
+        speed = 3.6;
         hp = 1;
       }
 
-      enemies.push({
-        x: Math.random() * (width - 60) + 30,
-        y: -40,
-        radius: radius,
-        speed: speed + (score / 150),
-        hp: hp,
-        maxHp: hp,
-        type: type,
-        wigglePhase: Math.random() * Math.PI * 2,
-        wiggleAmp: Math.random() * 2 + 0.5
-      });
+      const startX = Math.random() * (width - 160) + 80;
+      const startY = -60;
+
+      if (formation === 'V_FORMATION') {
+        const offsets = [
+          { x: 0, y: 0 },
+          { x: -30, y: -30 },
+          { x: 30, y: -30 },
+          { x: -60, y: -60 },
+          { x: 60, y: -60 }
+        ];
+        offsets.forEach(off => {
+          enemies.push({
+            x: Math.max(20, Math.min(width - 20, startX + off.x)),
+            y: startY + off.y,
+            radius: radius,
+            speed: speed + (score / 250),
+            hp: hp,
+            maxHp: hp,
+            type: type,
+            wigglePhase: Math.random() * Math.PI * 2,
+            wiggleAmp: 0.8
+          });
+        });
+      } else if (formation === 'LINE_ROW') {
+        const count = 4;
+        const spacing = 42;
+        const leftX = Math.max(25, Math.min(width - (count * spacing), startX - (count * spacing) / 2));
+        for (let i = 0; i < count; i++) {
+          enemies.push({
+            x: leftX + i * spacing,
+            y: startY,
+            radius: radius,
+            speed: speed + (score / 250),
+            hp: hp,
+            maxHp: hp,
+            type: type,
+            wigglePhase: Math.random() * Math.PI * 2,
+            wiggleAmp: 0.5
+          });
+        }
+      } else if (formation === 'DIAGONAL_STREAK') {
+        const count = 4;
+        const dir = Math.random() > 0.5 ? 1 : -1;
+        for (let i = 0; i < count; i++) {
+          enemies.push({
+            x: Math.max(20, Math.min(width - 20, startX + i * 32 * dir)),
+            y: startY - i * 28,
+            radius: radius,
+            speed: speed + 0.4,
+            hp: hp,
+            maxHp: hp,
+            type: type,
+            wigglePhase: Math.random() * Math.PI * 2,
+            wiggleAmp: 1
+          });
+        }
+      } else { // CLUSTER
+        const count = 3;
+        for (let i = 0; i < count; i++) {
+          enemies.push({
+            x: Math.max(20, Math.min(width - 20, startX + (Math.random() - 0.5) * 50)),
+            y: startY - i * 24,
+            radius: radius,
+            speed: speed,
+            hp: hp,
+            maxHp: hp,
+            type: type,
+            wigglePhase: Math.random() * Math.PI * 2,
+            wiggleAmp: 1.2
+          });
+        }
+      }
     }
 
-    function createExplosion(x, y, color, count = 16) {
+    function createExplosion(x, y, color, count = 14) {
       for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 5 + 1;
+        const speed = Math.random() * 4 + 1;
         particles.push({
           x: x,
           y: y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          radius: Math.random() * 4 + 2,
+          radius: Math.random() * 3 + 1.5,
           color: color,
           alpha: 1,
           decay: Math.random() * 0.03 + 0.02
@@ -424,27 +536,9 @@
     }
 
     function update() {
-      frameCount++;
-
-      // Keyboard Controls Update
-      if (keys['ArrowLeft'] || keys['KeyA']) player.targetX -= 8;
-      if (keys['ArrowRight'] || keys['KeyD']) player.targetX += 8;
-      if (keys['ArrowUp'] || keys['KeyW']) player.targetY -= 8;
-      if (keys['ArrowDown'] || keys['KeyS']) player.targetY += 8;
-
-      // Keep inside screen bounds
-      player.targetX = Math.max(30, Math.min(width - 30, player.targetX));
-      player.targetY = Math.max(60, Math.min(height - 80, player.targetY));
-
-      // Smooth Airplane Movement & Banking Tilt
-      const dx = player.targetX - player.x;
-      player.x += dx * player.speed;
-      player.y += (player.targetY - player.y) * player.speed;
-      player.tilt = dx * 0.03; // Tilt wings when turning left/right
-
-      // Forward Flying Motion - Background Objects Scroll Down
+      // Background Forward Flight Animation continues even during pause/start
       stars.forEach(star => {
-        star.y += star.speed;
+        star.y += (state === 'PAUSED' ? star.speed * 0.2 : star.speed);
         if (star.y > height) {
           star.y = 0;
           star.x = Math.random() * width;
@@ -452,7 +546,7 @@
       });
 
       clouds.forEach(cloud => {
-        cloud.y += cloud.speed;
+        cloud.y += (state === 'PAUSED' ? cloud.speed * 0.2 : cloud.speed);
         if (cloud.y - cloud.radius > height) {
           cloud.y = -cloud.radius;
           cloud.x = Math.random() * width;
@@ -461,19 +555,32 @@
 
       if (state !== 'PLAYING') return;
 
-      // Auto-Shooting Bullets
-      if (frameCount % 8 === 0) {
+      frameCount++;
+
+      // Keyboard Controls Update
+      if (keys['ArrowLeft'] || keys['KeyA']) player.targetX -= 8;
+      if (keys['ArrowRight'] || keys['KeyD']) player.targetX += 8;
+      if (keys['ArrowUp'] || keys['KeyW']) player.targetY -= 8;
+      if (keys['ArrowDown'] || keys['KeyS']) player.targetY += 8;
+
+      // Keep airplane inside screen bounds
+      player.targetX = Math.max(25, Math.min(width - 25, player.targetX));
+      player.targetY = Math.max(50, Math.min(height - 70, player.targetY));
+
+      // Smooth Airplane Movement & Tilt
+      const dx = player.targetX - player.x;
+      player.x += dx * player.speed;
+      player.y += (player.targetY - player.y) * player.speed;
+      player.tilt = dx * 0.03;
+
+      // SHOOT ONLY WHEN SCREEN IS BEING TOUCHED (OR SPACEBAR HELD) - Single Blaster (Slower Cadence)
+      const isFiring = isTouching || keys['Space'] || keys['KeyZ'];
+      if (isFiring && frameCount % 14 === 0) {
         bullets.push({
-          x: player.x - 14,
-          y: player.y - 10,
-          vy: -12,
-          radius: 3
-        });
-        bullets.push({
-          x: player.x + 14,
-          y: player.y - 10,
-          vy: -12,
-          radius: 3
+          x: player.x,
+          y: player.y - 18,
+          vy: -10,
+          radius: 3.5
         });
         playSound('shoot');
       }
@@ -487,10 +594,10 @@
         }
       }
 
-      // Enemy Spawning Waves
-      const spawnRate = Math.max(25, 60 - Math.floor(score / 50));
-      if (frameCount % spawnRate === 0) {
-        spawnEnemy();
+      // Enemy Sortie Spawning Waves
+      const sortieInterval = Math.max(100, 160 - Math.floor(score / 40));
+      if (frameCount % sortieInterval === 0) {
+        spawnSortie();
       }
 
       // Update Enemies
@@ -506,14 +613,14 @@
           if (dist < enemy.radius + b.radius) {
             bullets.splice(j, 1);
             enemy.hp--;
-            createExplosion(b.x, b.y, '#38bdf8', 5);
+            createExplosion(b.x, b.y, '#38bdf8', 4);
 
             if (enemy.hp <= 0) {
               playSound('explosion');
               score += enemy.maxHp * 10;
               document.getElementById('scoreVal').innerText = score;
-              createExplosion(enemy.x, enemy.y, '#a855f7', 18);
-              createExplosion(enemy.x, enemy.y, '#38bdf8', 12);
+              createExplosion(enemy.x, enemy.y, '#a855f7', 14);
+              createExplosion(enemy.x, enemy.y, '#38bdf8', 10);
               enemies.splice(i, 1);
               break;
             } else {
@@ -524,9 +631,9 @@
 
         // Collision: Enemy <-> Player Airplane
         const pDist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-        if (pDist < enemy.radius + 20) {
+        if (pDist < enemy.radius + 16) {
           playSound('explosion');
-          createExplosion(enemy.x, enemy.y, '#ef4444', 24);
+          createExplosion(enemy.x, enemy.y, '#ef4444', 20);
           enemies.splice(i, 1);
           takeDamage();
         }
@@ -570,7 +677,7 @@
     function draw() {
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Draw Starfield (Flying Forward)
+      // 1. Starfield
       stars.forEach(star => {
         ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
         ctx.beginPath();
@@ -578,7 +685,7 @@
         ctx.fill();
       });
 
-      // 2. Draw Clouds (Forward Motion Blur)
+      // 2. Clouds
       clouds.forEach(cloud => {
         ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
         ctx.beginPath();
@@ -588,10 +695,10 @@
         ctx.fill();
       });
 
-      // 3. Draw Bullets
+      // 3. Bullets
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 8;
       bullets.forEach(b => {
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
@@ -599,39 +706,38 @@
       });
       ctx.shadowBlur = 0;
 
-      // 4. Draw Alien UFO Enemies
+      // 4. Smaller Alien UFO Enemies (Group Sorties)
       enemies.forEach(enemy => {
         ctx.save();
         ctx.translate(enemy.x, enemy.y);
 
-        // Glow
         ctx.shadowColor = enemy.type === 'ufo_fast' ? '#ef4444' : '#a855f7';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 10;
 
         // UFO Saucer Base
         ctx.fillStyle = '#475569';
         ctx.beginPath();
-        ctx.ellipse(0, 4, enemy.radius, enemy.radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 3, enemy.radius, enemy.radius * 0.45, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Glowing Glass Dome
         ctx.fillStyle = enemy.type === 'ufo_fast' ? '#f87171' : '#c084fc';
         ctx.beginPath();
-        ctx.arc(0, -2, enemy.radius * 0.55, Math.PI, 0);
+        ctx.arc(0, -1, enemy.radius * 0.55, Math.PI, 0);
         ctx.fill();
 
         // Saucer Lights
         ctx.fillStyle = '#fef08a';
         for (let l = -2; l <= 2; l++) {
           ctx.beginPath();
-          ctx.arc(l * (enemy.radius * 0.35), 4, 2.5, 0, Math.PI * 2);
+          ctx.arc(l * (enemy.radius * 0.35), 3, 1.8, 0, Math.PI * 2);
           ctx.fill();
         }
 
         ctx.restore();
       });
 
-      // 5. Draw Particles
+      // 5. Particles
       particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = p.alpha;
@@ -642,56 +748,56 @@
         ctx.restore();
       });
 
-      // 6. Draw Player Airplane
-      if (state === 'PLAYING' || state === 'START') {
+      // 6. Player Airplane
+      if (state === 'PLAYING' || state === 'PAUSED' || state === 'START') {
         ctx.save();
         ctx.translate(player.x, player.y);
         ctx.rotate(player.tilt);
 
-        // Thruster Engine Flame Trail
-        const flameLength = Math.random() * 14 + 16;
-        const gradient = ctx.createLinearGradient(0, 20, 0, 20 + flameLength);
+        // Thruster Flame
+        const flameLength = Math.random() * 12 + 14;
+        const gradient = ctx.createLinearGradient(0, 18, 0, 18 + flameLength);
         gradient.addColorStop(0, '#f97316');
         gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.moveTo(-6, 20);
-        ctx.lineTo(6, 20);
-        ctx.lineTo(0, 20 + flameLength);
+        ctx.moveTo(-5, 18);
+        ctx.lineTo(5, 18);
+        ctx.lineTo(0, 18 + flameLength);
         ctx.closePath();
         ctx.fill();
 
-        // Main Wings (Red & White Sport Aircraft)
+        // Main Wings
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.moveTo(0, -22);
-        ctx.lineTo(26, 12);
-        ctx.lineTo(12, 16);
-        ctx.lineTo(0, 10);
-        ctx.lineTo(-12, 16);
-        ctx.lineTo(-26, 12);
+        ctx.moveTo(0, -20);
+        ctx.lineTo(24, 10);
+        ctx.lineTo(10, 14);
+        ctx.lineTo(0, 8);
+        ctx.lineTo(-10, 14);
+        ctx.lineTo(-24, 10);
         ctx.closePath();
         ctx.fill();
 
-        // Airplane Fuselage / Body
+        // Airplane Fuselage
         ctx.fillStyle = '#f8fafc';
         ctx.beginPath();
-        ctx.ellipse(0, 0, 7, 24, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, 6.5, 22, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Tail Wings
         ctx.fillStyle = '#dc2626';
         ctx.beginPath();
-        ctx.moveTo(0, 14);
-        ctx.lineTo(12, 22);
-        ctx.lineTo(-12, 22);
+        ctx.moveTo(0, 12);
+        ctx.lineTo(10, 20);
+        ctx.lineTo(-10, 20);
         ctx.closePath();
         ctx.fill();
 
         // Cockpit Canopy Glass
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
-        ctx.ellipse(0, -6, 4, 8, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, -5, 3.5, 7, 0, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
@@ -706,7 +812,7 @@
     }
     requestAnimationFrame(loop);
 
-    // --- Overlay & Button Handlers ---
+    // --- Game Mode Transitions ---
     function startGame() {
       initAudio();
       state = 'PLAYING';
@@ -718,13 +824,22 @@
       document.getElementById('scoreVal').innerText = '0';
       updateLivesUI();
       document.getElementById('startOverlay').classList.add('hidden');
+      document.getElementById('pauseOverlay').classList.add('hidden');
       document.getElementById('gameOverOverlay').classList.add('hidden');
-      document.getElementById('hint').style.display = 'block';
+      
+      const hint = document.getElementById('hint');
+      hint.style.display = 'block';
+      setTimeout(() => { hint.style.display = 'none'; }, 4000);
+    }
 
-      // Hide hint after 4 seconds
-      setTimeout(() => {
-        document.getElementById('hint').style.display = 'none';
-      }, 4000);
+    function togglePause() {
+      if (state === 'PLAYING') {
+        state = 'PAUSED';
+        document.getElementById('pauseOverlay').classList.remove('hidden');
+      } else if (state === 'PAUSED') {
+        state = 'PLAYING';
+        document.getElementById('pauseOverlay').classList.add('hidden');
+      }
     }
 
     function gameOver() {
@@ -733,8 +848,15 @@
       document.getElementById('gameOverOverlay').classList.remove('hidden');
     }
 
+    // Event Listeners
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('restartBtn').addEventListener('click', startGame);
+    document.getElementById('pauseRestartBtn').addEventListener('click', startGame);
+    document.getElementById('resumeBtn').addEventListener('click', togglePause);
+    document.getElementById('pauseBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePause();
+    });
   </script>
 </body>
 </html>
