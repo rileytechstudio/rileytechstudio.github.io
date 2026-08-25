@@ -8,7 +8,7 @@ const ASSETS_TO_CACHE = [
   './reference_files/sample_images_data.js',
   './reference_files/riley stroke.png',
   './reference_files/zone logo transparent color.png',
-  './reference_files/Bingo x State Fair Week.pptx'
+  './reference_files/Bingo Template for Web Creator.pptx'
 ];
 
 // Install Event: Pre-cache static assets
