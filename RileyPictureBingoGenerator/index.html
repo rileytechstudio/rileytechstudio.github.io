@@ -1056,15 +1056,37 @@
       pptxFontSize: 64
     };
 
-    // Fail-safe Global Window Button Click Handlers
+    // Fail-safe Global Window Button & Tab Click Handlers
+    window.handleTabClick = function(tabName) {
+      const tabBtnPng = document.getElementById('tab-btn-png');
+      const tabBtnPdf = document.getElementById('tab-btn-pdf');
+      const tabBtnPptx = document.getElementById('tab-btn-pptx');
+      const viewPngCards = document.getElementById('view-png-cards');
+      const viewPdfPreview = document.getElementById('view-pdf-preview');
+      const viewPptxPreview = document.getElementById('view-pptx-preview');
+
+      if (tabBtnPng) tabBtnPng.classList.toggle('active', tabName === 'png');
+      if (tabBtnPdf) tabBtnPdf.classList.toggle('active', tabName === 'pdf');
+      if (tabBtnPptx) tabBtnPptx.classList.toggle('active', tabName === 'pptx');
+
+      if (viewPngCards) viewPngCards.style.display = tabName === 'png' ? 'block' : 'none';
+      if (viewPdfPreview) viewPdfPreview.style.display = tabName === 'pdf' ? 'block' : 'none';
+      if (viewPptxPreview) viewPptxPreview.style.display = tabName === 'pptx' ? 'block' : 'none';
+
+      if (tabName === 'pdf' && typeof renderBingoPdfPreview === 'function') renderBingoPdfPreview();
+      if (tabName === 'pptx' && typeof renderPptxDeckPreview === 'function') renderPptxDeckPreview();
+    };
+
     window.handleLoadSamplesClick = async function(e) {
       if (e) e.preventDefault();
-      showToast("Loading 24 sample images...");
-      const loadedCount = await loadSampleImagesProgrammatically();
+      if (typeof showToast === 'function') showToast("Loading 24 sample images...");
+      const loadedCount = typeof loadSampleImagesProgrammatically === 'function'
+        ? await loadSampleImagesProgrammatically()
+        : 0;
       if (loadedCount > 0) {
-        showToast(`Successfully loaded ${loadedCount} sample images!`);
+        if (typeof showToast === 'function') showToast(`Successfully loaded ${loadedCount} sample images!`);
       } else {
-        showToast("Opening file picker to select images...");
+        if (typeof showToast === 'function') showToast("Opening file picker to select images...");
         const fi = document.getElementById('file-input');
         if (fi) fi.click();
       }
@@ -3182,57 +3204,62 @@
       return c.toDataURL('image/jpeg', 0.90).replace(/^data:image\/jpeg;base64,/, "");
     }
 
-    // Helper: Draw transparent PNG canvas for Title & Subtitle Text Overlay (image2.png)
+    // Helper: Draw transparent PNG canvas for Title & Subtitle Text Overlay (image2.png) - matches preview math 1:1 (1280x720)
     function drawTitleOverlayCanvas(titleText, subtitleText, fontName, fontSizePt, textColor, subtextColor, position) {
+      const w = 1280;
+      const h = 720;
       const canvas = document.createElement('canvas');
-      canvas.width = 1418;
-      canvas.height = 548;
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext('2d');
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, w, h);
 
       let align = 'center';
-      let x = canvas.width / 2;
-      let titleY = canvas.height * 0.40;
-      let subY = canvas.height * 0.68;
+      let tx = w / 2;
+      let ty = 140; // Top default
 
-      const pos = (position || 'middle-center').toLowerCase();
+      const pos = (position || state.pptxTitlePosition || 'top-center').toLowerCase();
       if (pos.includes('left')) {
         align = 'left';
-        x = 50;
+        tx = 100;
       } else if (pos.includes('right')) {
         align = 'right';
-        x = canvas.width - 50;
+        tx = w - 100;
+      } else {
+        align = 'center';
+        tx = w / 2;
       }
 
-      if (pos.includes('top')) {
-        titleY = canvas.height * 0.25;
-        subY = canvas.height * 0.50;
+      if (pos.includes('middle')) {
+        ty = 330;
       } else if (pos.includes('bottom')) {
-        titleY = canvas.height * 0.50;
-        subY = canvas.height * 0.75;
+        ty = 540;
+      } else {
+        ty = 140;
       }
 
-      // Draw Title Text
       ctx.save();
       ctx.textAlign = align;
       ctx.textBaseline = 'middle';
-      ctx.font = `bold ${Math.round(fontSizePt * 1.5)}px '${fontName}', sans-serif`;
-      ctx.fillStyle = textColor || '#FFFFFF';
+      
+      const maxTitleW = align === 'center' ? (w - 180) : (w - 220);
+      const userFontSize = Math.round((fontSizePt || state.pptxFontSize || 64) * 1.80);
+      const titleFontSize = fitTextFontSize(ctx, titleText, maxTitleW, userFontSize, 24);
+
+      ctx.font = `bold ${titleFontSize}px '${fontName}', Fredoka, sans-serif`;
+      ctx.fillStyle = textColor || state.pptxTextColor || '#FFFFFF';
       ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
       ctx.shadowBlur = 10;
-      ctx.fillText(titleText, x, titleY);
-      ctx.restore();
+      ctx.fillText(titleText, tx, ty);
 
-      // Draw Subtitle Text
-      ctx.save();
-      ctx.textAlign = align;
-      ctx.textBaseline = 'middle';
-      ctx.font = `bold ${Math.round(fontSizePt * 0.65)}px '${fontName}', sans-serif`;
-      ctx.fillStyle = subtextColor || '#FFD700';
+      // Subtitle text (48px)
+      const subFontSize = Math.round(32 * 1.50);
+      ctx.font = `bold ${subFontSize}px '${fontName}', Fredoka, sans-serif`;
+      ctx.fillStyle = subtextColor || state.pptxSubtextColor || '#FFD700';
       ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
       ctx.shadowBlur = 8;
-      ctx.fillText(subtitleText, x, subY);
+      ctx.fillText(subtitleText, tx, ty + 80);
       ctx.restore();
 
       return canvas;
@@ -3293,9 +3320,11 @@
 
         const titleOverlayCanvas = drawTitleOverlayCanvas(titleText, subtitleText, fontName, fontSizePt, textColorHex, subtextColorHex, pos);
         const titleOverlayBase64 = titleOverlayCanvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
-        zip.file('ppt/media/image2.png', titleOverlayBase64, { base64: true });
+        if (zip.file('ppt/media/image2.png')) {
+          zip.file('ppt/media/image2.png', titleOverlayBase64, { base64: true });
+        }
 
-        // 2. Replace 24 composite card PNG images in ppt/media/ (image4.png ... image27.png) using live state.images
+        // 2. Replace 24 composite card images in ppt/media/ (image5.jpeg/png ... image28.jpeg/png) using live state.images
         for (let i = 0; i < 24; i++) {
           const targetIdx = (state.pptxShuffle && state.pptxShuffle.length === state.images.length)
             ? state.pptxShuffle[i]
@@ -3304,18 +3333,27 @@
           if (item) {
             const tempCanvas = document.createElement('canvas');
             drawCompositeCanvas(item, tempCanvas);
-            const dataUrl = tempCanvas.toDataURL('image/png');
-            const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+            const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.90);
+            const base64Data = dataUrl.replace(/^data:image\/jpeg;base64,/, "");
 
-            const targetMediaName = `ppt/media/image${i + 4}.png`;
+            let targetMediaName = `ppt/media/image${i + 5}.jpeg`;
+            if (!zip.file(targetMediaName)) {
+              targetMediaName = `ppt/media/image${i + 5}.png`;
+            }
             zip.file(targetMediaName, base64Data, { base64: true });
           }
         }
 
-        // 3. Replace Slide Background (image1.jpeg) with custom image or solid color background
+        // 3. Replace Title Page Background (image1.jpeg) with custom image or Title Page background color (Sheet Banner Color A)
         const titleBgColor = state.sheetBannerColor || state.color1 || '#004D49';
         const titleBgBase64 = state.titlePageImgBase64 || createSolidColorJpegBase64(titleBgColor);
-        zip.file('ppt/media/image1.jpeg', titleBgBase64, { base64: true });
+        if (zip.file('ppt/media/image1.jpeg')) zip.file('ppt/media/image1.jpeg', titleBgBase64, { base64: true });
+
+        // 4. Replace Card Pages Background (image4.jpeg) with custom image or Card Pages background color (Sheet Banner Color B)
+        const otherBgColor = state.sheetBannerColor2 || state.color2 || '#363A89';
+        const otherBgBase64 = state.otherPagesImgBase64 || createSolidColorJpegBase64(otherBgColor);
+        if (zip.file('ppt/media/image4.jpeg')) zip.file('ppt/media/image4.jpeg', otherBgBase64, { base64: true });
+        if (zip.file('ppt/media/image3.jpeg')) zip.file('ppt/media/image3.jpeg', otherBgBase64, { base64: true });
 
         showToast("Generating PowerPoint file (.pptx)...");
         const content = await zip.generateAsync({ type: "blob" });
