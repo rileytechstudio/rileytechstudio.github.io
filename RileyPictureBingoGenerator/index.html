@@ -556,12 +556,15 @@
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">Import 24 images or select files / drag & drop.</p>
           
-          <div class="dropzone" id="dropzone">
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()" style="cursor: pointer;">
             <p>Drag & drop images here</p>
             <span>or click to browse files (Max 24 most recent)</span>
           </div>
-          <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
-          <input type="file" id="pptx-file-picker" accept=".pptx" style="display: none;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('file-input').click()" style="width: 100%; margin-top: 8px; font-weight: 600;">
+            📁 Select / Choose Image Files
+          </button>
+          <input type="file" id="file-input" multiple accept="image/*" onclick="this.value=null" style="display: none;">
+          <input type="file" id="pptx-file-picker" accept=".pptx" onclick="this.value=null" style="display: none;">
 
           <button type="button" onclick="handleLoadSamplesClick(event)" id="btn-load-samples" class="btn btn-sample" style="width: 100%; margin-top: 10px;">
             Load 24 Sample Input Images
@@ -737,12 +740,12 @@
 
           <div class="form-group" style="margin-bottom: 10px;">
             <label for="title-img-input">Title Page Image (Slides 1, 3, 28)</label>
-            <input type="file" id="title-img-input" accept="image/*" style="font-size: 0.82rem; padding: 6px 10px;">
+            <input type="file" id="title-img-input" accept="image/*" onclick="this.value=null" style="font-size: 0.82rem; padding: 6px 10px;">
           </div>
 
           <div class="form-group" style="margin-bottom: 10px;">
             <label for="other-img-input">Card Pages Image (Slides 4-27)</label>
-            <input type="file" id="other-img-input" accept="image/*" style="font-size: 0.82rem; padding: 6px 10px;">
+            <input type="file" id="other-img-input" accept="image/*" onclick="this.value=null" style="font-size: 0.82rem; padding: 6px 10px;">
           </div>
 
           <div class="colors-grid" style="margin-bottom: 10px;">
