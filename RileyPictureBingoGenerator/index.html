@@ -3304,9 +3304,9 @@
 
         const zip = await JSZip.loadAsync(templateArrayBuffer);
 
-        // Ensure state.pptxShuffle has 24 shuffled index permutations for random slide order
+        // Ensure state.pptxShuffle has 24 shuffled items matching live deck preview order
         if (!state.pptxShuffle || state.pptxShuffle.length !== state.images.length) {
-          state.pptxShuffle = shuffleArray(state.images.map((_, idx) => idx));
+          state.pptxShuffle = shuffleArray(state.images);
         }
 
         // 1. Generate & Replace Title Text Image Overlay (image2.png)
@@ -3324,12 +3324,9 @@
           zip.file('ppt/media/image2.png', titleOverlayBase64, { base64: true });
         }
 
-        // 2. Replace 24 composite card images in ppt/media/ (image5.jpeg/png ... image28.jpeg/png) using live state.images
+        // 2. Replace 24 composite card images in ppt/media/ (image5.jpeg/png ... image28.jpeg/png) using exact preview slide order
         for (let i = 0; i < 24; i++) {
-          const targetIdx = (state.pptxShuffle && state.pptxShuffle.length === state.images.length)
-            ? state.pptxShuffle[i]
-            : i;
-          const item = state.images[targetIdx] || state.images[i];
+          const item = (state.pptxShuffle && state.pptxShuffle[i]) ? state.pptxShuffle[i] : state.images[i];
           if (item) {
             const tempCanvas = document.createElement('canvas');
             drawCompositeCanvas(item, tempCanvas);
