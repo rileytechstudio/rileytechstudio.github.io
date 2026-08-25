@@ -1446,11 +1446,13 @@
     const bingoTitleFontSelect = document.getElementById('bingo-title-font');
     if (bingoTitleFontSelect) {
       bingoTitleFontSelect.addEventListener('change', async (e) => {
-        state.bingoTitleFont = e.target.value;
+        const fontName = e.target.value;
+        state.bingoTitleFont = fontName;
         if (document.fonts) {
           try {
-            await document.fonts.load(`900 250px '${e.target.value}'`);
+            await document.fonts.load(`900 200px '${fontName}'`);
           } catch (err) {}
+          document.fonts.ready.then(() => renderBingoPdfPreview()).catch(() => {});
         }
         renderBingoPdfPreview();
       });
@@ -1558,8 +1560,15 @@
     }
 
     if (pptxFontFamilySelect) {
-      pptxFontFamilySelect.addEventListener('change', (e) => {
-        state.pptxFontFamily = e.target.value;
+      pptxFontFamilySelect.addEventListener('change', async (e) => {
+        const fontName = e.target.value;
+        state.pptxFontFamily = fontName;
+        if (document.fonts) {
+          try {
+            await document.fonts.load(`bold 64px '${fontName}'`);
+          } catch (err) {}
+          document.fonts.ready.then(() => renderPptxDeckPreview()).catch(() => {});
+        }
         renderPptxDeckPreview();
       });
     }
@@ -1586,15 +1595,26 @@
     });
 
     fontFamilySelect.addEventListener('change', async (e) => {
-      state.fontFamily = e.target.value;
+      const selectedFont = e.target.value;
+      state.fontFamily = selectedFont;
+      state.bingoTitleFont = selectedFont;
+      state.pptxFontFamily = selectedFont;
+
+      if (bingoTitleFontSelect) bingoTitleFontSelect.value = selectedFont;
+      if (pptxFontFamilySelect) pptxFontFamilySelect.value = selectedFont;
       
       // Ensure web font is loaded before rendering
       if (document.fonts) {
         try {
-          await document.fonts.load(getCanvasFont(40));
+          await Promise.all([
+            document.fonts.load(`700 40px '${selectedFont}'`),
+            document.fonts.load(`900 200px '${selectedFont}'`),
+            document.fonts.load(`bold 64px '${selectedFont}'`)
+          ]);
         } catch (err) {
           console.warn("Font loading:", err);
         }
+        document.fonts.ready.then(() => renderAll()).catch(() => {});
       }
       
       renderAll();
