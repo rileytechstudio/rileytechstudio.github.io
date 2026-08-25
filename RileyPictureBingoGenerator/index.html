@@ -720,6 +720,51 @@
             </div>
           </div>
 
+          <div class="form-group" style="margin-top: 10px;">
+            <label for="bingo-title-font">BINGO Title Font (PDF)</label>
+            <select id="bingo-title-font" style="font-size: 0.85rem; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-main); width: 100%;">
+              <optgroup label="🎂 Playful & Party">
+                <option value="Fredoka" selected>Fredoka (Default Rounded)</option>
+                <option value="Luckiest Guy">Luckiest Guy (Heavy Cartoon)</option>
+                <option value="Bungee">Bungee (Chunky Block)</option>
+                <option value="Chewy">Chewy (Chunky Playful)</option>
+                <option value="Chicle">Chicle (Bouncy Bubble)</option>
+                <option value="Titan One">Titan One (Punchy Heavy)</option>
+                <option value="Baloo 2">Baloo 2 (Soft Rounded)</option>
+              </optgroup>
+              <optgroup label="🎃 Halloween & Spooky">
+                <option value="Creepster">Creepster (Spooky Slime)</option>
+                <option value="Nosifer">Nosifer (Dripping Blood)</option>
+                <option value="Frijole">Frijole (Grunge Spooky)</option>
+                <option value="Eater">Eater (Monster Bones)</option>
+              </optgroup>
+              <optgroup label="🎄 Christmas & Festive">
+                <option value="Mountains of Christmas">Mountains of Christmas (Holiday Snow)</option>
+                <option value="Henny Penny">Henny Penny (Whimsical Festive)</option>
+                <option value="Irish Grover">Irish Grover (Lucky Clover)</option>
+              </optgroup>
+              <optgroup label="💖 Valentine & Script">
+                <option value="Great Vibes">Great Vibes (Elegant Cursive)</option>
+                <option value="Sacramento">Sacramento (Sweet Handwriting)</option>
+                <option value="Lobster">Lobster (Bold Retro Script)</option>
+                <option value="Pacifico">Pacifico (Brush Script)</option>
+              </optgroup>
+              <optgroup label="🎮 Retro & Gaming">
+                <option value="Press Start 2P">Press Start 2P (Retro 8-Bit)</option>
+                <option value="Bangers">Bangers (Comic Loud)</option>
+                <option value="Black Ops One">Black Ops One (Military Stencil)</option>
+                <option value="Righteous">Righteous (Futuristic Bold)</option>
+              </optgroup>
+              <optgroup label="⭐ Bold & Modern">
+                <option value="Bebas Neue">Bebas Neue (Tall Display)</option>
+                <option value="Montserrat">Montserrat (Modern Geometric)</option>
+                <option value="Oswald">Oswald (Strong Condensed)</option>
+                <option value="Anton">Anton (Extra Bold)</option>
+                <option value="Impact">Impact (Classic Thick)</option>
+              </optgroup>
+            </select>
+          </div>
+
           <button type="button" onclick="handleGeneratePdfClick(event)" id="btn-generate-pdf" class="btn btn-primary" style="width: 100%; margin-top: 12px; background-color: #0e4d4e;">
            Download 2 Shuffled Bingo Cards (PDF)
           </button>
@@ -1021,6 +1066,7 @@
       sheetBannerColor2: "#363A89",
       freeSpaceColor: "#00A859",
       bingoTitleColor: "#FFFFFF",
+      bingoTitleFont: "Fredoka",
       headerTitle: "State Fair Bingo",
       fontFamily: "Fredoka",
       fitMode: "cover",
@@ -1388,6 +1434,19 @@
           bingoTitleColorInput.value = hex;
           renderBingoPdfPreview();
         }
+      });
+    }
+
+    const bingoTitleFontSelect = document.getElementById('bingo-title-font');
+    if (bingoTitleFontSelect) {
+      bingoTitleFontSelect.addEventListener('change', async (e) => {
+        state.bingoTitleFont = e.target.value;
+        if (document.fonts) {
+          try {
+            await document.fonts.load(`900 250px '${e.target.value}'`);
+          } catch (err) {}
+        }
+        renderBingoPdfPreview();
       });
     }
 
@@ -2662,7 +2721,7 @@
       // 2A. Left Giant 3D Title "BINGO" (Centered vertically in top block)
       const bingoX = sideMargin + 45; // 115px
       const bingoY = topBlockY + 115; // Y=155px
-      const fontStyle = `'Fredoka', 'Fredoka One', 'Bungee', '${state.fontFamily}', sans-serif`;
+      const fontStyle = `'${state.bingoTitleFont || state.fontFamily || 'Fredoka'}', 'Fredoka', 'Bungee', sans-serif`;
 
       ctx.save();
       ctx.textAlign = 'left';
