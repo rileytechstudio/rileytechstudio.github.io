@@ -765,6 +765,11 @@
             </select>
           </div>
 
+          <div class="form-group" style="margin-top: 10px;">
+            <label for="bingo-title-font-size">BINGO Title Font Size: <span id="bingo-title-font-size-val">250px</span></label>
+            <input type="range" id="bingo-title-font-size" min="120" max="350" value="250" style="width: 100%; accent-color: var(--brand-color);">
+          </div>
+
           <button type="button" onclick="handleGeneratePdfClick(event)" id="btn-generate-pdf" class="btn btn-primary" style="width: 100%; margin-top: 12px; background-color: #0e4d4e;">
            Download 2 Shuffled Bingo Cards (PDF)
           </button>
@@ -1067,6 +1072,7 @@
       freeSpaceColor: "#00A859",
       bingoTitleColor: "#FFFFFF",
       bingoTitleFont: "Fredoka",
+      bingoTitleFontSize: 250,
       headerTitle: "State Fair Bingo",
       fontFamily: "Fredoka",
       fitMode: "cover",
@@ -1446,6 +1452,17 @@
             await document.fonts.load(`900 250px '${e.target.value}'`);
           } catch (err) {}
         }
+        renderBingoPdfPreview();
+      });
+    }
+
+    const bingoTitleFontSizeInput = document.getElementById('bingo-title-font-size');
+    const bingoTitleFontSizeVal = document.getElementById('bingo-title-font-size-val');
+    if (bingoTitleFontSizeInput && bingoTitleFontSizeVal) {
+      bingoTitleFontSizeInput.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.bingoTitleFontSize = val;
+        bingoTitleFontSizeVal.textContent = `${val}px`;
         renderBingoPdfPreview();
       });
     }
@@ -2726,9 +2743,29 @@
       ctx.save();
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.font = `900 250px ${fontStyle}`;
-      if ('letterSpacing' in ctx) {
-        ctx.letterSpacing = "18px";
+
+      // Auto-scale heightwise & widthwise to fit top banner area
+      const targetFontSize = state.bingoTitleFontSize || 250;
+      const maxTitleW = 1050; // max allowed width before right "TODAY AT 2:30" box
+      const maxTitleH = 175;  // max allowed height inside top banner (height 230px)
+
+      let titleFontSize = targetFontSize;
+      ctx.font = `900 ${titleFontSize}px ${fontStyle}`;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = "18px";
+
+      while (titleFontSize > 60) {
+        const metrics = ctx.measureText("BINGO");
+        const measuredW = metrics.width;
+        const measuredH = (metrics.actualBoundingBoxAscent && metrics.actualBoundingBoxDescent)
+          ? (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent)
+          : (titleFontSize * 0.9);
+
+        if (measuredW <= maxTitleW && measuredH <= maxTitleH) {
+          break;
+        }
+        titleFontSize -= 2;
+        ctx.font = `900 ${titleFontSize}px ${fontStyle}`;
+        if ('letterSpacing' in ctx) ctx.letterSpacing = "18px";
       }
 
       // Layer 1: Light cyan/accent drop shadow offset (+14px, +14px)
