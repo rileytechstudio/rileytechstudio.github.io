@@ -770,6 +770,16 @@
             <input type="range" id="bingo-title-font-size" min="120" max="350" value="250" style="width: 100%; accent-color: var(--brand-color);">
           </div>
 
+          <div class="form-group" style="margin-top: 10px;">
+            <label for="pdf-phone-line1">PDF Footer Phone Line 1</label>
+            <input type="text" id="pdf-phone-line1" value="317-948-0506 or " placeholder="e.g. 317-948-0506 or ">
+          </div>
+
+          <div class="form-group" style="margin-top: 10px;">
+            <label for="pdf-phone-line2">PDF Footer Phone Line 2</label>
+            <input type="text" id="pdf-phone-line2" value="80506 on your room phone" placeholder="e.g. 80506 on your room phone">
+          </div>
+
           <button type="button" onclick="handleGeneratePdfClick(event)" id="btn-generate-pdf" class="btn btn-primary" style="width: 100%; margin-top: 12px; background-color: #0e4d4e;">
            Download 2 Shuffled Bingo Cards (PDF)
           </button>
@@ -1073,6 +1083,8 @@
       bingoTitleColor: "#FFFFFF",
       bingoTitleFont: "Fredoka",
       bingoTitleFontSize: 250,
+      pdfPhoneLine1: "317-948-0506 or ",
+      pdfPhoneLine2: "80506 on your room phone",
       headerTitle: "State Fair Bingo",
       fontFamily: "Fredoka",
       fitMode: "cover",
@@ -1465,6 +1477,22 @@
         const val = parseInt(e.target.value, 10);
         state.bingoTitleFontSize = val;
         bingoTitleFontSizeVal.textContent = `${val}px`;
+        renderBingoPdfPreview();
+      });
+    }
+
+    const pdfPhoneLine1Input = document.getElementById('pdf-phone-line1');
+    if (pdfPhoneLine1Input) {
+      pdfPhoneLine1Input.addEventListener('input', (e) => {
+        state.pdfPhoneLine1 = e.target.value;
+        renderBingoPdfPreview();
+      });
+    }
+
+    const pdfPhoneLine2Input = document.getElementById('pdf-phone-line2');
+    if (pdfPhoneLine2Input) {
+      pdfPhoneLine2Input.addEventListener('input', (e) => {
+        state.pdfPhoneLine2 = e.target.value;
         renderBingoPdfPreview();
       });
     }
@@ -2916,8 +2944,10 @@
       // Line 2 & 3: Phone details
       ctx.font = `bold 48px 'LeagueSpartan-Bold', '${state.fontFamily}', Fredoka, sans-serif`;
       ctx.fillStyle = palette.textPrimary;
-      ctx.fillText("317-948-0506 OR", sideMargin + 40, bottomBlockY + 125);
-      ctx.fillText("80506 ON YOUR ROOM PHONE", sideMargin + 40, bottomBlockY + 185);
+      const phoneLine1 = (state.pdfPhoneLine1 !== undefined ? state.pdfPhoneLine1 : "317-948-0506 or ").toUpperCase();
+      const phoneLine2 = (state.pdfPhoneLine2 !== undefined ? state.pdfPhoneLine2 : "80506 on your room phone").toUpperCase();
+      ctx.fillText(phoneLine1, sideMargin + 40, bottomBlockY + 125);
+      ctx.fillText(phoneLine2, sideMargin + 40, bottomBlockY + 185);
       ctx.restore();
 
       // 4B. Right Stacked KIDS TV5 Logo Text (Vertically centered in shrunk 240px footer block)
