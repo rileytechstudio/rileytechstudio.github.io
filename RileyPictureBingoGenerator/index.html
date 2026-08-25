@@ -540,7 +540,7 @@
   <div class="container">
     <header>
       <div style="display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; flex-wrap: wrap;">
-        <img src="reference_files/riley stroke.png" alt="Riley Children's Health Logo" style="height: 52px; width: auto; object-fit: contain;">
+        <img class="riley-logo-img" src="reference_files/riley%20stroke.png" alt="Riley Children's Health Logo" style="height: 52px; width: auto; object-fit: contain;">
         <h1 style="margin-bottom: 0;">Riley Picture Bingo Generator</h1>
       </div>
       <p>Assemble custom branded PNG cards & printable 5x5 Bingo Cards with live PDF preview.</p>
@@ -552,7 +552,7 @@
         <div>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
             <div class="section-title" style="margin-bottom: 0;">Image Import</div>
-            <img src="reference_files/riley stroke.png" alt="Riley Logo" style="height: 22px; width: auto; opacity: 0.85;">
+            <img class="riley-logo-img" src="reference_files/riley%20stroke.png" alt="Riley Logo" style="height: 22px; width: auto; opacity: 0.85;">
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">Import 24 images or select files / drag & drop.</p>
           
@@ -3437,6 +3437,13 @@
         navigator.serviceWorker.register('./sw.js')
           .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
           .catch(err => console.warn('[PWA] Service Worker registration:', err));
+      });
+    }
+
+    // Ensure Riley Logo images use the embedded Base64 data URL if available
+    if (window.RILEY_LOGO_DATA_URL) {
+      document.querySelectorAll('.riley-logo-img').forEach(img => {
+        img.src = window.RILEY_LOGO_DATA_URL;
       });
     }
 
