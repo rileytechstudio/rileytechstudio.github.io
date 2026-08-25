@@ -55,7 +55,7 @@
     .hud-left, .hud-right {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .hud-box {
@@ -64,10 +64,10 @@
       -webkit-backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 16px;
-      padding: 8px 12px;
+      padding: 8px 14px;
       color: #ffffff;
       font-weight: 800;
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     }
 
@@ -77,8 +77,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 44px;
       height: 44px;
-      padding: 0 12px;
+      padding: 0;
       transition: transform 0.1s ease, background 0.15s ease;
     }
 
@@ -96,7 +97,7 @@
 
     .lives-container {
       display: flex;
-      gap: 3px;
+      gap: 4px;
     }
 
     .life-heart {
@@ -232,16 +233,11 @@
           <svg class="life-heart lost" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
         </div>
       </div>
-      <!-- Screen-Clearing Bomb Button -->
-      <div class="hud-box hud-btn" id="bombBtn" title="Detonate Bomb (Clear Screen)">
-        <span style="font-size: 1.15rem; line-height: 1;">💣</span>
-        <span id="bombCount" style="font-size: 0.85rem; margin-left: 3px; font-weight: 900; color: #facc15;">x1</span>
-      </div>
     </div>
 
     <div class="hud-right">
       <!-- Pause Icon Button -->
-      <div class="hud-box hud-btn" id="pauseBtn" title="Pause Game" style="width: 44px; padding: 0;">
+      <div class="hud-box hud-btn" id="pauseBtn" title="Pause Game">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff">
           <rect x="5" y="3" width="4" height="18" rx="1"/>
           <rect x="15" y="3" width="4" height="18" rx="1"/>
@@ -250,12 +246,12 @@
     </div>
   </div>
 
-  <div class="controls-hint" id="hint">Collect 💣 Bombs (1/20 UFOs) to destroy Ground AA Installations!</div>
+  <div class="controls-hint" id="hint">Shoot UFOs & Ground AA Turrets • Collect Hearts (1/60) & Weapons (1/100)!</div>
 
   <!-- Start Overlay -->
   <div class="overlay" id="startOverlay">
     <h1 class="title">SKY STRIKER</h1>
-    <p class="subtitle">Use 💣 BOMBS to obliterate Ground AA Turrets & clear the screen! Collect 💣 (1/20), Hearts (1/60), Weapons (1/100), & Wingman Jets (1/300)!</p>
+    <p class="subtitle">Blast UFOs & Ground AA Turrets! Collect Hearts (1/60), Weapon Upgrades (1/100), and the rare 5-Health Escort Wingman Jet (1/300)!</p>
     <button class="btn-play" id="startBtn">START MISSION</button>
     <a href="index.html" class="btn-home">Back to Launcher</a>
   </div>
@@ -319,14 +315,6 @@
         gain.gain.exponentialRampToValueAtTime(0.005, now + 0.35);
         osc.start(now);
         osc.stop(now + 0.35);
-      } else if (type === 'bomb') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(220, now);
-        osc.frequency.exponentialRampToValueAtTime(15, now + 0.6);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.6);
-        osc.start(now);
-        osc.stop(now + 0.6);
       } else if (type === 'hit') {
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(280, now);
@@ -377,7 +365,6 @@
     let frameCount = 0;
     let terrainScroll = 0;
     let ufoDestroyedCount = 0;
-    let screenFlashTimer = 0;
 
     // Player Airplane & Upgrades
     const player = {
@@ -392,7 +379,6 @@
       weaponMode: 'SINGLE', // 'SINGLE', 'DOUBLE', 'FAN'
       hasWingman: false,
       wingmanHp: 0,
-      bombs: 1, // Start with 1 Bomb
       invincibleTimer: 0 // 300 frames = 5 Seconds Invincibility Shield on hit
     };
 
@@ -471,81 +457,16 @@
 
     // Keyboard support
     const keys = {};
-    window.addEventListener('keydown', (e) => {
-      keys[e.code] = true;
-      if (e.code === 'KeyB' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        detonateBomb();
-      }
-    });
+    window.addEventListener('keydown', (e) => keys[e.code] = true);
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-    // Update Bomb HUD Counter
-    function updateBombUI() {
-      document.getElementById('bombCount').innerText = `x${player.bombs}`;
-    }
-
-    // Detonate Screen-Clearing Bomb
-    function detonateBomb() {
-      if (state !== 'PLAYING' || player.bombs <= 0) return;
-
-      player.bombs--;
-      updateBombUI();
-      playSound('bomb');
-
-      screenFlashTimer = 14; // Golden shockwave flash
-
-      // Radial Particle Burst
-      for (let i = 0; i < 70; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 12 + 2;
-        particles.push({
-          x: width / 2,
-          y: height / 2,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          radius: Math.random() * 6 + 3,
-          color: Math.random() > 0.5 ? '#facc15' : '#ef4444',
-          alpha: 1,
-          decay: 0.02
-        });
-      }
-
-      // 1. Destroy ALL Ground Targets
-      for (let i = groundTargets.length - 1; i >= 0; i--) {
-        const tgt = groundTargets[i];
-        score += tgt.type === 'bunker' ? 50 : 30;
-        createExplosion(tgt.x, tgt.y, '#ef4444', 22);
-        createExplosion(tgt.x, tgt.y, '#facc15', 14);
-        groundTargets.splice(i, 1);
-      }
-
-      // 2. Destroy ALL Flying Air UFOs
-      for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i];
-        score += enemy.maxHp * 10;
-        createExplosion(enemy.x, enemy.y, '#a855f7', 18);
-        createExplosion(enemy.x, enemy.y, '#38bdf8', 12);
-        handleUFODestroyed(enemy.x, enemy.y);
-        enemies.splice(i, 1);
-      }
-
-      // 3. Clear ALL Enemy AA Bullets
-      enemyBullets = [];
-
-      document.getElementById('scoreVal').innerText = score;
-    }
-
-    // --- Power-up Spawner (1/20 = Bomb, 1/60 = Heart, 1/100 = Weapon, 1/300 = Wingman Jet) ---
+    // --- Power-up Spawner (1/60 = Heart, 1/100 = Weapon, 1/300 = Wingman Jet) ---
     function handleUFODestroyed(x, y) {
       ufoDestroyedCount++;
       let dropType = null;
 
-      // 1 in 20 UFOs drops a Bomb item 💣
-      if (ufoDestroyedCount % 20 === 0 || Math.random() < (1 / 20)) {
-        dropType = 'BOMB';
-      }
       // 1 in 300 UFOs drops the Rare Double Plane Wingman!
-      else if (ufoDestroyedCount % 300 === 0 || Math.random() < (1 / 300)) {
+      if (ufoDestroyedCount % 300 === 0 || Math.random() < (1 / 300)) {
         dropType = 'WINGMAN';
       }
       // 1 in 100 UFOs drops a Weapon upgrade (Double or Fan)
@@ -739,8 +660,6 @@
       const scrollStep = state === 'PAUSED' ? 0.4 : 1.8;
       terrainScroll = (terrainScroll + scrollStep) % 60;
 
-      if (screenFlashTimer > 0) screenFlashTimer--;
-
       terrainFeatures.forEach(feat => {
         feat.y += scrollStep;
         if (feat.y > height + 60) {
@@ -819,11 +738,7 @@
 
         if (distP < item.radius + 20 || distW < item.radius + 20) {
           createExplosion(item.x, item.y, '#38bdf8', 12);
-          if (item.type === 'BOMB') {
-            player.bombs++;
-            updateBombUI();
-            playSound('powerup');
-          } else if (item.type === 'HEART') {
+          if (item.type === 'HEART') {
             const maxLives = player.hasWingman ? 5 : 3;
             if (lives < maxLives) {
               lives++;
@@ -885,15 +800,26 @@
           }
         }
 
-        // GROUND TARGET IMMUNITY TO REGULAR BLASTER BULLETS (Requires BOMBS 💣!)
+        // Check Player Bullet <-> Ground Target Collision (Direct Blaster Damage!)
         for (let j = bullets.length - 1; j >= 0; j--) {
           const b = bullets[j];
           const dist = Math.hypot(b.x - tgt.x, b.y - tgt.y);
           if (dist < tgt.radius + b.radius) {
             bullets.splice(j, 1);
-            // Metallic ricochet spark - Ground target is immune to blasters!
-            createExplosion(b.x, b.y, '#94a3b8', 3);
-            playSound('hit');
+            tgt.hp--;
+            createExplosion(b.x, b.y, '#f59e0b', 5);
+
+            if (tgt.hp <= 0) {
+              playSound('explosion');
+              score += tgt.type === 'bunker' ? 50 : 30;
+              document.getElementById('scoreVal').innerText = score;
+              createExplosion(tgt.x, tgt.y, '#ef4444', 20);
+              createExplosion(tgt.x, tgt.y, '#facc15', 12);
+              groundTargets.splice(i, 1);
+              break;
+            } else {
+              playSound('hit');
+            }
           }
         }
 
@@ -999,11 +925,11 @@
       ctx.clearRect(0, 0, width, height);
 
       // 1. Land Surface Background
-      ctx.fillStyle = screenFlashTimer > 0 ? '#451a03' : '#16382b';
+      ctx.fillStyle = '#16382b';
       ctx.fillRect(0, 0, width, height);
 
       // Topography Grid
-      ctx.strokeStyle = screenFlashTimer > 0 ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255, 255, 255, 0.04)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
       ctx.lineWidth = 1;
       const gridSize = 40;
       for (let x = 0; x < width; x += gridSize) {
@@ -1096,7 +1022,7 @@
         ctx.save();
         ctx.translate(item.x, item.y);
 
-        const badgeColor = item.type === 'HEART' ? '#ff4757' : (item.type === 'DOUBLE' ? '#38bdf8' : (item.type === 'FAN' ? '#c084fc' : (item.type === 'BOMB' ? '#f59e0b' : '#facc15')));
+        const badgeColor = item.type === 'HEART' ? '#ff4757' : (item.type === 'DOUBLE' ? '#38bdf8' : (item.type === 'FAN' ? '#c084fc' : '#facc15'));
         
         ctx.shadowColor = badgeColor;
         ctx.shadowBlur = 14;
@@ -1152,14 +1078,6 @@
           ctx.lineTo(-8, 5);
           ctx.closePath();
           ctx.fill();
-        } else if (item.type === 'BOMB') {
-          // Bomb Badge Icon 💣
-          ctx.fillStyle = '#facc15';
-          ctx.beginPath();
-          ctx.arc(0, 2, 7, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#ef4444';
-          ctx.fillRect(-2, -8, 4, 3);
         }
 
         ctx.restore();
@@ -1330,7 +1248,6 @@
       score = 0;
       lives = 3;
       ufoDestroyedCount = 0;
-      screenFlashTimer = 0;
       bullets = [];
       enemyBullets = [];
       enemies = [];
@@ -1340,11 +1257,9 @@
       player.weaponMode = 'SINGLE';
       player.hasWingman = false;
       player.wingmanHp = 0;
-      player.bombs = 1;
       player.invincibleTimer = 0;
 
       document.getElementById('scoreVal').innerText = '0';
-      updateBombUI();
       updateLivesUI();
       document.getElementById('startOverlay').classList.add('hidden');
       document.getElementById('pauseOverlay').classList.add('hidden');
@@ -1380,19 +1295,6 @@
       e.stopPropagation();
       togglePause();
     });
-    document.getElementById('bombBtn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      detonateBomb();
-    });
-
-    // PWA Service Worker Registration
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('PWA Service Worker registered:', reg.scope))
-          .catch(err => console.log('PWA Service Worker registration failed:', err));
-      });
-    }
   </script>
 </body>
 </html>
