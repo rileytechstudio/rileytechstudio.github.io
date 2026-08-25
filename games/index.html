@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f0c1b">
+  <title>Game Launcher - Riley Tech Studio</title>
+  <style>
+    :root {
+      --bg-color: #0f0c1b;
+      --card-radius: 20px;
+      --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      background: radial-gradient(circle at 50% 0%, #2b1754 0%, #0f0c1b 70%);
+      font-family: var(--font-family);
+      color: #ffffff;
+      padding-top: calc(1rem + var(--safe-top));
+      padding-bottom: calc(2rem + var(--safe-bottom));
+      padding-left: 1rem;
+      padding-right: 1rem;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Mobile-first Header */
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .header-badge {
+      display: inline-block;
+      padding: 0.35rem 0.85rem;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #e0d5ff;
+      margin-bottom: 0.5rem;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ffffff 0%, #c0b3f0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      font-size: 0.9rem;
+      color: #a89bc9;
+      margin-top: 0.25rem;
+    }
+
+    /* Mobile-first Games Grid */
+    .games-grid {
+      display: grid;
+      grid-template-columns: 1fr; /* Single column on smallest mobile screens */
+      gap: 1.25rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* Game Card */
+    .game-card {
+      text-decoration: none;
+      border-radius: var(--card-radius);
+      display: flex;
+      align-items: center;
+      padding: 1.25rem;
+      position: relative;
+      background: rgba(255, 255, 255, 0.07);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow: hidden;
+      touch-action: manipulation;
+      transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .game-card:active {
+      transform: scale(0.97);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Accent themes per game */
+    .game-cheskers {
+      background: linear-gradient(135deg, rgba(255, 71, 87, 0.35) 0%, rgba(206, 30, 48, 0.15) 100%);
+      border-color: rgba(255, 107, 129, 0.4);
+    }
+    .game-codyfrog {
+      background: linear-gradient(135deg, rgba(16, 172, 132, 0.35) 0%, rgba(10, 120, 92, 0.15) 100%);
+      border-color: rgba(46, 213, 115, 0.4);
+    }
+    .game-musicgrid {
+      background: linear-gradient(135deg, rgba(136, 84, 208, 0.35) 0%, rgba(90, 50, 145, 0.15) 100%);
+      border-color: rgba(165, 94, 234, 0.4);
+    }
+    .game-pixelplay {
+      background: linear-gradient(135deg, rgba(255, 159, 26, 0.35) 0%, rgba(200, 120, 10, 0.15) 100%);
+      border-color: rgba(255, 175, 64, 0.4);
+    }
+    .game-traingame {
+      background: linear-gradient(135deg, rgba(255, 82, 82, 0.35) 0%, rgba(180, 40, 40, 0.15) 100%);
+      border-color: rgba(255, 121, 63, 0.4);
+    }
+    .game-watertable {
+      background: linear-gradient(135deg, rgba(0, 168, 255, 0.35) 0%, rgba(0, 110, 170, 0.15) 100%);
+      border-color: rgba(0, 210, 211, 0.4);
+    }
+    .game-mobiletest {
+      background: linear-gradient(135deg, rgba(113, 88, 226, 0.35) 0%, rgba(70, 50, 160, 0.15) 100%);
+      border-color: rgba(156, 136, 255, 0.4);
+    }
+    .game-skyblaster {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(129, 140, 248, 0.15) 100%);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* Icon Container */
+    .card-icon {
+      width: 64px;
+      height: 64px;
+      min-width: 64px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-icon svg {
+      width: 36px;
+      height: 36px;
+      stroke: #ffffff;
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Content Area */
+    .card-content {
+      flex: 1;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.75);
+      margin-top: 0.25rem;
+      line-height: 1.3;
+    }
+
+    .play-btn {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 0.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .play-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: #ffffff;
+      margin-left: 2px;
+    }
+
+    /* Navigation Footer */
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 50px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .home-link:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Responsive Breakpoints (Tablet & Desktop) */
+    @media (min-width: 600px) {
+      body {
+        padding-top: calc(2rem + var(--safe-top));
+        padding-left: 2rem;
+        padding-right: 2rem;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+      }
+
+      .games-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+      }
+    }
+
+    @media (min-width: 900px) {
+      .games-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-badge">Riley Tech Studio</div>
+    <h1>Game Arcade</h1>
+    <p>Tap a game to launch & play</p>
+  </header>
+
+  <!-- Games List -->
+  <main class="games-grid">
+
+    <!-- SKY INVADERS -->
+    <a href="skyblaster.html" class="game-card game-skyblaster">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L15 8L21 10L16 14L17 21L12 18L7 21L8 14L3 10L9 8L12 2Z" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Sky Invaders</div>
+        <div class="card-desc">Fly forward airplane vs. alien UFO shooter</div>
+      </div>
+      <div class="play-btn">
+        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>
+      </div>
+    </a>
+
+  </main>
+
+</body>
+</html>
