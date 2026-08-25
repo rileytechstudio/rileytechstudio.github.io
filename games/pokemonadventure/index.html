@@ -1,0 +1,2851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pokémon Adventure">
+  <meta name="theme-color" content="#1a202c">
+  <title>Pokémon Adventure 3D</title>
+  
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #f59e0b;
+      --primary-dark: #d97706;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --green: #10b981;
+      --dark: #0f172a;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --safe-top: env(safe-area-inset-top, 10px);
+      --safe-bottom: env(safe-area-inset-bottom, 10px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--dark);
+      font-family: var(--font);
+      touch-action: none;
+    }
+
+    #gameCanvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* Screen Edge Fog / Vignette Overlay */
+    #vignette-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, transparent 45%, rgba(134, 239, 172, 0.25) 75%, rgba(15, 23, 42, 0.75) 100%);
+      z-index: 5;
+    }
+
+    /* UI Overlay Layer */
+    #ui-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Top HUD */
+    .hud-top {
+      padding: calc(var(--safe-top) + 8px) 14px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: auto;
+      gap: 8px;
+    }
+
+    .hud-left-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hud-card {
+      background: rgba(15, 23, 42, 0.88);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 8px 12px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .hud-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 800;
+      font-size: 0.88rem;
+    }
+
+    .hud-badge.hp-badge { color: #4ade80; }
+    .hud-badge.balls-badge { color: #f87171; }
+    .hud-badge.potion-badge { color: #c084fc; }
+    .hud-badge.dex-badge { color: #60a5fa; }
+    .hud-badge.biome-badge { color: #fef08a; font-size: 0.8rem; }
+
+    .hud-buttons-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .hud-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: transform 0.1s, background 0.2s;
+    }
+
+    .hud-btn:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* ALWAYS-OPEN LIVE MINI-MAP */
+    .minimap-card {
+      background: rgba(15, 23, 42, 0.92);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 18px;
+      padding: 8px 10px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+    }
+
+    .minimap-header {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #60a5fa;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      gap: 6px;
+    }
+
+    .minimap-header span.tp-hint {
+      color: #f87171;
+      font-size: 0.65rem;
+    }
+
+    #miniMapCanvas {
+      width: 110px;
+      height: 110px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #0f172a;
+      cursor: pointer;
+    }
+
+    .minimap-teleport-row {
+      display: flex;
+      gap: 4px;
+      margin-top: 5px;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .btn-tp-chip {
+      background: rgba(239, 68, 68, 0.22);
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      color: #fecaca;
+      padding: 3px 4px;
+      border-radius: 6px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn-tp-chip:active {
+      transform: scale(0.92);
+      background: rgba(239, 68, 68, 0.6);
+    }
+
+    /* Message / Quest Toast */
+    #toast-msg {
+      position: absolute;
+      top: calc(var(--safe-top) + 68px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.94);
+      border: 2px solid #f59e0b;
+      color: #fef3c7;
+      padding: 9px 20px;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 15;
+      text-align: center;
+      max-width: 90vw;
+    }
+
+    #toast-msg.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(5px);
+    }
+
+    /* Controls Zone */
+    .controls-zone {
+      padding: 0 20px calc(var(--safe-bottom) + 16px);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    #joystick-container {
+      width: 130px;
+      height: 130px;
+      background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 70%);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      position: relative;
+      pointer-events: auto;
+      touch-action: none;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    }
+
+    #joystick-knob {
+      width: 54px;
+      height: 54px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: auto;
+      align-items: flex-end;
+    }
+
+    .btn-action {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      border: 3px solid #ffffff;
+      color: #ffffff;
+      font-size: 1.15rem;
+      font-weight: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.55);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .btn-action:active { transform: scale(0.9); }
+
+    .btn-action span {
+      font-size: 0.58rem;
+      font-weight: 700;
+      opacity: 0.95;
+      margin-top: 1px;
+    }
+
+    .btn-side {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .btn-side:active { transform: scale(0.92); }
+    .btn-bag { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5); }
+    .btn-party { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5); }
+
+    .key-hint {
+      display: inline-block;
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.3);
+      margin-left: 4px;
+    }
+
+    /* Dialog Modal Overlay */
+    #dialog-overlay {
+      position: absolute;
+      bottom: calc(var(--safe-bottom) + 95px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 600px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 3px solid #f59e0b;
+      border-radius: 20px;
+      padding: 16px 20px;
+      color: #ffffff;
+      pointer-events: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      display: none;
+      z-index: 50;
+    }
+
+    .dialog-speaker {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #f59e0b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dialog-text {
+      font-size: 1.05rem;
+      line-height: 1.45;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 12px;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-dialog {
+      background: #f59e0b;
+      color: #0f172a;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+
+    /* Bag & Item Modal */
+    #bag-modal {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 130;
+      display: none;
+      flex-direction: column;
+      padding: calc(var(--safe-top) + 16px) 16px calc(var(--safe-bottom) + 16px);
+      color: #ffffff;
+      pointer-events: auto;
+    }
+
+    .bag-card {
+      background: rgba(30, 41, 59, 0.85);
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .btn-use-item {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    /* Battle Screen UI */
+    #battle-screen {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: calc(var(--safe-top) + 12px) 16px calc(var(--safe-bottom) + 16px);
+      pointer-events: auto;
+    }
+
+    .battle-hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .battle-pokemon-card {
+      background: rgba(15, 23, 42, 0.88);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      padding: 10px 16px;
+      color: #ffffff;
+      width: 48%;
+      max-width: 280px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .poke-name-row {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 900;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .poke-lv { color: #f59e0b; font-size: 0.8rem; }
+
+    .hp-bar-bg {
+      width: 100%;
+      height: 10px;
+      background: #334155;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .hp-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #22c55e, #10b981);
+      transition: width 0.35s ease;
+    }
+
+    .hp-bar-fill.low { background: linear-gradient(90deg, #ef4444, #dc2626); }
+
+    .hp-text {
+      text-align: right;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 3px;
+      font-weight: 700;
+    }
+
+    .battle-center-display {
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: #fef08a;
+      text-align: center;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+      background: rgba(15, 23, 42, 0.75);
+      padding: 8px 18px;
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,0.15);
+      align-self: center;
+      margin-bottom: 12px;
+      max-width: 90%;
+    }
+
+    .battle-controls {
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    .battle-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .btn-move {
+      padding: 10px 6px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      transition: transform 0.1s;
+      text-align: center;
+    }
+
+    .btn-move:active { transform: scale(0.95); }
+
+    .btn-move span {
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.8);
+      text-transform: uppercase;
+    }
+
+    .btn-tackle { background: linear-gradient(135deg, #64748b, #475569); }
+    .btn-special { background: linear-gradient(135deg, #eab308, #ca8a04); }
+    .btn-catch { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+    .btn-heal-battle { background: linear-gradient(135deg, #10b981, #059669); }
+    .btn-switch { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .btn-run { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+
+    /* Pokédex & Team Modal */
+    #pokedex-modal {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 120;
+      display: none;
+      flex-direction: column;
+      padding: calc(var(--safe-top) + 12px) 16px calc(var(--safe-bottom) + 16px);
+      color: #ffffff;
+      pointer-events: auto;
+    }
+
+    .dex-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .dex-title {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dex-grid {
+      flex: 1;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      gap: 12px;
+      padding-bottom: 20px;
+    }
+
+    .dex-item {
+      background: rgba(30, 41, 59, 0.8);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 10px;
+      text-align: center;
+      opacity: 0.45;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .dex-item.caught {
+      opacity: 1;
+      border-color: #f59e0b;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(30, 41, 59, 0.9));
+    }
+
+    .dex-item.active-partner {
+      border-color: #10b981;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(30, 41, 59, 0.95));
+    }
+
+    .dex-num { font-size: 0.7rem; font-weight: 800; color: #94a3b8; }
+    .dex-name { font-size: 0.95rem; font-weight: 800; margin-top: 4px; }
+    .dex-habitat-tag { font-size: 0.65rem; color: #67e8f9; font-weight: 700; margin-top: 2px; }
+    .dex-move-info { font-size: 0.7rem; color: #fef08a; font-weight: 700; margin-top: 4px; }
+
+    .btn-set-partner {
+      background: #10b981;
+      color: #ffffff;
+      border: none;
+      padding: 5px 8px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: transform 0.1s;
+    }
+
+    .btn-set-partner:active { transform: scale(0.92); }
+
+    /* Start Screen & How-To-Play Guide */
+    #start-screen {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(30, 27, 75, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      color: #ffffff;
+      pointer-events: auto;
+      overflow-y: auto;
+    }
+
+    .guide-card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 3px solid #f59e0b;
+      border-radius: 24px;
+      padding: 24px;
+      max-width: 680px;
+      width: 100%;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+      text-align: center;
+    }
+
+    .start-title {
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: -0.5px;
+    }
+
+    .start-subtitle {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .guide-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      text-align: left;
+      margin-bottom: 24px;
+    }
+
+    @media (min-width: 600px) {
+      .guide-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+    }
+
+    .guide-step {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .guide-icon { font-size: 1.6rem; margin-bottom: 2px; }
+    .guide-step h3 { font-size: 0.95rem; font-weight: 800; color: #f59e0b; }
+    .guide-step p { font-size: 0.8rem; line-height: 1.35; color: #e2e8f0; }
+
+    .guide-step kbd {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #fef08a;
+    }
+
+    .start-btn {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border: 3px solid #ffffff;
+      color: #0f172a;
+      font-size: 1.2rem;
+      font-weight: 900;
+      padding: 14px 44px;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.5);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .start-btn:active { transform: scale(0.94); }
+  </style>
+</head>
+<body>
+
+  <!-- WebGL 3D Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Screen Edge Fog & Vignette -->
+  <div id="vignette-overlay"></div>
+
+  <!-- UI Overlay -->
+  <div id="ui-layer">
+    <!-- Top HUD -->
+    <div class="hud-top">
+      <div class="hud-left-group">
+        <div class="hud-card">
+          <div class="hud-badge hp-badge">
+            <span>❤️</span>
+            <span id="player-hp-display">100/100</span>
+          </div>
+          <div class="hud-badge balls-badge">
+            <span>🔴</span>
+            <span id="balls-display">15</span>
+          </div>
+          <div class="hud-badge potion-badge">
+            <span>🧪</span>
+            <span id="potions-display">3</span>
+          </div>
+          <div class="hud-badge dex-badge">
+            <span>📖</span>
+            <span id="caught-count-display">1/20</span>
+          </div>
+        </div>
+
+        <div class="hud-card" style="padding: 6px 12px;">
+          <div class="hud-badge biome-badge">
+            <span>📍</span>
+            <span id="current-biome-display">Pallet Meadows</span>
+          </div>
+        </div>
+
+        <div class="hud-buttons-row">
+          <button class="hud-btn" id="btn-sound-toggle">🔊 Sound</button>
+          <button class="hud-btn" id="btn-pokedex-open">📖 Pokédex <span class="key-hint">P</span></button>
+        </div>
+      </div>
+
+      <!-- ALWAYS-OPEN LIVE RADAR MINI-MAP -->
+      <div class="minimap-card" id="minimap-container">
+        <div class="minimap-header">
+          <span>🗺️ LIVE RADAR</span>
+          <span class="tp-hint">⚡ Fast Travel</span>
+        </div>
+        <canvas id="miniMapCanvas" width="110" height="110" title="Tap any Hospital to Fast Travel"></canvas>
+        <div class="minimap-teleport-row">
+          <button class="btn-tp-chip" onclick="teleportToHospital(0)">🏥 Pallet</button>
+          <button class="btn-tp-chip" onclick="teleportToHospital(1)">🏥 Woods</button>
+          <button class="btn-tp-chip" onclick="teleportToHospital(2)">🏥 Lake</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast message for quest & capture feedback -->
+    <div id="toast-msg">Welcome to Pallet Town! Explore the world to find Pokémon!</div>
+
+    <!-- Virtual Touch Controls for Mobile -->
+    <div class="controls-zone">
+      <div id="joystick-container">
+        <div id="joystick-knob"></div>
+      </div>
+
+      <div class="action-buttons">
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-side btn-party" id="btn-party-open">👥<br>TEAM</button>
+          <button class="btn-side btn-bag" id="btn-bag-open">🎒<br>BAG</button>
+        </div>
+        <button class="btn-action" id="btn-action">
+          <span>SPACE</span>
+          A
+          <span>INTERACT</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog Box Overlay -->
+  <div id="dialog-overlay">
+    <div class="dialog-speaker" id="dialog-speaker">
+      <span>❗</span>
+      <span id="dialog-speaker-name">Professor Oak</span>
+    </div>
+    <div class="dialog-text" id="dialog-text">Welcome! Explore the grass and neighborhoods to catch all 20 Pokémon!</div>
+    <div class="dialog-actions">
+      <button class="btn-dialog" id="btn-dialog-close">Continue (Space)</button>
+    </div>
+  </div>
+
+  <!-- Bag / Items Modal -->
+  <div id="bag-modal">
+    <div class="dex-header">
+      <div class="dex-title">🎒 Trainer Bag</div>
+      <button class="hud-btn" id="btn-bag-close">✕ Close</button>
+    </div>
+    <div style="flex: 1; overflow-y: auto; padding: 10px 0;">
+      <div class="bag-card">
+        <div>
+          <div style="font-weight: 800; font-size: 1.1rem; color: #4ade80;">🧪 Super Potion (<span id="bag-potion-count">3</span>)</div>
+          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Restores 50 HP to your active Pokémon partner.</div>
+        </div>
+        <button class="btn-use-item" id="btn-use-potion">USE (+50 HP)</button>
+      </div>
+      <div class="bag-card">
+        <div>
+          <div style="font-weight: 800; font-size: 1.1rem; color: #f87171;">🔴 Standard Pokéball (<span id="bag-ball-count">15</span>)</div>
+          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Used during battles to capture wild Pokémon.</div>
+        </div>
+      </div>
+      <div class="bag-card">
+        <div>
+          <div style="font-weight: 800; font-size: 1.1rem; color: #f59e0b;">🏥 Pokémon Hospitals (Fast Travel)</div>
+          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">You can instantly teleport to any of the 3 Pokémon Hospitals from the live radar map!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Battle Screen Overlay -->
+  <div id="battle-screen">
+    <div class="battle-hud-top">
+      <!-- Player Pokemon Status -->
+      <div class="battle-pokemon-card player">
+        <div class="poke-name-row">
+          <span id="battle-player-name">⚡ Pikachu (Partner)</span>
+          <span class="poke-lv" id="battle-player-lv">Lv. 10</span>
+        </div>
+        <div class="hp-bar-bg">
+          <div class="hp-bar-fill" id="player-hp-fill" style="width: 100%;"></div>
+        </div>
+        <div class="hp-text" id="battle-player-hp-text">HP: 100 / 100</div>
+      </div>
+
+      <!-- Enemy Pokemon Status -->
+      <div class="battle-pokemon-card enemy">
+        <div class="poke-name-row">
+          <span id="enemy-poke-name">Wild Bulbasaur</span>
+          <span class="poke-lv" id="enemy-poke-lv">Lv. 5</span>
+        </div>
+        <div class="hp-bar-bg">
+          <div class="hp-bar-fill" id="enemy-hp-fill" style="width: 100%;"></div>
+        </div>
+        <div class="hp-text" id="enemy-hp-text">HP: 100 / 100</div>
+      </div>
+    </div>
+
+    <!-- Battle Center Action Text -->
+    <div class="battle-center-display" id="battle-announcement">
+      A wild Pokémon appeared!
+    </div>
+
+    <!-- Battle Action Controls -->
+    <div class="battle-controls">
+      <div class="battle-grid">
+        <button class="btn-move btn-tackle" id="btn-move-tackle">
+          TACKLE
+          <span>Normal • Pwr 25</span>
+        </button>
+        <button class="btn-move btn-special" id="btn-move-special">
+          <span id="btn-special-name">THUNDERBOLT</span>
+          <span id="btn-special-type">Electric • Pwr 45</span>
+        </button>
+        <button class="btn-move btn-catch" id="btn-move-catch">
+          POKÉBALL
+          <span>Catch Chance</span>
+        </button>
+        <button class="btn-move btn-heal-battle" id="btn-heal-battle">
+          🧪 POTION
+          <span id="battle-potion-badge">Heal 50 HP (3)</span>
+        </button>
+        <button class="btn-move btn-switch" id="btn-switch-battle">
+          👥 SWITCH
+          <span>Change Partner</span>
+        </button>
+        <button class="btn-move btn-run" id="btn-move-run">
+          RUN AWAY
+          <span>Escape</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pokédex & Team Modal -->
+  <div id="pokedex-modal">
+    <div class="dex-header">
+      <div class="dex-title">📖 Pokédex & Habitats Guide</div>
+      <button class="hud-btn" id="btn-pokedex-close">✕ Close</button>
+    </div>
+    <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px;">
+      Explore different biomes across the map. Tap <b>"SET PARTNER"</b> to battle and travel with any caught Pokémon!
+    </p>
+    <div class="dex-grid" id="dex-grid-container">
+      <!-- Injected dynamically -->
+    </div>
+  </div>
+
+  <!-- Start Screen & How-To-Play Guide -->
+  <div id="start-screen">
+    <div class="guide-card">
+      <div class="start-title">Pokémon Adventure 3D</div>
+      <div class="start-subtitle">Trainer Guide & Radar Map</div>
+
+      <div class="guide-grid">
+        <!-- Controls Column -->
+        <div class="guide-step">
+          <div class="guide-icon">🕹️</div>
+          <h3>Controls</h3>
+          <p><b>Move:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>Arrow Keys</kbd> (Desktop) / <b>Virtual Joystick</b> (Mobile/Touch).</p>
+          <p><b>Interact / Fight:</b> <kbd>Space</kbd> or <kbd>E</kbd> / Tap <b>(A)</b> Button.</p>
+          <p><b>Team / Bag:</b> Tap <b>👥 TEAM</b> or <b>🎒 BAG</b>.</p>
+        </div>
+
+        <!-- Radar & Teleport Column -->
+        <div class="guide-step">
+          <div class="guide-icon">🗺️</div>
+          <h3>Live Radar & Fast Travel</h3>
+          <p>The <b>Live Radar Map</b> is always open on the top-right.</p>
+          <p>Tap any <b>🏥 Pokémon Hospital</b> chip to instantly teleport there and heal!</p>
+        </div>
+
+        <!-- Habitats & Catch Column -->
+        <div class="guide-step">
+          <div class="guide-icon">⚔️</div>
+          <h3>Habitats & Catching</h3>
+          <p><b>Eevee:</b> Grassy Flower Meadows.</p>
+          <p><b>Squirtle:</b> Lake Beach • <b>Charmander:</b> Volcano.</p>
+          <p><b>Bulbasaur:</b> Forest • <b>Geodude:</b> Quarry.</p>
+          <p>Weaken enemies in battle and throw a <b>Pokéball</b>!</p>
+        </div>
+      </div>
+
+      <button class="start-btn" id="btn-start-game">START ADVENTURE</button>
+    </div>
+  </div>
+
+  <!-- Game Logic Script -->
+  <script>
+    /* ==========================================================
+       1. SYNTHESIZED WEB AUDIO ENGINE
+       ========================================================== */
+    class RetroAudio {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type, duration, startVol = 0.2, endVol = 0.001) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(startVol, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(endVol, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      }
+
+      playJump() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.15);
+        } catch(e){}
+      }
+
+      playHit() {
+        this.playTone(120, 'square', 0.12, 0.3, 0.01);
+      }
+
+      playZap() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          for (let i = 0; i < 4; i++) {
+            setTimeout(() => {
+              this.playTone(600 + Math.random() * 400, 'sawtooth', 0.05, 0.15);
+            }, i * 40);
+          }
+        } catch(e) {}
+      }
+
+      playHeal() {
+        if (!this.enabled || !this.ctx) return;
+        const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99];
+        notes.forEach((n, idx) => {
+          setTimeout(() => this.playTone(n, 'sine', 0.2, 0.25), idx * 100);
+        });
+      }
+
+      playTeleport() {
+        if (!this.enabled || !this.ctx) return;
+        const freqs = [350, 480, 620, 800, 1050, 1400];
+        freqs.forEach((f, i) => {
+          setTimeout(() => this.playTone(f, 'sine', 0.15, 0.22, 0.001), i * 50);
+        });
+      }
+
+      playEncounter() {
+        if (!this.enabled || !this.ctx) return;
+        const notes = [440, 554, 659, 880];
+        notes.forEach((n, idx) => {
+          setTimeout(() => this.playTone(n, 'triangle', 0.12, 0.25), idx * 80);
+        });
+      }
+
+      playCatchSuccess() {
+        if (!this.enabled || !this.ctx) return;
+        const notes = [523, 659, 783, 1046, 783, 1046];
+        notes.forEach((n, idx) => {
+          setTimeout(() => this.playTone(n, 'square', 0.18, 0.2), idx * 110);
+        });
+      }
+
+      playBlip() {
+        this.playTone(580, 'sine', 0.06, 0.1);
+      }
+    }
+
+    const audio = new RetroAudio();
+
+    /* ==========================================================
+       2. POKÉMON ROSTER (20 GEOMETRIC PRIMITIVE DESIGNS & HABITATS)
+       ========================================================== */
+    const POKEMON_ROSTER = [
+      { id: 1, name: "Bulbasaur", type: "Grass", move: "Vine Whip", pwr: 42, habitat: "Viridian Deep Woods", spawn: { x: -26, z: 38 }, color: 0x2dd4bf, bulbColor: 0x15803d, hp: 100, desc: "A seed on its back grows as it soaks in sunlight." },
+      { id: 2, name: "Charmander", type: "Fire", move: "Flamethrower", pwr: 48, habitat: "Cinnabar Volcanic Hearth", spawn: { x: 36, z: 38 }, color: 0xf97316, flame: true, hp: 95, desc: "The flame on its tail indicates its life force." },
+      { id: 3, name: "Squirtle", type: "Water", move: "Water Gun", pwr: 45, habitat: "Azure Lake Sand Beach", spawn: { x: 30, z: -32 }, color: 0x38bdf8, shellColor: 0x92400e, hp: 105, desc: "Shoots water from its mouth with high precision." },
+      { id: 4, name: "Pikachu", type: "Electric", move: "Thunderbolt", pwr: 46, habitat: "Pallet Town Meadows", spawn: { x: 6, z: 8 }, color: 0xfacc15, ears: true, cheeks: true, hp: 100, desc: "Stores electricity in yellow pouches on its cheeks." },
+      { id: 5, name: "Voltorb", type: "Electric", move: "Spark", pwr: 40, habitat: "Volcanic Power Station", spawn: { x: 44, z: 44 }, isSphereDual: true, hp: 90, desc: "Looks like a Pokéball and rolls at high speeds." },
+      { id: 6, name: "Diglett", type: "Ground", move: "Mud Slap", pwr: 38, habitat: "Mt. Moon Quarry Grounds", spawn: { x: -36, z: -28 }, color: 0x78350f, isDiglett: true, hp: 85, desc: "Burrows underground, popping its head up in dirt." },
+      { id: 7, name: "Geodude", type: "Rock", move: "Rock Throw", pwr: 44, habitat: "Mt. Moon Rocky Crags", spawn: { x: -44, z: -40 }, color: 0x71717a, arms: true, hp: 110, desc: "A round rock with strong muscular stone arms." },
+      { id: 8, name: "Snorlax", type: "Normal", move: "Body Slam", pwr: 55, habitat: "Viridian Ancient Grove", spawn: { x: -38, z: 46 }, color: 0x1e3a5f, belly: 0xfef3c7, isGiant: true, hp: 160, desc: "Sleeps all day in the deep forest clearing." },
+      { id: 9, name: "Jigglypuff", type: "Fairy", move: "Dazzling Gleam", pwr: 42, habitat: "Pallet Flower Gardens", spawn: { x: -6, z: -4 }, color: 0xf472b6, ears: true, hp: 120, desc: "Sings a soothing lullaby that puts anyone to sleep." },
+      { id: 10, name: "Gastly", type: "Ghost", move: "Shadow Ball", pwr: 48, habitat: "Mystery Hollow", spawn: { x: 2, z: -48 }, color: 0x18181b, aura: 0xa855f7, hp: 90, desc: "A ball of gas surrounded by spooky purple mist." },
+      { id: 11, name: "Oddish", type: "Grass", move: "Mega Drain", pwr: 40, habitat: "Viridian Shaded Thicket", spawn: { x: -18, z: 34 }, color: 0x1e40af, leaves: true, hp: 95, desc: "During the day it stays buried in soil with leaves out." },
+      { id: 12, name: "Magnemite", type: "Electric", move: "Flash Cannon", pwr: 45, habitat: "Volcanic Power Plant", spawn: { x: 28, z: 42 }, color: 0x94a3b8, magnets: true, hp: 90, desc: "Uses electromagnetic waves to hover and float." },
+      { id: 13, name: "Koffing", type: "Poison", move: "Sludge Bomb", pwr: 44, habitat: "Cinnabar Crater Basin", spawn: { x: 46, z: 32 }, color: 0x8b5cf6, spikes: true, hp: 100, desc: "Emits toxic smog from holes across its round body." },
+      { id: 14, name: "Zubat", type: "Poison", move: "Wing Attack", pwr: 40, habitat: "Viridian Tree Canopy", spawn: { x: -32, z: 28 }, color: 0x2563eb, wings: 0xa855f7, hp: 85, desc: "Flies through the dark using ultrasonic soundwaves." },
+      { id: 15, name: "Bellsprout", type: "Grass", move: "Razor Leaf", pwr: 42, habitat: "Viridian Forest Glade", spawn: { x: -14, z: 44 }, color: 0xfef08a, stem: true, hp: 90, desc: "Its thin stem bends flexibly to dodge any attacks." },
+      { id: 16, name: "Onix", type: "Rock", move: "Rock Slide", pwr: 52, habitat: "Mt. Moon Stone Wall", spawn: { x: -46, z: -32 }, isSnakeRock: true, color: 0x64748b, hp: 135, desc: "A gigantic rock snake that tunnels through bedrock." },
+      { id: 17, name: "Ditto", type: "Normal", move: "Transform Punch", pwr: 40, habitat: "Oak Lab Grassland", spawn: { x: -18, z: -6 }, color: 0xd946ef, isBlob: true, hp: 100, desc: "Can transform its cellular structure into any shape." },
+      { id: 18, name: "Porygon", type: "Normal", move: "Tri Attack", pwr: 48, habitat: "Azure Lake Tech Shore", spawn: { x: 42, z: -22 }, color: 0xf43f5e, secondary: 0x0ea5e9, isPoly: true, hp: 105, desc: "A virtual reality creature composed entirely of code." },
+      { id: 19, name: "Eevee", type: "Normal", move: "Swift", pwr: 42, habitat: "Pallet Grassy Flower Meadow", spawn: { x: 12, z: 6 }, color: 0x92400e, ruff: 0xfef3c7, hp: 100, desc: "Loves to frolic in the sunny grassy meadows around town!" },
+      { id: 20, name: "Mewtwo", type: "Psychic", move: "Psychic Blast", pwr: 60, habitat: "Mystery Crystal Shrine", spawn: { x: -4, z: -52 }, color: 0x67e8f9, tail: 0x9333ea, isLegendary: true, hp: 150, desc: "A genetically engineered Pokémon of ultimate power." }
+    ];
+
+    /* ==========================================================
+       3. REGISTERED POKÉMON HOSPITALS (FAST TRAVEL DESTINATIONS)
+       ========================================================== */
+    const HOSPITALS = [
+      { id: 0, name: "Pallet Central Hospital", x: -16, z: 19, label: "Pallet Town" },
+      { id: 1, name: "Viridian Woods Clinic", x: -28, z: 36, label: "Viridian Woods" },
+      { id: 2, name: "Azure Lake Rescue Post", x: 34, z: -16, label: "Azure Lake" }
+    ];
+
+    /* ==========================================================
+       4. THREE.JS PROCEDURAL 3D MESH BUILDERS
+       ========================================================== */
+    const Materials = {
+      grass: new THREE.MeshLambertMaterial({ color: 0x4ade80 }),
+      grassDark: new THREE.MeshLambertMaterial({ color: 0x15803d }),
+      path: new THREE.MeshLambertMaterial({ color: 0xd6c48e }),
+      sand: new THREE.MeshLambertMaterial({ color: 0xfde047 }),
+      rockFloor: new THREE.MeshLambertMaterial({ color: 0x64748b }),
+      volcanoFloor: new THREE.MeshLambertMaterial({ color: 0x78350f }),
+      mysteryFloor: new THREE.MeshLambertMaterial({ color: 0x3b0764 }),
+      water: new THREE.MeshPhongMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85, shininess: 80 }),
+      trunk: new THREE.MeshLambertMaterial({ color: 0x78350f }),
+      foliage: new THREE.MeshLambertMaterial({ color: 0x15803d }),
+      foliageDark: new THREE.MeshLambertMaterial({ color: 0x166534 }),
+      foliageLight: new THREE.MeshLambertMaterial({ color: 0x22c55e }),
+      foliageAutumn: new THREE.MeshLambertMaterial({ color: 0xd97706 }),
+      houseBase: new THREE.MeshLambertMaterial({ color: 0xf1f5f9 }),
+      roofRed: new THREE.MeshLambertMaterial({ color: 0xef4444 }),
+      roofBlue: new THREE.MeshLambertMaterial({ color: 0x3b82f6 }),
+      roofGold: new THREE.MeshLambertMaterial({ color: 0xf59e0b }),
+      roofPink: new THREE.MeshLambertMaterial({ color: 0xec4899 }),
+      door: new THREE.MeshLambertMaterial({ color: 0x451a03 }),
+      bush: new THREE.MeshLambertMaterial({ color: 0x22c55e }),
+      flowerRed: new THREE.MeshLambertMaterial({ color: 0xf43f5e }),
+      flowerYellow: new THREE.MeshLambertMaterial({ color: 0xfacc15 }),
+      flowerBlue: new THREE.MeshLambertMaterial({ color: 0x60a5fa }),
+      flowerPurple: new THREE.MeshLambertMaterial({ color: 0xc084fc }),
+      fence: new THREE.MeshLambertMaterial({ color: 0xd97706 }),
+      rockBoulder: new THREE.MeshLambertMaterial({ color: 0x71717a }),
+      crystalPurple: new THREE.MeshLambertMaterial({ color: 0xc084fc, emissive: 0xa855f7, emissiveIntensity: 0.5 }),
+      exclamation: new THREE.MeshLambertMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.6 })
+    };
+
+    function createExclamationMark() {
+      const group = new THREE.Group();
+      const barGeo = new THREE.CylinderGeometry(0.12, 0.08, 0.65, 8);
+      const bar = new THREE.Mesh(barGeo, Materials.exclamation);
+      bar.position.y = 0.55;
+      const dotGeo = new THREE.SphereGeometry(0.12, 8, 8);
+      const dot = new THREE.Mesh(dotGeo, Materials.exclamation);
+      dot.position.y = 0.08;
+
+      group.add(bar, dot);
+      group.position.y = 2.4;
+      return group;
+    }
+
+    function createTree(variant = 0) {
+      const group = new THREE.Group();
+      const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, 1.6, 6);
+      const trunk = new THREE.Mesh(trunkGeo, Materials.trunk);
+      trunk.position.y = 0.8;
+      trunk.castShadow = true;
+      group.add(trunk);
+
+      let folMat1 = Materials.foliageDark;
+      let folMat2 = Materials.foliage;
+      if (variant === 1) {
+        folMat1 = Materials.foliageLight;
+        folMat2 = Materials.foliage;
+      } else if (variant === 2) {
+        folMat1 = Materials.foliageAutumn;
+        folMat2 = Materials.roofGold;
+      }
+
+      const cone1 = new THREE.Mesh(new THREE.ConeGeometry(1.6, 2.0, 7), folMat1);
+      cone1.position.y = 2.0;
+      cone1.castShadow = true;
+      group.add(cone1);
+
+      const cone2 = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.7, 7), folMat2);
+      cone2.position.y = 2.9;
+      cone2.castShadow = true;
+      group.add(cone2);
+
+      const cone3 = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.3, 7), folMat2);
+      cone3.position.y = 3.7;
+      cone3.castShadow = true;
+      group.add(cone3);
+
+      return group;
+    }
+
+    function createHouse(roofColorMat = Materials.roofRed, isPokeCenter = false) {
+      const group = new THREE.Group();
+      const baseGeo = new THREE.BoxGeometry(4.5, 3.2, 4.0);
+      const base = new THREE.Mesh(baseGeo, Materials.houseBase);
+      base.position.y = 1.6;
+      base.castShadow = true;
+      base.receiveShadow = true;
+      group.add(base);
+
+      const roofGeo = new THREE.ConeGeometry(3.6, 2.2, 4);
+      const roof = new THREE.Mesh(roofGeo, roofColorMat);
+      roof.position.y = 4.3;
+      roof.rotation.y = Math.PI / 4;
+      roof.castShadow = true;
+      group.add(roof);
+
+      const doorGeo = new THREE.BoxGeometry(0.9, 1.6, 0.2);
+      const door = new THREE.Mesh(doorGeo, isPokeCenter ? Materials.roofPink : Materials.door);
+      door.position.set(0, 0.8, 2.05);
+      group.add(door);
+
+      const winGeo = new THREE.BoxGeometry(0.8, 0.8, 0.1);
+      const winMat = new THREE.MeshBasicMaterial({ color: 0x93c5fd });
+      const winL = new THREE.Mesh(winGeo, winMat);
+      winL.position.set(-1.3, 1.8, 2.05);
+      const winR = new THREE.Mesh(winGeo, winMat);
+      winR.position.set(1.3, 1.8, 2.05);
+      group.add(winL, winR);
+
+      if (isPokeCenter) {
+        const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        sign.position.set(0, 2.8, 2.06);
+        group.add(sign);
+      }
+
+      return group;
+    }
+
+    function createBush() {
+      const group = new THREE.Group();
+      const numBlobs = 3 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < numBlobs; i++) {
+        const radius = 0.5 + Math.random() * 0.4;
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 6, 6), Materials.bush);
+        sphere.position.set(
+          (Math.random() - 0.5) * 0.8,
+          radius * 0.8,
+          (Math.random() - 0.5) * 0.8
+        );
+        sphere.castShadow = true;
+        group.add(sphere);
+      }
+      return group;
+    }
+
+    function createFlowerPatch() {
+      const group = new THREE.Group();
+      const mats = [Materials.flowerRed, Materials.flowerYellow, Materials.flowerBlue, Materials.flowerPurple];
+      const mat = mats[Math.floor(Math.random() * mats.length)];
+      for (let i = 0; i < 4; i++) {
+        const flower = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.35, 5), mat);
+        flower.position.set((Math.random() - 0.5) * 0.9, 0.18, (Math.random() - 0.5) * 0.9);
+        group.add(flower);
+      }
+      return group;
+    }
+
+    function createFence() {
+      const group = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.15), Materials.fence);
+        post.position.set(i * 0.8 - 0.8, 0.4, 0);
+        group.add(post);
+      }
+      const rail1 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.08), Materials.fence);
+      rail1.position.set(0, 0.55, 0);
+      const rail2 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.08), Materials.fence);
+      rail2.position.set(0, 0.25, 0);
+      group.add(rail1, rail2);
+      return group;
+    }
+
+    function createPlayerMesh() {
+      const group = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.35, 0.35, 0.9, 8),
+        new THREE.MeshLambertMaterial({ color: 0x3b82f6 })
+      );
+      body.position.y = 0.85;
+      body.castShadow = true;
+      group.add(body);
+
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 8, 8),
+        new THREE.MeshLambertMaterial({ color: 0xffedd5 })
+      );
+      head.position.y = 1.55;
+      head.castShadow = true;
+      group.add(head);
+
+      const cap = new THREE.Mesh(
+        new THREE.SphereGeometry(0.37, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshLambertMaterial({ color: 0xef4444 })
+      );
+      cap.position.y = 1.65;
+      group.add(cap);
+
+      const visor = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.06, 0.3),
+        new THREE.MeshLambertMaterial({ color: 0xffffff })
+      );
+      visor.position.set(0, 1.62, 0.35);
+      group.add(visor);
+
+      const pack = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.6, 0.3),
+        new THREE.MeshLambertMaterial({ color: 0x10b981 })
+      );
+      pack.position.set(0, 0.9, -0.32);
+      group.add(pack);
+
+      const companionHolder = new THREE.Group();
+      companionHolder.name = "companionHolder";
+      group.add(companionHolder);
+
+      return group;
+    }
+
+    function createNPCMesh(shirtColor = 0xef4444, hasQuest = false, isNurse = false) {
+      const group = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.35, 0.35, 0.9, 8),
+        new THREE.MeshLambertMaterial({ color: isNurse ? 0xffffff : shirtColor })
+      );
+      body.position.y = 0.85;
+      body.castShadow = true;
+      group.add(body);
+
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 8, 8),
+        new THREE.MeshLambertMaterial({ color: 0xfed7aa })
+      );
+      head.position.y = 1.55;
+      group.add(head);
+
+      const hair = new THREE.Mesh(
+        new THREE.SphereGeometry(0.37, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshLambertMaterial({ color: isNurse ? 0xec4899 : 0x78350f })
+      );
+      hair.position.y = 1.62;
+      group.add(hair);
+
+      if (isNurse) {
+        const nCap = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        nCap.position.set(0, 1.9, 0.1);
+        group.add(nCap);
+      }
+
+      if (hasQuest) {
+        const exclaim = createExclamationMark();
+        group.add(exclaim);
+        group.exclaimMesh = exclaim;
+      }
+
+      return group;
+    }
+
+    function createPokemonMesh(data) {
+      const group = new THREE.Group();
+      const mat = new THREE.MeshLambertMaterial({ color: data.color || 0xfacc15 });
+
+      if (data.isSphereDual) {
+        const top = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshLambertMaterial({ color: 0xef4444 }));
+        const btm = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8, 0, Math.PI*2, Math.PI/2, Math.PI/2), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+        top.position.y = 0.6;
+        btm.position.y = 0.6;
+        group.add(top, btm);
+      } 
+      else if (data.isDiglett) {
+        const dirt = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.3, 8), Materials.trunk);
+        dirt.position.y = 0.15;
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.9, 8), mat);
+        body.position.y = 0.6;
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), new THREE.MeshLambertMaterial({ color: 0xf472b6 }));
+        nose.position.set(0, 0.7, 0.4);
+        group.add(dirt, body, nose);
+      } 
+      else if (data.isSnakeRock) {
+        for (let i = 0; i < 5; i++) {
+          const sz = 0.7 - i * 0.08;
+          const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(sz), mat);
+          rock.position.set(0, sz, -i * 0.7);
+          group.add(rock);
+        }
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 5), new THREE.MeshLambertMaterial({ color: 0x94a3b8 }));
+        horn.position.set(0, 1.4, 0);
+        group.add(horn);
+      } 
+      else if (data.isBlob) {
+        const blob = new THREE.Mesh(new THREE.SphereGeometry(0.65, 8, 6), mat);
+        blob.scale.set(1.2, 0.8, 1.1);
+        blob.position.y = 0.45;
+        group.add(blob);
+      } 
+      else if (data.isGiant) {
+        const body = new THREE.Mesh(new THREE.SphereGeometry(1.2, 10, 8), mat);
+        body.scale.set(1.1, 0.9, 1.1);
+        body.position.y = 1.0;
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.9, 8, 8), new THREE.MeshLambertMaterial({ color: data.belly }));
+        belly.position.set(0, 0.9, 0.4);
+        group.add(body, belly);
+      } 
+      else {
+        const bodySize = data.isLegendary ? 0.75 : 0.55;
+        const body = new THREE.Mesh(new THREE.SphereGeometry(bodySize, 8, 8), mat);
+        body.position.y = bodySize;
+        body.castShadow = true;
+        group.add(body);
+
+        if (data.ears) {
+          const earL = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 5), mat);
+          earL.position.set(-0.3, bodySize + 0.45, 0);
+          earL.rotation.z = -0.3;
+          const earR = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 5), mat);
+          earR.position.set(0.3, bodySize + 0.45, 0);
+          earR.rotation.z = 0.3;
+          group.add(earL, earR);
+        }
+
+        if (data.ruff) {
+          const ruff = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.15, 6, 12), new THREE.MeshLambertMaterial({ color: data.ruff }));
+          ruff.rotation.x = Math.PI / 2;
+          ruff.position.y = 0.45;
+          group.add(ruff);
+        }
+
+        if (data.bulbColor) {
+          const bulb = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 6), new THREE.MeshLambertMaterial({ color: data.bulbColor }));
+          bulb.position.set(0, bodySize + 0.3, -0.2);
+          bulb.rotation.x = -0.4;
+          group.add(bulb);
+        }
+
+        if (data.flame) {
+          const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 5), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+          flame.position.set(0, 0.4, -bodySize - 0.2);
+          flame.rotation.x = -0.8;
+          group.add(flame);
+        }
+
+        if (data.shellColor) {
+          const shell = new THREE.Mesh(new THREE.SphereGeometry(0.4, 6, 6), new THREE.MeshLambertMaterial({ color: data.shellColor }));
+          shell.position.set(0, bodySize, -0.3);
+          group.add(shell);
+        }
+
+        if (data.arms) {
+          const armL = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.25, 0.25), mat);
+          armL.position.set(-0.8, bodySize, 0.2);
+          const armR = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.25, 0.25), mat);
+          armR.position.set(0.8, bodySize, 0.2);
+          group.add(armL, armR);
+        }
+
+        if (data.magnets) {
+          const magMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+          const magL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), magMat);
+          magL.position.set(-0.7, bodySize, 0);
+          const magR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), new THREE.MeshLambertMaterial({ color: 0x3b82f6 }));
+          magR.position.set(0.7, bodySize, 0);
+          group.add(magL, magR);
+        }
+
+        if (data.leaves) {
+          for (let l = 0; l < 4; l++) {
+            const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 4), new THREE.MeshLambertMaterial({ color: 0x15803d }));
+            leaf.position.set(Math.sin(l * 1.5) * 0.2, bodySize + 0.4, Math.cos(l * 1.5) * 0.2);
+            leaf.rotation.z = Math.sin(l * 1.5) * 0.4;
+            group.add(leaf);
+          }
+        }
+      }
+
+      const eyeGeo = new THREE.SphereGeometry(0.06, 4, 4);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+      const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+      eye1.position.set(-0.18, 0.65, 0.45);
+      const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+      eye2.position.set(0.18, 0.65, 0.45);
+      group.add(eye1, eye2);
+
+      return group;
+    }
+
+    function createPokeBallMesh() {
+      const group = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshLambertMaterial({ color: 0xef4444 }));
+      const btm = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8, 0, Math.PI*2, Math.PI/2, Math.PI/2), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.05, 12), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+      const btn = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      btn.position.set(0, 0, 0.3);
+      group.add(top, btm, band, btn);
+      return group;
+    }
+
+    /* ==========================================================
+       5. GAME STATE & WORLD SETUP
+       ========================================================== */
+    const State = {
+      player: {
+        x: 0,
+        z: 0,
+        balls: 15,
+        potions: 3,
+        speed: 0.18,
+        mesh: null
+      },
+      party: [
+        { ...POKEMON_ROSTER[3], hp: 100, maxHp: 100, level: 10 }
+      ],
+      activePartnerIdx: 0,
+      caught: new Set([4]), // Pikachu
+      wildPokemon: [],
+      npcs: [],
+      colliders: [],
+      particles: null,
+      particleGeo: null,
+      inBattle: false,
+      currentBattleEnemy: null,
+      currentBiome: "Pallet Meadows",
+      dialogActive: false,
+      battleStage: {
+        playerPoke: null,
+        enemyPoke: null,
+        ballMesh: null,
+        animState: 'idle',
+        animTimer: 0
+      },
+      input: {
+        dx: 0,
+        dz: 0,
+        keys: {}
+      }
+    };
+
+    function getActivePokemon() {
+      return State.party[State.activePartnerIdx] || State.party[0];
+    }
+
+    let scene, camera, renderer;
+    const WORLD_SIZE = 140;
+
+    function initWorld() {
+      const canvas = document.getElementById('gameCanvas');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x86efac);
+      scene.fog = new THREE.FogExp2(0x86efac, 0.015);
+
+      const aspect = window.innerWidth / window.innerHeight;
+      camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+      camera.position.set(0, 22, 18);
+      camera.lookAt(0, 0, 0);
+
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+      scene.add(ambientLight);
+
+      const sun = new THREE.DirectionalLight(0xfffaed, 0.85);
+      sun.position.set(40, 60, 30);
+      sun.castShadow = true;
+      sun.shadow.mapSize.width = 1024;
+      sun.shadow.mapSize.height = 1024;
+      sun.shadow.camera.near = 0.5;
+      sun.shadow.camera.far = 160;
+      const d = 60;
+      sun.shadow.camera.left = -d;
+      sun.shadow.camera.right = d;
+      sun.shadow.camera.top = d;
+      sun.shadow.camera.bottom = -d;
+      scene.add(sun);
+
+      // Base World Ground Plane
+      const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE * 2.2, WORLD_SIZE * 2.2);
+      const ground = new THREE.Mesh(groundGeo, Materials.grass);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Distinct Biome Terrain Regions
+      buildBiomes();
+
+      // Roads / Paths
+      const pathMat = Materials.path;
+      const path1 = new THREE.Mesh(new THREE.PlaneGeometry(8, WORLD_SIZE * 1.6), pathMat);
+      path1.rotation.x = -Math.PI / 2;
+      path1.position.y = 0.02;
+      const path2 = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_SIZE * 1.6, 8), pathMat);
+      path2.rotation.x = -Math.PI / 2;
+      path2.position.y = 0.02;
+      scene.add(path1, path2);
+
+      // Neighborhood Houses & 3 Hospitals across the world
+      const houseLocations = [
+        { x: -14, z: -14, roof: Materials.roofRed, label: "Prof Oak's Lab" },
+        { x: 14, z: -14, roof: Materials.roofBlue, label: "Player Home" },
+        { x: -16, z: 16, roof: Materials.roofPink, label: "Pallet Central Hospital", isCenter: true },
+        { x: -28, z: 36, roof: Materials.roofPink, label: "Viridian Woods Clinic", isCenter: true },
+        { x: 34, z: -16, roof: Materials.roofPink, label: "Azure Lake Rescue Post", isCenter: true },
+        { x: 16, z: 18, roof: Materials.roofRed, label: "Poké Mart" },
+        { x: -38, z: 0, roof: Materials.roofBlue, label: "Indigo Gym" },
+        { x: 38, z: 20, roof: Materials.roofGold, label: "Lakeside Cottage" }
+      ];
+
+      houseLocations.forEach(loc => {
+        const house = createHouse(loc.roof, loc.isCenter);
+        house.position.set(loc.x, 0, loc.z);
+        scene.add(house);
+        State.colliders.push({ x: loc.x, z: loc.z, radius: 3.4 });
+
+        const fence1 = createFence();
+        fence1.position.set(loc.x - 3.2, 0, loc.z + 2.5);
+        const fence2 = createFence();
+        fence2.position.set(loc.x + 3.2, 0, loc.z + 2.5);
+        scene.add(fence1, fence2);
+      });
+
+      // Scatter DENSE TREES
+      for (let i = 0; i < 230; i++) {
+        const x = (Math.random() - 0.5) * (WORLD_SIZE * 1.6);
+        const z = (Math.random() - 0.5) * (WORLD_SIZE * 1.6);
+        if (Math.abs(x) > 6 || Math.abs(z) > 6) {
+          const isForestArea = (x < -10 && z > 15);
+          const isVolcanoArea = (x > 15 && z > 15);
+          const treeVariant = isVolcanoArea ? 2 : (isForestArea ? 0 : 1);
+
+          const tree = createTree(treeVariant);
+          tree.position.set(x, 0, z);
+          scene.add(tree);
+          State.colliders.push({ x, z, radius: 1.1 });
+        }
+      }
+
+      // Scatter Bushes & Tall Grass
+      for (let i = 0; i < 130; i++) {
+        const x = (Math.random() - 0.5) * (WORLD_SIZE * 1.5);
+        const z = (Math.random() - 0.5) * (WORLD_SIZE * 1.5);
+        const bush = createBush();
+        bush.position.set(x, 0, z);
+        scene.add(bush);
+      }
+
+      // Scatter Flower Patches in Pallet Meadow
+      for (let i = 0; i < 110; i++) {
+        const x = (Math.random() - 0.5) * 35;
+        const z = (Math.random() - 0.5) * 35;
+        const flowers = createFlowerPatch();
+        flowers.position.set(x, 0, z);
+        scene.add(flowers);
+      }
+
+      // Floating Pollen Particles
+      createFloatingParticles();
+
+      // Spawn Player
+      State.player.mesh = createPlayerMesh();
+      State.player.mesh.position.set(0, 0, 0);
+      scene.add(State.player.mesh);
+      updatePlayerCompanionMesh();
+
+      // Spawn NPCs with exclamation marks
+      spawnNPCs();
+
+      // Spawn 20 Wild Pokémon at their natural habitats
+      spawnWildPokemon();
+
+      // Build Pokédex UI & update HUD
+      renderPokedex();
+      updateHUD();
+
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function buildBiomes() {
+      // 1. Azure Lake & Sandy Shoreline
+      const sandGeo = new THREE.CircleGeometry(16, 24);
+      const sand = new THREE.Mesh(sandGeo, Materials.sand);
+      sand.rotation.x = -Math.PI / 2;
+      sand.position.set(34, 0.02, -28);
+      scene.add(sand);
+
+      const pondGeo = new THREE.CircleGeometry(11, 24);
+      const pond = new THREE.Mesh(pondGeo, Materials.water);
+      pond.rotation.x = -Math.PI / 2;
+      pond.position.set(34, 0.04, -28);
+      scene.add(pond);
+
+      // 2. Mt. Moon Rocky Quarry & Cliffs
+      const quarryGeo = new THREE.CircleGeometry(18, 20);
+      const quarry = new THREE.Mesh(quarryGeo, Materials.rockFloor);
+      quarry.rotation.x = -Math.PI / 2;
+      quarry.position.set(-40, 0.02, -35);
+      scene.add(quarry);
+
+      for (let i = 0; i < 8; i++) {
+        const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2 + Math.random()*0.8), Materials.rockBoulder);
+        boulder.position.set(-40 + (Math.random()-0.5)*22, 0.9, -35 + (Math.random()-0.5)*22);
+        boulder.castShadow = true;
+        scene.add(boulder);
+        State.colliders.push({ x: boulder.position.x, z: boulder.position.z, radius: 1.5 });
+      }
+
+      // 3. Cinnabar Volcanic Hearth
+      const volcanoGeo = new THREE.CircleGeometry(18, 20);
+      const volcano = new THREE.Mesh(volcanoGeo, Materials.volcanoFloor);
+      volcano.rotation.x = -Math.PI / 2;
+      volcano.position.set(38, 0.02, 38);
+      scene.add(volcano);
+
+      // 4. Viridian Deep Woods Floor
+      const woodsGeo = new THREE.CircleGeometry(20, 20);
+      const woods = new THREE.Mesh(woodsGeo, Materials.grassDark);
+      woods.rotation.x = -Math.PI / 2;
+      woods.position.set(-28, 0.02, 38);
+      scene.add(woods);
+
+      // 5. Mystery Crystal Hollow
+      const mysteryGeo = new THREE.CircleGeometry(12, 16);
+      const mystery = new THREE.Mesh(mysteryGeo, Materials.mysteryFloor);
+      mystery.rotation.x = -Math.PI / 2;
+      mystery.position.set(0, 0.02, -50);
+      scene.add(mystery);
+
+      for (let i = 0; i < 4; i++) {
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 5), Materials.crystalPurple);
+        crystal.position.set(0 + (Math.random()-0.5)*12, 1.1, -50 + (Math.random()-0.5)*12);
+        scene.add(crystal);
+      }
+    }
+
+    function updatePlayerCompanionMesh() {
+      if (!State.player.mesh) return;
+      const holder = State.player.mesh.getObjectByName("companionHolder");
+      if (!holder) return;
+
+      while (holder.children.length > 0) {
+        holder.remove(holder.children[0]);
+      }
+
+      const active = getActivePokemon();
+      const compMesh = createPokemonMesh(active);
+      compMesh.scale.set(0.55, 0.55, 0.55);
+      compMesh.position.set(0.7, 0, -0.6);
+      holder.add(compMesh);
+    }
+
+    function createFloatingParticles() {
+      const particleCount = 250;
+      const geo = new THREE.BufferGeometry();
+      const positions = new Float32Array(particleCount * 3);
+
+      for (let i = 0; i < particleCount * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * WORLD_SIZE;
+        positions[i + 1] = 0.5 + Math.random() * 8;
+        positions[i + 2] = (Math.random() - 0.5) * WORLD_SIZE;
+      }
+
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const mat = new THREE.PointsMaterial({
+        color: 0xfef08a,
+        size: 0.25,
+        transparent: true,
+        opacity: 0.65
+      });
+
+      State.particles = new THREE.Points(geo, mat);
+      State.particleGeo = geo;
+      scene.add(State.particles);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    /* ==========================================================
+       6. NPC LIVING AI & QUEST SYSTEM
+       ========================================================== */
+    function spawnNPCs() {
+      const npcConfigs = [
+        {
+          name: "Nurse Joy (Pallet)",
+          x: -16, z: 19,
+          color: 0xec4899,
+          isNurse: true,
+          dialog: "Welcome to Pallet Central Hospital! Let me heal your entire team to full health!",
+          hasQuest: true,
+          isHealingNPC: true
+        },
+        {
+          name: "Nurse Joy (Forest)",
+          x: -28, z: 39,
+          color: 0xec4899,
+          isNurse: true,
+          dialog: "Welcome to the Viridian Woods Clinic! Resting in nature will restore your Pokémon!",
+          hasQuest: true,
+          isHealingNPC: true
+        },
+        {
+          name: "Nurse Joy (Lake)",
+          x: 34, z: -13,
+          color: 0xec4899,
+          isNurse: true,
+          dialog: "Welcome to Azure Lake Rescue Post! Refreshing lake water heals all fatigue!",
+          hasQuest: true,
+          isHealingNPC: true
+        },
+        {
+          name: "Prof. Oak",
+          x: -12, z: -9,
+          color: 0xd97706,
+          dialog: "Hello Trainer! You can use the Live Radar Map in the top-right to fast travel between Pokémon Hospitals anytime!",
+          hasQuest: true
+        },
+        {
+          name: "Lass Sarah",
+          x: 10, z: 10,
+          color: 0xec4899,
+          dialog: "I love playing with Eevee in these flower meadows! Here are 5 extra Pokéballs and 2 Potions for your journey!",
+          hasQuest: true,
+          giftBalls: 5,
+          giftPotions: 2
+        },
+        {
+          name: "Hiker Brock",
+          x: -36, z: -25,
+          color: 0x78350f,
+          dialog: "You've entered the Mt. Moon Quarry! Geodude and Onix dwell in these rugged gray boulders!",
+          hasQuest: true
+        },
+        {
+          name: "Fisherman Bob",
+          x: 32, z: -18,
+          color: 0x0284c7,
+          dialog: "Squirtle and Porygon love to relax along the sunny sandy shores of Azure Lake!",
+          hasQuest: true
+        }
+      ];
+
+      npcConfigs.forEach(cfg => {
+        const mesh = createNPCMesh(cfg.color, cfg.hasQuest, cfg.isNurse);
+        mesh.position.set(cfg.x, 0, cfg.z);
+        scene.add(mesh);
+
+        State.npcs.push({
+          ...cfg,
+          mesh,
+          targetX: cfg.x,
+          targetZ: cfg.z,
+          wanderTimer: Math.random() * 3,
+          isTalking: false
+        });
+
+        State.colliders.push({ x: cfg.x, z: cfg.z, radius: 1.0, isNPC: true });
+      });
+    }
+
+    /* ==========================================================
+       7. WILD POKÉMON ROAMING SYSTEM AT HABITATS
+       ========================================================== */
+    function spawnWildPokemon() {
+      POKEMON_ROSTER.forEach((pokeData, idx) => {
+        const mesh = createPokemonMesh(pokeData);
+        const x = (pokeData.spawn ? pokeData.spawn.x : (Math.random()-0.5)*40) + (Math.random()-0.5)*4;
+        const z = (pokeData.spawn ? pokeData.spawn.z : (Math.random()-0.5)*40) + (Math.random()-0.5)*4;
+
+        mesh.position.set(x, 0, z);
+        scene.add(mesh);
+
+        State.wildPokemon.push({
+          data: pokeData,
+          mesh,
+          x,
+          z,
+          origX: x,
+          origZ: z,
+          hp: pokeData.hp,
+          maxHp: pokeData.hp,
+          level: 4 + (idx % 10),
+          caught: (pokeData.id === 4),
+          animOffset: Math.random() * Math.PI * 2
+        });
+      });
+    }
+
+    /* ==========================================================
+       8. FAST TRAVEL / TELEPORTATION SYSTEM (HOSPITALS ONLY)
+       ========================================================== */
+    window.teleportToHospital = function(hospitalIdx) {
+      if (State.inBattle) {
+        showToast("Cannot Fast Travel during a Pokémon battle!");
+        return;
+      }
+
+      const hosp = HOSPITALS[hospitalIdx];
+      if (!hosp) return;
+
+      audio.init();
+      audio.playTeleport();
+
+      // Teleport player directly to Hospital Entrance
+      State.player.x = hosp.x;
+      State.player.z = hosp.z;
+      State.player.mesh.position.set(hosp.x, 0, hosp.z);
+      camera.position.x = hosp.x;
+      camera.position.z = hosp.z + 18;
+      camera.lookAt(hosp.x, 1, hosp.z);
+
+      // Auto-heal upon hospital arrival
+      healEntireParty();
+      showToast(`⚡ Teleported to ${hosp.name}! Fully healed!`);
+    };
+
+    /* ==========================================================
+       9. LIVE RADAR MINI-MAP RENDERER (ALWAYS OPEN)
+       ========================================================== */
+    function renderMiniMap() {
+      const canvas = document.getElementById('miniMapCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // World coordinate conversion: world is ~ -70 to +70
+      const mapRange = 130;
+      function worldToMap(wx, wz) {
+        const mx = ((wx + mapRange / 2) / mapRange) * w;
+        const my = ((wz + mapRange / 2) / mapRange) * h;
+        return { x: mx, y: my };
+      }
+
+      // 1. Draw Biome Background Blobs
+      // Pallet Meadows
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 0, w, h);
+
+      // Azure Lake (Top-Right)
+      const lakePos = worldToMap(34, -28);
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(lakePos.x, lakePos.y, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Viridian Deep Woods (Bottom-Left)
+      const woodsPos = worldToMap(-28, 38);
+      ctx.fillStyle = '#14532d';
+      ctx.beginPath();
+      ctx.arc(woodsPos.x, woodsPos.y, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mt. Moon Quarry (Top-Left)
+      const quarryPos = worldToMap(-40, -35);
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(quarryPos.x, quarryPos.y, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cinnabar Volcano (Bottom-Right)
+      const volcPos = worldToMap(38, 38);
+      ctx.fillStyle = '#7c2d12';
+      ctx.beginPath();
+      ctx.arc(volcPos.x, volcPos.y, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mystery Hollow (Top Center)
+      const mystPos = worldToMap(0, -50);
+      ctx.fillStyle = '#581c87';
+      ctx.beginPath();
+      ctx.arc(mystPos.x, mystPos.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Draw Cross Roads
+      ctx.strokeStyle = '#d6c48e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      const centerPos = worldToMap(0, 0);
+      ctx.moveTo(centerPos.x, 0);
+      ctx.lineTo(centerPos.x, h);
+      ctx.moveTo(0, centerPos.y);
+      ctx.lineTo(w, centerPos.y);
+      ctx.stroke();
+
+      // 3. Draw Wild Pokémon Blips
+      State.wildPokemon.forEach(poke => {
+        if (!poke.caught) {
+          const pt = worldToMap(poke.mesh.position.x, poke.mesh.position.z);
+          ctx.fillStyle = '#facc15';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // 4. Draw Pokémon Hospitals (Red Cross Icon)
+      HOSPITALS.forEach(hosp => {
+        const hp = worldToMap(hosp.x, hosp.z);
+        // Outer glowing ring
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // White cross
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hp.x - 1, hp.y - 3.5, 2, 7);
+        ctx.fillRect(hp.x - 3.5, hp.y - 1, 7, 2);
+      });
+
+      // 5. Draw Player Blip & Heading Arrow
+      const pPos = worldToMap(State.player.x, State.player.z);
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(pPos.x, pPos.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Heading indicator
+      if (State.player.mesh) {
+        const angle = State.player.mesh.rotation.y;
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.moveTo(pPos.x + Math.sin(angle) * 8, pPos.y + Math.cos(angle) * 8);
+        ctx.lineTo(pPos.x + Math.sin(angle + 2.5) * 4, pPos.y + Math.cos(angle + 2.5) * 4);
+        ctx.lineTo(pPos.x + Math.sin(angle - 2.5) * 4, pPos.y + Math.cos(angle - 2.5) * 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    /* ==========================================================
+       10. BATTLE & CAPTURE SYSTEM
+       ========================================================== */
+    function startBattle(wildPoke) {
+      if (State.inBattle) return;
+      State.inBattle = true;
+      State.currentBattleEnemy = wildPoke;
+
+      audio.init();
+      audio.playEncounter();
+
+      State.player.mesh.visible = false;
+      wildPoke.mesh.visible = false;
+
+      setup3DBattleCharacters(wildPoke);
+      updateBattleUI();
+
+      document.getElementById('enemy-poke-name').innerText = `Wild ${wildPoke.data.name}`;
+      document.getElementById('enemy-poke-lv').innerText = `Lv. ${wildPoke.level}`;
+      document.getElementById('battle-announcement').innerText = `A wild ${wildPoke.data.name} appeared in ${wildPoke.data.habitat}!`;
+      document.getElementById('battle-screen').style.display = 'flex';
+    }
+
+    function setup3DBattleCharacters(wildPoke) {
+      if (State.battleStage.playerPoke) scene.remove(State.battleStage.playerPoke);
+      if (State.battleStage.enemyPoke) scene.remove(State.battleStage.enemyPoke);
+      if (State.battleStage.ballMesh) scene.remove(State.battleStage.ballMesh);
+
+      const active = getActivePokemon();
+      const pMesh = createPokemonMesh(active);
+      pMesh.scale.set(1.2, 1.2, 1.2);
+      pMesh.position.set(State.player.x - 3.5, 0, State.player.z + 7);
+      pMesh.rotation.y = Math.PI * 0.3;
+      scene.add(pMesh);
+      State.battleStage.playerPoke = pMesh;
+
+      const eEnemy = createPokemonMesh(wildPoke.data);
+      eEnemy.scale.set(1.3, 1.3, 1.3);
+      eEnemy.position.set(State.player.x + 3.5, 0, State.player.z - 2);
+      eEnemy.rotation.y = -Math.PI * 0.7;
+      scene.add(eEnemy);
+      State.battleStage.enemyPoke = eEnemy;
+
+      State.battleStage.animState = 'idle';
+      State.battleStage.animTimer = 0;
+    }
+
+    function updateBattleUI() {
+      const active = getActivePokemon();
+      document.getElementById('battle-player-name').innerText = `${active.name} (Partner)`;
+      document.getElementById('battle-player-lv').innerText = `Lv. ${active.level}`;
+
+      document.getElementById('btn-special-name').innerText = active.move.toUpperCase();
+      document.getElementById('btn-special-type').innerText = `${active.type} • Pwr ${active.pwr}`;
+      document.getElementById('battle-potion-badge').innerText = `Heal 50 HP (${State.player.potions})`;
+
+      updateBattleHP();
+    }
+
+    function updateBattleHP() {
+      const enemy = State.currentBattleEnemy;
+      const active = getActivePokemon();
+
+      if (enemy) {
+        const pct = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
+        const enemyFill = document.getElementById('enemy-hp-fill');
+        enemyFill.style.width = pct + '%';
+        enemyFill.className = 'hp-bar-fill' + (pct < 30 ? ' low' : '');
+        document.getElementById('enemy-hp-text').innerText = `HP: ${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
+      }
+
+      const pPct = Math.max(0, (active.hp / active.maxHp) * 100);
+      const pFill = document.getElementById('player-hp-fill');
+      pFill.style.width = pPct + '%';
+      pFill.className = 'hp-bar-fill' + (pPct < 30 ? ' low' : '');
+      document.getElementById('battle-player-hp-text').innerText = `HP: ${Math.ceil(active.hp)} / ${active.maxHp}`;
+
+      updateHUD();
+    }
+
+    function updateHUD() {
+      const active = getActivePokemon();
+      document.getElementById('player-hp-display').innerText = `${Math.ceil(active.hp)}/${active.maxHp}`;
+      document.getElementById('balls-display').innerText = State.player.balls;
+      document.getElementById('potions-display').innerText = State.player.potions;
+      document.getElementById('bag-potion-count').innerText = State.player.potions;
+      document.getElementById('bag-ball-count').innerText = State.player.balls;
+
+      const px = State.player.x;
+      const pz = State.player.z;
+      let biome = "Pallet Meadows";
+
+      if (px < -15 && pz > 18) biome = "🌲 Viridian Deep Woods";
+      else if (px > 16 && pz < -10) biome = "🌊 Azure Lake Beach";
+      else if (px < -18 && pz < -12) biome = "⛰️ Mt. Moon Quarry";
+      else if (px > 18 && pz > 16) biome = "🔥 Cinnabar Volcanic Hearth";
+      else if (Math.abs(px) < 14 && pz < -35) biome = "🔮 Mystery Hollow";
+      else biome = "🏡 Pallet Meadows & Town";
+
+      if (State.currentBiome !== biome) {
+        State.currentBiome = biome;
+        document.getElementById('current-biome-display').innerText = biome;
+      }
+    }
+
+    function handlePlayerAttack(moveName, damage, isSpecial = false) {
+      if (!State.inBattle || State.battleStage.animState !== 'idle') return;
+      audio.init();
+
+      const enemy = State.currentBattleEnemy;
+      const active = getActivePokemon();
+
+      if (isSpecial) {
+        audio.playZap();
+        State.battleStage.animState = 'special';
+        State.battleStage.animTimer = 0;
+      } else {
+        audio.playHit();
+        State.battleStage.animState = 'tackle';
+        State.battleStage.animTimer = 0;
+      }
+
+      const actualDmg = damage + Math.floor(Math.random() * 8);
+      enemy.hp = Math.max(0, enemy.hp - actualDmg);
+
+      document.getElementById('battle-announcement').innerText = `${active.name} used ${moveName}! Dealt ${actualDmg} DMG!`;
+
+      setTimeout(() => {
+        updateBattleHP();
+        State.battleStage.animState = 'enemy_shake';
+        State.battleStage.animTimer = 0;
+
+        if (enemy.hp <= 0) {
+          setTimeout(() => {
+            document.getElementById('battle-announcement').innerText = `Wild ${enemy.data.name} fainted!`;
+            State.battleStage.animState = 'enemy_faint';
+            active.level += 1;
+            setTimeout(() => endBattle(false), 1400);
+          }, 800);
+          return;
+        }
+
+        setTimeout(() => {
+          if (!State.inBattle) return;
+          const enemyDmg = 8 + Math.floor(Math.random() * 10);
+          active.hp = Math.max(0, active.hp - enemyDmg);
+          audio.playHit();
+          updateBattleHP();
+          State.battleStage.animState = 'player_shake';
+          State.battleStage.animTimer = 0;
+          document.getElementById('battle-announcement').innerText = `Wild ${enemy.data.name} countered! Took ${enemyDmg} DMG!`;
+
+          if (active.hp <= 0) {
+            setTimeout(() => {
+              document.getElementById('battle-announcement').innerText = `${active.name} fainted! Teleport to a Hospital to heal!`;
+              setTimeout(() => endBattle(false), 1500);
+            }, 800);
+          }
+        }, 1100);
+
+      }, 600);
+    }
+
+    function usePotion() {
+      audio.init();
+      if (State.player.potions <= 0) {
+        showToast("Out of Potions! Visit a Pokémon Hospital!");
+        return;
+      }
+
+      const active = getActivePokemon();
+      if (active.hp >= active.maxHp) {
+        showToast(`${active.name} is already at full HP!`);
+        return;
+      }
+
+      State.player.potions--;
+      active.hp = Math.min(active.maxHp, active.hp + 50);
+      audio.playHeal();
+      updateHUD();
+      updateBattleHP();
+
+      if (State.inBattle) {
+        document.getElementById('battle-announcement').innerText = `Used Potion! ${active.name} restored 50 HP! 🧪`;
+      } else {
+        showToast(`🧪 Healed ${active.name} (+50 HP)!`);
+      }
+    }
+
+    function healEntireParty() {
+      audio.init();
+      audio.playHeal();
+      State.party.forEach(p => {
+        p.hp = p.maxHp;
+      });
+      State.player.potions = Math.max(State.player.potions, 3);
+      State.player.balls = Math.max(State.player.balls, 10);
+      updateHUD();
+      renderPokedex();
+    }
+
+    function throwPokeBall() {
+      if (!State.inBattle || State.battleStage.animState !== 'idle') return;
+      audio.init();
+
+      if (State.player.balls <= 0) {
+        showToast("Out of Pokéballs! Talk to Lass Sarah for more!");
+        return;
+      }
+
+      State.player.balls--;
+      updateHUD();
+
+      const enemy = State.currentBattleEnemy;
+      const catchRate = 1 - (enemy.hp / enemy.maxHp) * 0.65;
+      const roll = Math.random();
+
+      document.getElementById('battle-announcement').innerText = `You threw a Pokéball... 🔴`;
+      audio.playBlip();
+
+      const ball = createPokeBallMesh();
+      ball.position.set(State.player.x - 3.5, 1.2, State.player.z + 7);
+      scene.add(ball);
+      State.battleStage.ballMesh = ball;
+
+      State.battleStage.animState = 'ball_throw';
+      State.battleStage.animTimer = 0;
+
+      setTimeout(() => {
+        if (roll < catchRate) {
+          audio.playCatchSuccess();
+          document.getElementById('battle-announcement').innerText = `Gotcha! ${enemy.data.name} was caught! ⭐`;
+          
+          State.caught.add(enemy.data.id);
+          if (!State.party.some(p => p.id === enemy.data.id)) {
+            State.party.push({ ...enemy.data, hp: enemy.data.hp, maxHp: enemy.data.hp, level: enemy.level });
+          }
+
+          enemy.caught = true;
+          scene.remove(enemy.mesh);
+          renderPokedex();
+
+          State.battleStage.animState = 'catch_success';
+          setTimeout(() => endBattle(true), 1600);
+        } else {
+          audio.playHit();
+          document.getElementById('battle-announcement').innerText = `Oh no! ${enemy.data.name} broke free!`;
+          State.battleStage.animState = 'ball_break';
+          setTimeout(() => {
+            if (State.inBattle) {
+              document.getElementById('battle-announcement').innerText = `What will ${getActivePokemon().name} do?`;
+              State.battleStage.animState = 'idle';
+            }
+          }, 1000);
+        }
+      }, 1400);
+    }
+
+    function endBattle(wasCaught) {
+      State.inBattle = false;
+      document.getElementById('battle-screen').style.display = 'none';
+
+      if (State.battleStage.playerPoke) scene.remove(State.battleStage.playerPoke);
+      if (State.battleStage.enemyPoke) scene.remove(State.battleStage.enemyPoke);
+      if (State.battleStage.ballMesh) scene.remove(State.battleStage.ballMesh);
+
+      State.player.mesh.visible = true;
+
+      if (wasCaught) {
+        showToast(`🎉 Caught ${State.currentBattleEnemy.data.name}! Added to your Party & Pokédex!`);
+      } else {
+        if (State.currentBattleEnemy && !State.currentBattleEnemy.caught) {
+          State.currentBattleEnemy.mesh.visible = true;
+        }
+        State.player.x -= 2.5;
+        State.player.z -= 2.5;
+      }
+      State.currentBattleEnemy = null;
+    }
+
+    /* ==========================================================
+       11. POKÉDEX & TEAM MODAL UI
+       ========================================================== */
+    function renderPokedex() {
+      const container = document.getElementById('dex-grid-container');
+      container.innerHTML = '';
+
+      let caughtCount = 0;
+      const active = getActivePokemon();
+
+      POKEMON_ROSTER.forEach(p => {
+        const isCaught = State.caught.has(p.id);
+        if (isCaught) caughtCount++;
+        const isActive = active && active.id === p.id;
+
+        const card = document.createElement('div');
+        card.className = `dex-item ${isCaught ? 'caught' : ''} ${isActive ? 'active-partner' : ''}`;
+        
+        let actionBtnHTML = '';
+        if (isCaught) {
+          if (isActive) {
+            actionBtnHTML = `<div style="color: #10b981; font-weight: 800; font-size: 0.75rem; margin-top: 6px;">⭐ ACTIVE PARTNER</div>`;
+          } else {
+            actionBtnHTML = `<button class="btn-set-partner" onclick="setActivePokemon(${p.id})">SET PARTNER</button>`;
+          }
+        }
+
+        card.innerHTML = `
+          <div>
+            <div class="dex-num">#${p.id < 10 ? '00' + p.id : '0' + p.id}</div>
+            <div style="font-size: 1.8rem; margin: 2px 0;">${isCaught ? '🐾' : '❓'}</div>
+            <div class="dex-name">${isCaught ? p.name : 'Unknown'}</div>
+            <div class="dex-habitat-tag">📍 ${p.habitat}</div>
+            <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-top: 2px;">${p.type}</div>
+            ${isCaught ? `<div class="dex-move-info">⚔️ ${p.move} (Pwr ${p.pwr})</div>` : ''}
+          </div>
+          ${actionBtnHTML}
+        `;
+        container.appendChild(card);
+      });
+
+      document.getElementById('caught-count-display').innerText = `${caughtCount}/${POKEMON_ROSTER.length}`;
+      if (caughtCount === POKEMON_ROSTER.length) {
+        showToast("🏆 INCREDIBLE! You completed the entire Pokédex!");
+      }
+    }
+
+    window.setActivePokemon = function(pokeId) {
+      audio.init();
+      audio.playBlip();
+
+      let foundIdx = State.party.findIndex(p => p.id === pokeId);
+      if (foundIdx === -1) {
+        const pokeData = POKEMON_ROSTER.find(p => p.id === pokeId);
+        if (pokeData) {
+          State.party.push({ ...pokeData, hp: pokeData.hp, maxHp: pokeData.hp, level: 10 });
+          foundIdx = State.party.length - 1;
+        }
+      }
+
+      if (foundIdx !== -1) {
+        State.activePartnerIdx = foundIdx;
+        const active = getActivePokemon();
+        updatePlayerCompanionMesh();
+        renderPokedex();
+        updateHUD();
+
+        if (State.inBattle && State.currentBattleEnemy) {
+          setup3DBattleCharacters(State.currentBattleEnemy);
+          updateBattleUI();
+          document.getElementById('battle-announcement').innerText = `Go, ${active.name}! You're up! ⚡`;
+          togglePokedex();
+        } else {
+          showToast(`🌟 ${active.name} is now your active Pokémon companion & battler!`);
+        }
+      }
+    };
+
+    /* ==========================================================
+       12. CONTROLS & INPUT HANDLERS
+       ========================================================== */
+    function setupControls() {
+      const joyContainer = document.getElementById('joystick-container');
+      const joyKnob = document.getElementById('joystick-knob');
+      let touchId = null;
+      let startX = 0, startY = 0;
+      const maxRadius = 45;
+
+      joyContainer.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        touchId = touch.identifier;
+        const rect = joyContainer.getBoundingClientRect();
+        startX = rect.left + rect.width / 2;
+        startY = rect.top + rect.height / 2;
+        handleTouchMove(touch);
+      }, { passive: false });
+
+      window.addEventListener('touchmove', (e) => {
+        if (touchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === touchId) {
+            handleTouchMove(e.changedTouches[i]);
+            break;
+          }
+        }
+      }, { passive: false });
+
+      const endTouch = (e) => {
+        if (touchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === touchId) {
+            touchId = null;
+            joyKnob.style.transform = 'translate(-50%, -50%)';
+            State.input.dx = 0;
+            State.input.dz = 0;
+            break;
+          }
+        }
+      };
+
+      window.addEventListener('touchend', endTouch);
+      window.addEventListener('touchcancel', endTouch);
+
+      function handleTouchMove(touch) {
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+        const dist = Math.hypot(deltaX, deltaY);
+        const angle = Math.atan2(deltaY, deltaX);
+        const clampedDist = Math.min(dist, maxRadius);
+
+        const knobX = Math.cos(angle) * clampedDist;
+        const knobY = Math.sin(angle) * clampedDist;
+        joyKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+
+        State.input.dx = knobX / maxRadius;
+        State.input.dz = knobY / maxRadius;
+      }
+
+      // Tap on Minimap Canvas to trigger Nearest Hospital Fast Travel
+      const miniMap = document.getElementById('miniMapCanvas');
+      miniMap.addEventListener('click', (e) => {
+        const rect = miniMap.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        // Convert canvas click to world coordinates
+        const mapRange = 130;
+        const worldX = (clickX / rect.width) * mapRange - mapRange / 2;
+        const worldZ = (clickY / rect.height) * mapRange - mapRange / 2;
+
+        // Find closest Hospital
+        let closestHosp = null;
+        let minDist = 25; // Click tolerance
+        HOSPITALS.forEach(h => {
+          const d = Math.hypot(worldX - h.x, worldZ - h.z);
+          if (d < minDist) {
+            minDist = d;
+            closestHosp = h;
+          }
+        });
+
+        if (closestHosp) {
+          teleportToHospital(closestHosp.id);
+        } else {
+          showToast("⚡ Fast Travel is strictly restricted to Pokémon Hospitals (🏥)!");
+        }
+      });
+
+      window.addEventListener('keydown', (e) => {
+        State.input.keys[e.key.toLowerCase()] = true;
+        if (e.code === 'Space' || e.key === ' ' || e.key.toLowerCase() === 'e' || e.key === 'Enter') {
+          e.preventDefault();
+          triggerAction();
+        }
+        if (e.key.toLowerCase() === 'p') {
+          togglePokedex();
+        }
+        if (e.key.toLowerCase() === 'b') {
+          toggleBag();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        State.input.keys[e.key.toLowerCase()] = false;
+      });
+
+      document.getElementById('btn-action').addEventListener('click', triggerAction);
+      document.getElementById('btn-pokedex-open').addEventListener('click', togglePokedex);
+      document.getElementById('btn-pokedex-close').addEventListener('click', togglePokedex);
+      document.getElementById('btn-party-open').addEventListener('click', togglePokedex);
+      document.getElementById('btn-bag-open').addEventListener('click', toggleBag);
+      document.getElementById('btn-bag-close').addEventListener('click', toggleBag);
+      document.getElementById('btn-use-potion').addEventListener('click', usePotion);
+      document.getElementById('btn-dialog-close').addEventListener('click', closeDialog);
+
+      document.getElementById('btn-sound-toggle').addEventListener('click', () => {
+        audio.init();
+        audio.enabled = !audio.enabled;
+        document.getElementById('btn-sound-toggle').innerText = audio.enabled ? '🔊 Sound' : '🔇 Muted';
+      });
+
+      document.getElementById('btn-move-tackle').addEventListener('click', () => handlePlayerAttack('TACKLE', 25));
+      document.getElementById('btn-move-special').addEventListener('click', () => {
+        const active = getActivePokemon();
+        handlePlayerAttack(active.move, active.pwr, true);
+      });
+      document.getElementById('btn-move-catch').addEventListener('click', throwPokeBall);
+      document.getElementById('btn-heal-battle').addEventListener('click', usePotion);
+      document.getElementById('btn-switch-battle').addEventListener('click', togglePokedex);
+      document.getElementById('btn-move-run').addEventListener('click', () => endBattle(false));
+
+      document.getElementById('btn-start-game').addEventListener('click', () => {
+        audio.init();
+        document.getElementById('start-screen').style.display = 'none';
+        showToast("🌟 Adventure started! Live Radar Map is open in the top-right!");
+      });
+    }
+
+    function togglePokedex() {
+      audio.init();
+      audio.playBlip();
+      const modal = document.getElementById('pokedex-modal');
+      modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+      renderPokedex();
+    }
+
+    function toggleBag() {
+      audio.init();
+      audio.playBlip();
+      const modal = document.getElementById('bag-modal');
+      modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+      updateHUD();
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast-msg');
+      toast.innerText = text;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    function triggerAction() {
+      if (State.inBattle) return;
+      audio.init();
+
+      if (State.dialogActive) {
+        closeDialog();
+        return;
+      }
+
+      let nearestNPC = null;
+      let minDist = 3.2;
+
+      State.npcs.forEach(npc => {
+        const dist = Math.hypot(State.player.x - npc.mesh.position.x, State.player.z - npc.mesh.position.z);
+        if (dist < minDist) {
+          minDist = dist;
+          nearestNPC = npc;
+        }
+      });
+
+      if (nearestNPC) {
+        audio.playBlip();
+        openDialog(nearestNPC.name, nearestNPC.dialog);
+
+        if (nearestNPC.isHealingNPC) {
+          healEntireParty();
+          showToast("✨ Entire team fully healed at the Pokémon Hospital!");
+        }
+
+        if (nearestNPC.giftBalls) {
+          State.player.balls += nearestNPC.giftBalls;
+          nearestNPC.giftBalls = 0;
+        }
+        if (nearestNPC.giftPotions) {
+          State.player.potions += nearestNPC.giftPotions;
+          nearestNPC.giftPotions = 0;
+        }
+        updateHUD();
+        return;
+      }
+
+      let nearestPoke = null;
+      let minPokeDist = 2.8;
+      State.wildPokemon.forEach(poke => {
+        if (!poke.caught) {
+          const dist = Math.hypot(State.player.x - poke.mesh.position.x, State.player.z - poke.mesh.position.z);
+          if (dist < minPokeDist) {
+            minPokeDist = dist;
+            nearestPoke = poke;
+          }
+        }
+      });
+
+      if (nearestPoke) {
+        startBattle(nearestPoke);
+      }
+    }
+
+    function openDialog(speaker, text) {
+      State.dialogActive = true;
+      document.getElementById('dialog-speaker-name').innerText = speaker;
+      document.getElementById('dialog-text').innerText = text;
+      document.getElementById('dialog-overlay').style.display = 'block';
+    }
+
+    function closeDialog() {
+      State.dialogActive = false;
+      document.getElementById('dialog-overlay').style.display = 'none';
+    }
+
+    /* ==========================================================
+       13. MAIN GAME RENDER & TICK LOOP
+       ========================================================== */
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // Render Always-Open Live Radar Mini-Map
+      renderMiniMap();
+
+      // Animate floating particles
+      if (State.particleGeo) {
+        const pos = State.particleGeo.attributes.position.array;
+        for (let i = 0; i < pos.length; i += 3) {
+          pos[i] += Math.sin(time + i) * 0.015;
+          pos[i + 1] -= 0.01;
+          if (pos[i + 1] < 0.2) pos[i + 1] = 7;
+        }
+        State.particleGeo.attributes.position.needsUpdate = true;
+      }
+
+      if (State.inBattle) {
+        const pPoke = State.battleStage.playerPoke;
+        const ePoke = State.battleStage.enemyPoke;
+        const stage = State.battleStage;
+
+        if (pPoke && ePoke) {
+          stage.animTimer += delta;
+
+          if (stage.animState === 'idle') {
+            pPoke.position.y = Math.abs(Math.sin(time * 6)) * 0.15;
+            ePoke.position.y = Math.abs(Math.sin(time * 6 + 1)) * 0.15;
+          } 
+          else if (stage.animState === 'tackle') {
+            pPoke.position.x += 0.25;
+            pPoke.position.z -= 0.3;
+            if (stage.animTimer > 0.4) {
+              pPoke.position.set(State.player.x - 3.5, 0, State.player.z + 7);
+              stage.animState = 'idle';
+            }
+          }
+          else if (stage.animState === 'special') {
+            pPoke.rotation.y += 0.4;
+            pPoke.position.y = 0.5 + Math.sin(stage.animTimer * 15) * 0.4;
+            if (stage.animTimer > 0.6) {
+              pPoke.rotation.y = Math.PI * 0.3;
+              pPoke.position.y = 0;
+              stage.animState = 'idle';
+            }
+          }
+          else if (stage.animState === 'enemy_shake') {
+            ePoke.position.x = State.player.x + 3.5 + Math.sin(stage.animTimer * 40) * 0.3;
+            if (stage.animTimer > 0.4) {
+              ePoke.position.x = State.player.x + 3.5;
+              stage.animState = 'idle';
+            }
+          }
+          else if (stage.animState === 'player_shake') {
+            pPoke.position.x = State.player.x - 3.5 + Math.sin(stage.animTimer * 40) * 0.3;
+            if (stage.animTimer > 0.4) {
+              pPoke.position.x = State.player.x - 3.5;
+              stage.animState = 'idle';
+            }
+          }
+          else if (stage.animState === 'enemy_faint') {
+            ePoke.scale.multiplyScalar(0.96);
+            ePoke.rotation.z += 0.1;
+          }
+          else if (stage.animState === 'ball_throw') {
+            if (stage.ballMesh) {
+              const prog = Math.min(1, stage.animTimer / 0.8);
+              const startX = State.player.x - 3.5, startZ = State.player.z + 7;
+              const targetX = State.player.x + 3.5, targetZ = State.player.z - 2;
+              stage.ballMesh.position.x = startX + (targetX - startX) * prog;
+              stage.ballMesh.position.z = startZ + (targetZ - startZ) * prog;
+              stage.ballMesh.position.y = 1.2 + Math.sin(prog * Math.PI) * 3;
+              stage.ballMesh.rotation.x += 0.2;
+              stage.ballMesh.rotation.y += 0.2;
+
+              if (prog >= 1) {
+                stage.ballMesh.rotation.z = Math.sin(stage.animTimer * 15) * 0.4;
+              }
+            }
+          }
+        }
+      } 
+      else if (!State.dialogActive) {
+        let moveX = State.input.dx;
+        let moveZ = State.input.dz;
+
+        if (State.input.keys['w'] || State.input.keys['arrowup']) moveZ -= 1;
+        if (State.input.keys['s'] || State.input.keys['arrowdown']) moveZ += 1;
+        if (State.input.keys['a'] || State.input.keys['arrowleft']) moveX -= 1;
+        if (State.input.keys['d'] || State.input.keys['arrowright']) moveX += 1;
+
+        const moveLen = Math.hypot(moveX, moveZ);
+        if (moveLen > 0.05) {
+          const normX = (moveX / Math.max(1, moveLen)) * State.player.speed;
+          const normZ = (moveZ / Math.max(1, moveLen)) * State.player.speed;
+
+          const newX = State.player.x + normX;
+          const newZ = State.player.z + normZ;
+
+          let collide = false;
+          for (let c of State.colliders) {
+            if (Math.hypot(newX - c.x, newZ - c.z) < c.radius) {
+              collide = true;
+              break;
+            }
+          }
+
+          if (!collide) {
+            State.player.x = newX;
+            State.player.z = newZ;
+            State.player.mesh.position.set(newX, 0, newZ);
+
+            const targetAngle = Math.atan2(normX, normZ);
+            State.player.mesh.rotation.y = targetAngle;
+
+            State.player.mesh.position.y = Math.abs(Math.sin(time * 12)) * 0.15;
+          }
+        } else {
+          State.player.mesh.position.y = 0;
+        }
+
+        // Camera Follow
+        camera.position.x += (State.player.x - camera.position.x) * 0.08;
+        camera.position.z += (State.player.z + 18 - camera.position.z) * 0.08;
+        camera.lookAt(State.player.x, 1, State.player.z);
+
+        updateHUD();
+
+        // Update Wild Pokémon
+        State.wildPokemon.forEach(poke => {
+          if (!poke.caught) {
+            poke.mesh.position.y = Math.sin(time * 3 + poke.animOffset) * 0.15;
+            poke.mesh.rotation.y += 0.015;
+
+            const dist = Math.hypot(State.player.x - poke.mesh.position.x, State.player.z - poke.mesh.position.z);
+            if (dist < 1.4) {
+              startBattle(poke);
+            }
+          }
+        });
+
+        // Update NPCs & Animate Exclamation Marks
+        State.npcs.forEach(npc => {
+          if (npc.mesh.exclaimMesh) {
+            npc.mesh.exclaimMesh.position.y = 2.3 + Math.sin(time * 4) * 0.15;
+            npc.mesh.exclaimMesh.rotation.y += 0.03;
+          }
+
+          npc.wanderTimer -= delta;
+          if (npc.wanderTimer <= 0) {
+            npc.wanderTimer = 3 + Math.random() * 4;
+            npc.targetX = npc.x + (Math.random() - 0.5) * 6;
+            npc.targetZ = npc.z + (Math.random() - 0.5) * 6;
+          }
+
+          const dx = npc.targetX - npc.mesh.position.x;
+          const dz = npc.targetZ - npc.mesh.position.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > 0.1) {
+            npc.mesh.position.x += (dx / dist) * 0.03;
+            npc.mesh.position.z += (dz / dist) * 0.03;
+            npc.mesh.rotation.y = Math.atan2(dx, dz);
+            npc.mesh.position.y = Math.abs(Math.sin(time * 8)) * 0.08;
+          }
+        });
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initWorld();
+      setupControls();
+      animate();
+    });
+  </script>
+</body>
+</html>
