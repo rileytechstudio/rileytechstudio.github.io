@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Pokémon Adventure">
+  <meta name="apple-mobile-web-app-title" content="RileyMon 3D">
   <meta name="theme-color" content="#0f172a">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
-  <title>Pokémon Adventure 3D</title>
+  <title>RileyMon Adventures 3D</title>
   
   <!-- Three.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -796,7 +796,7 @@
 
         <div class="hud-buttons-row">
           <button class="hud-btn" id="btn-sound-toggle">🔊 Sound</button>
-          <button class="hud-btn" id="btn-pokedex-open">📖 Pokédex <span class="key-hint">P</span></button>
+          <button class="hud-btn" id="btn-pokedex-open">📖 RileyDex <span class="key-hint">P</span></button>
         </div>
       </div>
 
@@ -816,7 +816,7 @@
     </div>
 
     <!-- Toast message for quest & capture feedback -->
-    <div id="toast-msg">Welcome to Pallet Town! Explore the world to find Pokémon!</div>
+    <div id="toast-msg">Welcome to Pallet Town! Explore the world to find RileyMon!</div>
 
     <!-- Virtual Touch Controls for Mobile -->
     <div class="controls-zone">
@@ -844,7 +844,7 @@
       <span>❗</span>
       <span id="dialog-speaker-name">Professor Oak</span>
     </div>
-    <div class="dialog-text" id="dialog-text">Welcome! Explore the grass and neighborhoods to catch all 20 Pokémon!</div>
+    <div class="dialog-text" id="dialog-text">Welcome! Explore the grass and neighborhoods to catch all 20 RileyMon!</div>
     <div class="dialog-actions">
       <button class="btn-dialog" id="btn-dialog-close">Continue (Space)</button>
     </div>
@@ -860,20 +860,20 @@
       <div class="bag-card">
         <div>
           <div style="font-weight: 800; font-size: 1.1rem; color: #4ade80;">🧪 Super Potion (<span id="bag-potion-count">3</span>)</div>
-          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Restores 50 HP to your active Pokémon partner.</div>
+          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Restores 50 HP to your active RileyMon partner.</div>
         </div>
         <button class="btn-use-item" id="btn-use-potion">USE (+50 HP)</button>
       </div>
       <div class="bag-card">
         <div>
-          <div style="font-weight: 800; font-size: 1.1rem; color: #f87171;">🔴 Standard Pokéball (<span id="bag-ball-count">15</span>)</div>
-          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Used during battles to capture wild Pokémon.</div>
+          <div style="font-weight: 800; font-size: 1.1rem; color: #f87171;">🔴 Standard RileyBall (<span id="bag-ball-count">15</span>)</div>
+          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Used during battles to capture wild RileyMon.</div>
         </div>
       </div>
       <div class="bag-card">
         <div>
-          <div style="font-weight: 800; font-size: 1.1rem; color: #f59e0b;">🏥 Pokémon Hospitals (Fast Travel)</div>
-          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">You can instantly teleport to any of the 3 Pokémon Hospitals from the live radar map!</div>
+          <div style="font-weight: 800; font-size: 1.1rem; color: #f59e0b;">🏥 RileyMon Hospitals (Fast Travel)</div>
+          <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">You can instantly teleport to any of the 3 RileyMon Hospitals from the live radar map!</div>
         </div>
       </div>
     </div>
@@ -909,7 +909,7 @@
 
     <!-- Battle Center Action Text -->
     <div class="battle-center-display" id="battle-announcement">
-      A wild Pokémon appeared!
+      A wild RileyMon appeared!
     </div>
 
     <!-- Battle Action Controls -->
@@ -924,7 +924,7 @@
           <span id="btn-special-type">Electric • Pwr 45</span>
         </button>
         <button class="btn-move btn-catch" id="btn-move-catch">
-          POKÉBALL
+          RILEYBALL
           <span>Catch Chance</span>
         </button>
         <button class="btn-move btn-heal-battle" id="btn-heal-battle">
@@ -946,11 +946,11 @@
   <!-- Pokédex & Team Modal -->
   <div id="pokedex-modal">
     <div class="dex-header">
-      <div class="dex-title">📖 Pokédex & Habitats Guide</div>
+      <div class="dex-title">📖 RileyDex & Habitats Guide</div>
       <button class="hud-btn" id="btn-pokedex-close">✕ Close</button>
     </div>
     <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px;">
-      Explore different biomes across the map. Tap <b>"SET PARTNER"</b> to battle and travel with any caught Pokémon!
+      Explore different biomes across the map. Tap <b>"SET PARTNER"</b> to battle and travel with any caught RileyMon!
     </p>
     <div class="dex-grid" id="dex-grid-container">
       <!-- Injected dynamically -->
@@ -960,7 +960,7 @@
   <!-- Start Screen & How-To-Play Guide -->
   <div id="start-screen">
     <div class="guide-card">
-      <div class="start-title">Pokémon Adventure 3D</div>
+      <div class="start-title">RileyMon Adventures 3D</div>
       <div class="start-subtitle">Trainer Guide & Radar Map</div>
 
       <div class="guide-grid">
@@ -978,7 +978,7 @@
           <div class="guide-icon">🗺️</div>
           <h3>Live Radar & Fast Travel</h3>
           <p>The <b>Live Radar Map</b> is always open on the top-right.</p>
-          <p>Tap any <b>🏥 Pokémon Hospital</b> chip to instantly teleport there and heal!</p>
+          <p>Tap any <b>🏥 RileyMon Hospital</b> chip to instantly teleport there and heal!</p>
         </div>
 
         <!-- Habitats & Catch Column -->
@@ -988,7 +988,7 @@
           <p><b>Eevee:</b> Grassy Flower Meadows.</p>
           <p><b>Squirtle:</b> Lake Beach • <b>Charmander:</b> Volcano.</p>
           <p><b>Bulbasaur:</b> Forest • <b>Geodude:</b> Quarry.</p>
-          <p>Weaken enemies in battle and throw a <b>Pokéball</b>!</p>
+          <p>Weaken enemies in battle and throw a <b>RileyBall</b>!</p>
         </div>
       </div>
 
@@ -1833,7 +1833,7 @@
           x: -28, z: 39,
           color: 0xec4899,
           isNurse: true,
-          dialog: "Welcome to the Viridian Woods Clinic! Resting in nature will restore your Pokémon!",
+          dialog: "Welcome to the Viridian Woods Clinic! Resting in nature will restore your RileyMon!",
           hasQuest: true,
           isHealingNPC: true
         },
@@ -1850,14 +1850,14 @@
           name: "Prof. Oak",
           x: -12, z: -9,
           color: 0xd97706,
-          dialog: "Hello Trainer! You can use the Live Radar Map in the top-right to fast travel between Pokémon Hospitals anytime!",
+          dialog: "Hello Trainer! You can use the Live Radar Map in the top-right to fast travel between RileyMon Hospitals anytime!",
           hasQuest: true
         },
         {
           name: "Lass Sarah",
           x: 10, z: 10,
           color: 0xec4899,
-          dialog: "I love playing with Eevee in these flower meadows! Here are 5 extra Pokéballs and 2 Potions for your journey!",
+          dialog: "I love playing with Eevee in these flower meadows! Here are 5 extra RileyBalls and 2 Potions for your journey!",
           hasQuest: true,
           giftBalls: 5,
           giftPotions: 2
@@ -2281,7 +2281,7 @@
       audio.init();
 
       if (State.player.balls <= 0) {
-        showToast("Out of Pokéballs! Talk to Lass Sarah for more!");
+        showToast("Out of RileyBalls! Talk to Lass Sarah for more!");
         return;
       }
 
@@ -2292,7 +2292,7 @@
       const catchRate = 1 - (enemy.hp / enemy.maxHp) * 0.65;
       const roll = Math.random();
 
-      document.getElementById('battle-announcement').innerText = `You threw a Pokéball... 🔴`;
+      document.getElementById('battle-announcement').innerText = `You threw a RileyBall... 🔴`;
       audio.playBlip();
 
       const ball = createPokeBallMesh();
@@ -2344,7 +2344,7 @@
       State.player.mesh.visible = true;
 
       if (wasCaught) {
-        showToast(`🎉 Caught ${State.currentBattleEnemy.data.name}! Added to your Party & Pokédex!`);
+        showToast(`🎉 Caught ${State.currentBattleEnemy.data.name}! Added to your Party & RileyDex!`);
       } else {
         if (State.currentBattleEnemy && !State.currentBattleEnemy.caught) {
           State.currentBattleEnemy.mesh.visible = true;
@@ -2356,7 +2356,7 @@
     }
 
     /* ==========================================================
-       11. POKÉDEX & TEAM MODAL UI
+       11. RILEYDEX & TEAM MODAL UI
        ========================================================== */
     function renderPokedex() {
       const container = document.getElementById('dex-grid-container');
@@ -2398,7 +2398,7 @@
 
       document.getElementById('caught-count-display').innerText = `${caughtCount}/${POKEMON_ROSTER.length}`;
       if (caughtCount === POKEMON_ROSTER.length) {
-        showToast("🏆 INCREDIBLE! You completed the entire Pokédex!");
+        showToast("🏆 INCREDIBLE! You completed the entire RileyDex!");
       }
     }
 
@@ -2428,7 +2428,7 @@
           document.getElementById('battle-announcement').innerText = `Go, ${active.name}! You're up! ⚡`;
           togglePokedex();
         } else {
-          showToast(`🌟 ${active.name} is now your active Pokémon companion & battler!`);
+          showToast(`🌟 ${active.name} is now your active RileyMon companion & battler!`);
         }
       }
     };
@@ -2520,7 +2520,7 @@
         if (closestHosp) {
           teleportToHospital(closestHosp.id);
         } else {
-          showToast("⚡ Fast Travel is strictly restricted to Pokémon Hospitals (🏥)!");
+          showToast("⚡ Fast Travel is strictly restricted to RileyMon Hospitals (🏥)!");
         }
       });
 
@@ -2623,7 +2623,7 @@
 
         if (nearestNPC.isHealingNPC) {
           healEntireParty();
-          showToast("✨ Entire team fully healed at the Pokémon Hospital!");
+          showToast("✨ Entire team fully healed at the RileyMon Hospital!");
         }
 
         if (nearestNPC.giftBalls) {

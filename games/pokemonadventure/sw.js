@@ -1,4 +1,4 @@
-const CACHE_NAME = 'poke-adventure-v1';
+const CACHE_NAME = 'rileymon-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

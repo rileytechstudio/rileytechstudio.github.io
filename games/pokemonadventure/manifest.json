@@ -1,7 +1,7 @@
 {
-  "name": "Pokémon Adventure 3D",
-  "short_name": "PokeAdventure",
-  "description": "3D top-down Pokémon adventure game - Explore biomes, catch wild Pokémon, heal at hospitals!",
+  "name": "RileyMon 3D Adventure",
+  "short_name": "RileyMon",
+  "description": "3D top-down RileyMon adventure game - Explore biomes, catch wild RileyMon, heal at hospitals!",
   "start_url": "index.html",
   "display": "standalone",
   "orientation": "any",
