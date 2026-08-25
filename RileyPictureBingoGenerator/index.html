@@ -241,9 +241,8 @@
       color: var(--text-main);
     }
 
-    .dropzone span {
-      font-size: 0.78rem;
-      color: var(--text-muted);
+    .dropzone * {
+      pointer-events: none;
     }
 
     /* Buttons */
@@ -560,9 +559,6 @@
             <p>Drag & drop images here</p>
             <span>or click to browse files (Max 24 most recent)</span>
           </div>
-          <button type="button" class="btn btn-secondary" onclick="document.getElementById('file-input').click()" style="width: 100%; margin-top: 8px; font-weight: 600;">
-            📁 Select / Choose Image Files
-          </button>
           <input type="file" id="file-input" multiple accept="image/*" onclick="this.value=null" style="display: none;">
           <input type="file" id="pptx-file-picker" accept=".pptx" onclick="this.value=null" style="display: none;">
 
