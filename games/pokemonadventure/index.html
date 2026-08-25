@@ -6,7 +6,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pokémon Adventure">
-  <meta name="theme-color" content="#1a202c">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
   <title>Pokémon Adventure 3D</title>
   
   <!-- Three.js CDN -->
@@ -2845,6 +2848,13 @@
       initWorld();
       setupControls();
       animate();
+
+      // Register PWA Service Worker for Offline Play
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('PokeAdventure PWA Service Worker registered:', reg.scope))
+          .catch(err => console.log('PokeAdventure SW registration failed:', err));
+      }
     });
   </script>
 </body>
