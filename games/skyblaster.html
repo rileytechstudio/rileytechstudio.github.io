@@ -22,7 +22,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #050714;
+      background-color: #0d1b1e;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       touch-action: none;
     }
@@ -31,7 +31,7 @@
       display: block;
       width: 100vw;
       height: 100vh;
-      background: radial-gradient(circle at 50% 30%, #1a1c3b 0%, #050714 100%);
+      background: #0f241d;
     }
 
     /* HUD Overlay */
@@ -55,10 +55,10 @@
     }
 
     .hud-box {
-      background: rgba(15, 23, 42, 0.65);
+      background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 16px;
       padding: 8px 14px;
       color: #ffffff;
@@ -93,12 +93,12 @@
 
     .lives-container {
       display: flex;
-      gap: 5px;
+      gap: 4px;
     }
 
     .life-heart {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: #ff4757;
       filter: drop-shadow(0 2px 4px rgba(255, 71, 87, 0.5));
     }
@@ -106,14 +106,14 @@
     .life-heart.lost {
       fill: #475569;
       filter: none;
-      opacity: 0.5;
+      opacity: 0.35;
     }
 
     /* Game Over & Start & Pause Overlays */
     .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(5, 7, 20, 0.88);
+      background: rgba(5, 12, 16, 0.88);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       display: flex;
@@ -137,7 +137,7 @@
       font-size: 2.4rem;
       font-weight: 900;
       letter-spacing: -1px;
-      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+      background: linear-gradient(135deg, #38bdf8 0%, #4ade80 50%, #facc15 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 0.5rem;
@@ -148,7 +148,7 @@
       color: #94a3b8;
       font-size: 0.95rem;
       margin-bottom: 2rem;
-      max-width: 300px;
+      max-width: 320px;
       line-height: 1.4;
     }
 
@@ -157,10 +157,10 @@
       font-size: 1.25rem;
       font-weight: 800;
       color: #ffffff;
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
       border: none;
       border-radius: 50px;
-      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
       cursor: pointer;
       touch-action: manipulation;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -169,7 +169,7 @@
 
     .btn-play:active {
       transform: scale(0.95);
-      box-shadow: 0 5px 12px rgba(59, 130, 246, 0.4);
+      box-shadow: 0 5px 12px rgba(16, 185, 129, 0.4);
     }
 
     .btn-home {
@@ -189,12 +189,12 @@
       bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       backdrop-filter: blur(6px);
       padding: 8px 16px;
       border-radius: 30px;
-      color: #cbd5e1;
+      color: #e2e8f0;
       font-size: 0.8rem;
       pointer-events: none;
       z-index: 5;
@@ -225,6 +225,8 @@
           <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           <svg class="life-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="life-heart lost" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="life-heart lost" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
         </div>
       </div>
     </div>
@@ -240,21 +242,21 @@
     </div>
   </div>
 
-  <div class="controls-hint" id="hint">Touch & drag to steer • Hold screen to shoot • Tap ⏸ to pause</div>
+  <div class="controls-hint" id="hint">Hearts (1/60) • Weapons (1/100) • Rare Wingman Jet (1/300)!</div>
 
   <!-- Start Overlay -->
   <div class="overlay" id="startOverlay">
-    <h1 class="title">SKY INVADERS</h1>
-    <p class="subtitle">Touch & hold to steer your airplane and blast UFO sorties in formation!</p>
-    <button class="btn-play" id="startBtn">START FLIGHT</button>
+    <h1 class="title">SKY STRIKER</h1>
+    <p class="subtitle">Blast UFOs for Hearts (1/60), Weapon Badges (1/100), and the rare 5-Health Escort Wingman Jet (1/300)! Enjoy 5s Invincibility Shield on hit!</p>
+    <button class="btn-play" id="startBtn">START MISSION</button>
     <a href="index.html" class="btn-home">Back to Launcher</a>
   </div>
 
   <!-- Pause Overlay -->
   <div class="overlay hidden" id="pauseOverlay">
-    <h1 class="title" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text;">GAME PAUSED</h1>
+    <h1 class="title" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text;">MISSION PAUSED</h1>
     <p class="subtitle">Take a breather pilot!</p>
-    <button class="btn-play" id="resumeBtn">RESUME FLIGHT</button>
+    <button class="btn-play" id="resumeBtn">RESUME MISSION</button>
     <button class="btn-play" id="pauseRestartBtn" style="background: linear-gradient(135deg, #475569, #334155); font-size: 1rem; padding: 12px 30px;">Restart</button>
     <a href="index.html" class="btn-home" style="margin-top: 0.5rem;">Back to Launcher</a>
   </div>
@@ -268,7 +270,7 @@
   </div>
 
   <script>
-    // --- Web Audio Synthesizer (Half Volume) ---
+    // --- Web Audio Synthesizer ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
@@ -287,32 +289,56 @@
 
       if (type === 'shoot') {
         osc.type = 'square';
-        osc.frequency.setValueAtTime(800, now);
-        osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
-        gain.gain.setValueAtTime(0.075, now); // Reduced by half
+        osc.frequency.setValueAtTime(750, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.1);
+        gain.gain.setValueAtTime(0.075, now);
         gain.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
+      } else if (type === 'turret_shoot') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.18);
+        osc.start(now);
+        osc.stop(now + 0.18);
       } else if (type === 'explosion') {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(120, now);
-        osc.frequency.exponentialRampToValueAtTime(20, now + 0.3);
-        gain.gain.setValueAtTime(0.15, now); // Reduced by half
-        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.3);
+        osc.frequency.exponentialRampToValueAtTime(20, now + 0.35);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.35);
         osc.start(now);
-        osc.stop(now + 0.3);
+        osc.stop(now + 0.35);
       } else if (type === 'hit') {
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.linearRampToValueAtTime(100, now + 0.15);
-        gain.gain.setValueAtTime(0.10, now); // Reduced by half
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.linearRampToValueAtTime(90, now + 0.15);
+        gain.gain.setValueAtTime(0.10, now);
         gain.gain.linearRampToValueAtTime(0.005, now + 0.15);
         osc.start(now);
         osc.stop(now + 0.15);
+      } else if (type === 'powerup') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(850, now + 0.25);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'heal') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.setValueAtTime(650, now + 0.1);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
       }
     }
 
-    // --- Game Setup & State ---
+    // --- Canvas & Resize ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -328,12 +354,15 @@
     window.addEventListener('resize', resize);
     resize();
 
+    // Game States
     let state = 'START'; // START, PLAYING, PAUSED, GAMEOVER
     let score = 0;
     let lives = 3;
     let frameCount = 0;
+    let terrainScroll = 0;
+    let ufoDestroyedCount = 0;
 
-    // Player Airplane
+    // Player Airplane & Upgrades
     const player = {
       x: width / 2,
       y: height - 120,
@@ -341,35 +370,43 @@
       targetY: height - 120,
       width: 44,
       height: 48,
-      speed: 0.35, // Faster, responsive tracking
-      tilt: 0
+      speed: 0.085,
+      tilt: 0,
+      weaponMode: 'SINGLE', // 'SINGLE', 'DOUBLE', 'FAN'
+      hasWingman: false,
+      wingmanHp: 0,
+      invincibleTimer: 0 // 300 frames = 5 Seconds Invincibility Shield on hit
     };
 
     // Arrays
     let bullets = [];
+    let enemyBullets = [];
     let enemies = [];
+    let groundTargets = [];
+    let powerups = [];
     let particles = [];
     let clouds = [];
-    let stars = [];
+    let terrainFeatures = [];
 
-    // Forward Scrolling Background (Stars & Clouds)
-    for (let i = 0; i < 45; i++) {
-      stars.push({
+    // Terrain Scenery
+    for (let i = 0; i < 20; i++) {
+      terrainFeatures.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        radius: Math.random() * 2 + 0.5,
-        speed: Math.random() * 3 + 2,
-        opacity: Math.random() * 0.8 + 0.2
+        width: Math.random() * 80 + 40,
+        height: Math.random() * 60 + 30,
+        type: Math.random() > 0.4 ? 'forest' : 'water'
       });
     }
 
+    // Overhead Clouds
     for (let i = 0; i < 6; i++) {
       clouds.push({
         x: Math.random() * width,
         y: Math.random() * height,
         radius: Math.random() * 40 + 40,
-        speed: Math.random() * 1.5 + 1,
-        opacity: Math.random() * 0.12 + 0.05
+        speed: Math.random() * 1.5 + 1.2,
+        opacity: Math.random() * 0.15 + 0.08
       });
     }
 
@@ -394,7 +431,6 @@
       isTouching = false;
     }
 
-    // Stop HUD touches from triggering flight target move
     document.querySelector('.hud').addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
     document.querySelector('.hud').addEventListener('mousedown', (e) => e.stopPropagation());
 
@@ -420,15 +456,44 @@
     window.addEventListener('keydown', (e) => keys[e.code] = true);
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-    // --- UFO Sortie / Squadron Spawner (Smaller UFOs attacking in groups) ---
-    function spawnSortie() {
-      const formations = ['V_FORMATION', 'LINE_ROW', 'DIAGONAL_STREAK', 'CLUSTER'];
+    // --- Power-up Spawner (1 in 60 UFOs = Heart, 1 in 100 = Weapon, 1 in 300 = Wingman Jet) ---
+    function handleUFODestroyed(x, y) {
+      ufoDestroyedCount++;
+      let dropType = null;
+
+      // 1 in 300 UFOs drops the Rare Double Plane Wingman!
+      if (ufoDestroyedCount % 300 === 0 || Math.random() < (1 / 300)) {
+        dropType = 'WINGMAN';
+      }
+      // 1 in 100 UFOs drops a Weapon upgrade (Double or Fan)
+      else if (ufoDestroyedCount % 100 === 0 || Math.random() < (1 / 100)) {
+        dropType = Math.random() < 0.5 ? 'DOUBLE' : 'FAN';
+      }
+      // 1 in 60 UFOs drops a Heart
+      else if (ufoDestroyedCount % 60 === 0 || Math.random() < (1 / 60)) {
+        dropType = 'HEART';
+      }
+
+      if (dropType) {
+        powerups.push({
+          x: x,
+          y: y,
+          type: dropType,
+          radius: 17,
+          vy: 1.5,
+          wobble: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    // --- UFO Flying Sortie Spawner ---
+    function spawnUFOSortie() {
+      const formations = ['V_FORMATION', 'LINE_ROW', 'CLUSTER'];
       const formation = formations[Math.floor(Math.random() * formations.length)];
       
       const types = ['ufo_small', 'ufo_medium', 'ufo_fast'];
       const type = types[Math.floor(Math.random() * types.length)];
       
-      // Smaller radii for smaller targets
       let radius = 11;
       let speed = 2.4;
       let hp = 1;
@@ -459,7 +524,7 @@
             x: Math.max(20, Math.min(width - 20, startX + off.x)),
             y: startY + off.y,
             radius: radius,
-            speed: speed + (score / 250),
+            speed: speed + (score / 300),
             hp: hp,
             maxHp: hp,
             type: type,
@@ -476,28 +541,12 @@
             x: leftX + i * spacing,
             y: startY,
             radius: radius,
-            speed: speed + (score / 250),
+            speed: speed + (score / 300),
             hp: hp,
             maxHp: hp,
             type: type,
             wigglePhase: Math.random() * Math.PI * 2,
             wiggleAmp: 0.5
-          });
-        }
-      } else if (formation === 'DIAGONAL_STREAK') {
-        const count = 4;
-        const dir = Math.random() > 0.5 ? 1 : -1;
-        for (let i = 0; i < count; i++) {
-          enemies.push({
-            x: Math.max(20, Math.min(width - 20, startX + i * 32 * dir)),
-            y: startY - i * 28,
-            radius: radius,
-            speed: speed + 0.4,
-            hp: hp,
-            maxHp: hp,
-            type: type,
-            wigglePhase: Math.random() * Math.PI * 2,
-            wiggleAmp: 1
           });
         }
       } else { // CLUSTER
@@ -518,16 +567,46 @@
       }
     }
 
-    function createExplosion(x, y, color, count = 14) {
+    // --- Ground Target Spawner ---
+    function spawnGroundTarget() {
+      const types = ['turret', 'bunker', 'radar'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      
+      let radius = 18;
+      let hp = 3;
+
+      if (type === 'bunker') {
+        radius = 22;
+        hp = 5;
+      } else if (type === 'radar') {
+        radius = 16;
+        hp = 2;
+      }
+
+      groundTargets.push({
+        x: Math.random() * (width - 80) + 40,
+        y: -40,
+        radius: radius,
+        hp: hp,
+        maxHp: hp,
+        type: type,
+        speed: 1.8,
+        lastFired: 0,
+        fireInterval: Math.floor(Math.random() * 60 + 90),
+        angle: Math.PI / 2
+      });
+    }
+
+    function createExplosion(x, y, color, count = 16) {
       for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 4 + 1;
+        const speed = Math.random() * 4.5 + 1;
         particles.push({
           x: x,
           y: y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          radius: Math.random() * 3 + 1.5,
+          radius: Math.random() * 3.5 + 1.5,
           color: color,
           alpha: 1,
           decay: Math.random() * 0.03 + 0.02
@@ -535,13 +614,55 @@
       }
     }
 
+    // Weapon Blaster Dispatcher
+    function fireCannon(originX, originY) {
+      if (player.weaponMode === 'SINGLE') {
+        bullets.push({ x: originX, y: originY - 18, vx: 0, vy: -11, radius: 3.5 });
+      } else if (player.weaponMode === 'DOUBLE') {
+        bullets.push({ x: originX - 10, y: originY - 14, vx: 0, vy: -12, radius: 3 });
+        bullets.push({ x: originX + 10, y: originY - 14, vx: 0, vy: -12, radius: 3 });
+      } else if (player.weaponMode === 'FAN') {
+        bullets.push({ x: originX - 6, y: originY - 14, vx: -2.5, vy: -11, radius: 3 });
+        bullets.push({ x: originX, y: originY - 18, vx: 0, vy: -12, radius: 3.5 });
+        bullets.push({ x: originX + 6, y: originY - 14, vx: 2.5, vy: -11, radius: 3 });
+      }
+    }
+
+    // Player Damage Handler (5-Second Invincibility Shield on Hit)
+    function handlePlayerDamage(hitX, hitY) {
+      if (player.invincibleTimer > 0) return; // Immune during 5s invincibility shield!
+
+      // Grant 5 seconds (300 frames) of invincibility shield whenever hit
+      player.invincibleTimer = 300;
+
+      if (player.hasWingman) {
+        player.wingmanHp--;
+        createExplosion(player.x - 38, player.y + 12, '#facc15', 18);
+        if (player.wingmanHp <= 0) {
+          player.hasWingman = false;
+          // Revert health cap back to 3 if lives exceed 3 when losing wingman
+          if (lives > 3) lives = 3;
+          updateLivesUI();
+          createExplosion(player.x - 38, player.y + 12, '#ef4444', 24);
+          playSound('explosion');
+        } else {
+          playSound('hit');
+        }
+      } else {
+        takeDamage();
+      }
+    }
+
+    // --- Game Logic Update ---
     function update() {
-      // Background Forward Flight Animation continues even during pause/start
-      stars.forEach(star => {
-        star.y += (state === 'PAUSED' ? star.speed * 0.2 : star.speed);
-        if (star.y > height) {
-          star.y = 0;
-          star.x = Math.random() * width;
+      const scrollStep = state === 'PAUSED' ? 0.4 : 1.8;
+      terrainScroll = (terrainScroll + scrollStep) % 60;
+
+      terrainFeatures.forEach(feat => {
+        feat.y += scrollStep;
+        if (feat.y > height + 60) {
+          feat.y = -60;
+          feat.x = Math.random() * width;
         }
       });
 
@@ -557,56 +678,183 @@
 
       frameCount++;
 
-      // Keyboard Controls Update
+      // Update Invincibility Shield Timer
+      if (player.invincibleTimer > 0) {
+        player.invincibleTimer--;
+      }
+
+      // Keyboard Controls
       if (keys['ArrowLeft'] || keys['KeyA']) player.targetX -= 8;
       if (keys['ArrowRight'] || keys['KeyD']) player.targetX += 8;
       if (keys['ArrowUp'] || keys['KeyW']) player.targetY -= 8;
       if (keys['ArrowDown'] || keys['KeyS']) player.targetY += 8;
 
-      // Keep airplane inside screen bounds
+      // Restrict Y boundary to Bottom Half Only
+      const minY = height / 2;
       player.targetX = Math.max(25, Math.min(width - 25, player.targetX));
-      player.targetY = Math.max(50, Math.min(height - 70, player.targetY));
+      player.targetY = Math.max(minY, Math.min(height - 70, player.targetY));
 
-      // Smooth Airplane Movement & Tilt
+      // Smooth Movement & Banking Tilt
       const dx = player.targetX - player.x;
       player.x += dx * player.speed;
       player.y += (player.targetY - player.y) * player.speed;
-      player.tilt = dx * 0.03;
 
-      // SHOOT ONLY WHEN SCREEN IS BEING TOUCHED (OR SPACEBAR HELD) - Single Blaster (Slower Cadence)
+      const maxTilt = (10 * Math.PI) / 180;
+      const rawTilt = dx * 0.005;
+      player.tilt = Math.max(-maxTilt, Math.min(maxTilt, rawTilt));
+
+      // Player Firing
       const isFiring = isTouching || keys['Space'] || keys['KeyZ'];
       if (isFiring && frameCount % 14 === 0) {
-        bullets.push({
-          x: player.x,
-          y: player.y - 18,
-          vy: -10,
-          radius: 3.5
-        });
+        fireCannon(player.x, player.y);
+        if (player.hasWingman) {
+          fireCannon(player.x - 38, player.y + 12);
+        }
         playSound('shoot');
       }
 
-      // Update Bullets
+      // Update Player Bullets
       for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
+        b.x += (b.vx || 0);
         b.y += b.vy;
-        if (b.y < -20) {
-          bullets.splice(i, 1);
+        if (b.y < -20 || b.x < -20 || b.x > width + 20) bullets.splice(i, 1);
+      }
+
+      // Spawners
+      if (frameCount % 140 === 0) spawnUFOSortie();
+      if (frameCount % 160 === 0) spawnGroundTarget();
+
+      // Update Power-ups
+      for (let i = powerups.length - 1; i >= 0; i--) {
+        const item = powerups[i];
+        item.y += item.vy;
+        item.wobble += 0.08;
+        item.x += Math.sin(item.wobble) * 0.8;
+
+        // Pickup Collision (Main plane or Wingman)
+        const distP = Math.hypot(player.x - item.x, player.y - item.y);
+        const distW = player.hasWingman ? Math.hypot((player.x - 38) - item.x, (player.y + 12) - item.y) : 999;
+
+        if (distP < item.radius + 20 || distW < item.radius + 20) {
+          createExplosion(item.x, item.y, '#38bdf8', 12);
+          if (item.type === 'HEART') {
+            const maxLives = player.hasWingman ? 5 : 3; // Health caps at 3 normally, 5 with second plane!
+            if (lives < maxLives) {
+              lives++;
+              updateLivesUI();
+            }
+            playSound('heal');
+          } else if (item.type === 'DOUBLE') {
+            player.weaponMode = 'DOUBLE';
+            playSound('powerup');
+          } else if (item.type === 'FAN') {
+            player.weaponMode = 'FAN';
+            playSound('powerup');
+          } else if (item.type === 'WINGMAN') {
+            player.hasWingman = true;
+            player.wingmanHp = 2; // Second plane takes 2 hits total
+            updateLivesUI();
+            playSound('powerup');
+          }
+          powerups.splice(i, 1);
+          continue;
+        }
+
+        if (item.y > height + 40) powerups.splice(i, 1);
+      }
+
+      // Update Ground Targets (Turrets & Bunkers)
+      for (let i = groundTargets.length - 1; i >= 0; i--) {
+        const tgt = groundTargets[i];
+        tgt.y += tgt.speed;
+
+        if (tgt.type === 'turret' || tgt.type === 'bunker') {
+          tgt.lastFired++;
+          if (tgt.lastFired >= tgt.fireInterval && tgt.y > 50 && tgt.y < height - 100) {
+            tgt.lastFired = 0;
+            playSound('turret_shoot');
+
+            const angle = Math.atan2(player.y - tgt.y, player.x - tgt.x);
+            tgt.angle = angle;
+
+            if (tgt.type === 'turret') {
+              enemyBullets.push({
+                x: tgt.x,
+                y: tgt.y,
+                vx: Math.cos(angle) * 4.5,
+                vy: Math.sin(angle) * 4.5,
+                radius: 4
+              });
+            } else if (tgt.type === 'bunker') {
+              [-0.25, 0, 0.25].forEach(spread => {
+                enemyBullets.push({
+                  x: tgt.x,
+                  y: tgt.y,
+                  vx: Math.cos(angle + spread) * 4,
+                  vy: Math.sin(angle + spread) * 4,
+                  radius: 3.5
+                });
+              });
+            }
+          }
+        }
+
+        // Check Player Bullet <-> Ground Target Collision
+        for (let j = bullets.length - 1; j >= 0; j--) {
+          const b = bullets[j];
+          const dist = Math.hypot(b.x - tgt.x, b.y - tgt.y);
+          if (dist < tgt.radius + b.radius) {
+            bullets.splice(j, 1);
+            tgt.hp--;
+            createExplosion(b.x, b.y, '#f59e0b', 5);
+
+            if (tgt.hp <= 0) {
+              playSound('explosion');
+              score += tgt.type === 'bunker' ? 50 : 30;
+              document.getElementById('scoreVal').innerText = score;
+              createExplosion(tgt.x, tgt.y, '#ef4444', 20);
+              createExplosion(tgt.x, tgt.y, '#facc15', 12);
+              groundTargets.splice(i, 1);
+              break;
+            } else {
+              playSound('hit');
+            }
+          }
+        }
+
+        if (tgt.y > height + 60) groundTargets.splice(i, 1);
+      }
+
+      // Update Enemy AA Bullets
+      for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const eb = enemyBullets[i];
+        eb.x += eb.vx;
+        eb.y += eb.vy;
+
+        if (player.invincibleTimer <= 0) {
+          const pDist = Math.hypot(player.x - eb.x, player.y - eb.y);
+          const wDist = player.hasWingman ? Math.hypot((player.x - 38) - eb.x, (player.y + 12) - eb.y) : 999;
+
+          if (pDist < eb.radius + 16 || wDist < eb.radius + 14) {
+            enemyBullets.splice(i, 1);
+            handlePlayerDamage(eb.x, eb.y);
+            continue;
+          }
+        }
+
+        if (eb.y > height + 20 || eb.y < -20 || eb.x < -20 || eb.x > width + 20) {
+          enemyBullets.splice(i, 1);
         }
       }
 
-      // Enemy Sortie Spawning Waves
-      const sortieInterval = Math.max(100, 160 - Math.floor(score / 40));
-      if (frameCount % sortieInterval === 0) {
-        spawnSortie();
-      }
-
-      // Update Enemies
+      // Update Air UFO Enemies
       for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         enemy.y += enemy.speed;
         enemy.x += Math.sin(frameCount * 0.05 + enemy.wigglePhase) * enemy.wiggleAmp;
 
-        // Collision: Bullet <-> Enemy
+        // Player Bullet <-> UFO Enemy
         for (let j = bullets.length - 1; j >= 0; j--) {
           const b = bullets[j];
           const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
@@ -621,6 +869,7 @@
               document.getElementById('scoreVal').innerText = score;
               createExplosion(enemy.x, enemy.y, '#a855f7', 14);
               createExplosion(enemy.x, enemy.y, '#38bdf8', 10);
+              handleUFODestroyed(enemy.x, enemy.y);
               enemies.splice(i, 1);
               break;
             } else {
@@ -629,19 +878,18 @@
           }
         }
 
-        // Collision: Enemy <-> Player Airplane
-        const pDist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-        if (pDist < enemy.radius + 16) {
-          playSound('explosion');
-          createExplosion(enemy.x, enemy.y, '#ef4444', 20);
-          enemies.splice(i, 1);
-          takeDamage();
+        // UFO Enemy <-> Player Airplane Collision
+        if (player.invincibleTimer <= 0) {
+          const pDist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+          const wDist = player.hasWingman ? Math.hypot((player.x - 38) - enemy.x, (player.y + 12) - enemy.y) : 999;
+
+          if (pDist < enemy.radius + 16 || wDist < enemy.radius + 14) {
+            enemies.splice(i, 1);
+            handlePlayerDamage(enemy.x, enemy.y);
+          }
         }
 
-        // Off-screen enemy
-        if (enemy.y > height + 50) {
-          enemies.splice(i, 1);
-        }
+        if (enemy.y > height + 50) enemies.splice(i, 1);
       }
 
       // Update Particles
@@ -657,18 +905,19 @@
     function takeDamage() {
       lives--;
       updateLivesUI();
-      if (lives <= 0) {
-        gameOver();
-      }
+      if (lives <= 0) gameOver();
     }
 
     function updateLivesUI() {
       const hearts = document.querySelectorAll('.life-heart');
+      const maxAllowed = player.hasWingman ? 5 : 3;
       hearts.forEach((heart, idx) => {
-        if (idx < lives) {
-          heart.classList.remove('lost');
-        } else {
-          heart.classList.add('lost');
+        if (idx < lives) heart.classList.remove('lost');
+        else heart.classList.add('lost');
+        
+        // Hide 4th & 5th heart slots if no wingman plane
+        if (idx >= 3) {
+          heart.style.display = player.hasWingman ? 'inline-block' : 'none';
         }
       });
     }
@@ -677,25 +926,181 @@
     function draw() {
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Starfield
-      stars.forEach(star => {
-        ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+      // 1. Land Surface Background
+      ctx.fillStyle = '#16382b';
+      ctx.fillRect(0, 0, width, height);
+
+      // Topography Grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      const gridSize = 40;
+      for (let x = 0; x < width; x += gridSize) {
         ctx.beginPath();
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = (terrainScroll % gridSize); y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Terrain Scenery
+      terrainFeatures.forEach(feat => {
+        ctx.fillStyle = feat.type === 'forest' ? '#0f291e' : '#103947';
+        ctx.beginPath();
+        ctx.roundRect(feat.x, feat.y, feat.width, feat.height, 16);
         ctx.fill();
       });
 
-      // 2. Clouds
-      clouds.forEach(cloud => {
-        ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
-        ctx.beginPath();
-        ctx.arc(cloud.x, cloud.y, cloud.radius, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.radius * 0.5, cloud.y - cloud.radius * 0.2, cloud.radius * 0.7, 0, Math.PI * 2);
-        ctx.arc(cloud.x - cloud.radius * 0.5, cloud.y - cloud.radius * 0.2, cloud.radius * 0.7, 0, Math.PI * 2);
-        ctx.fill();
+      // 2. Ground Targets
+      groundTargets.forEach(tgt => {
+        ctx.save();
+        ctx.translate(tgt.x, tgt.y);
+
+        if (tgt.type === 'turret') {
+          ctx.fillStyle = '#334155';
+          ctx.beginPath();
+          ctx.arc(0, 0, tgt.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          ctx.rotate(tgt.angle);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(0, -3, tgt.radius + 6, 6);
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.arc(0, 0, tgt.radius * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (tgt.type === 'bunker') {
+          ctx.fillStyle = '#475569';
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const a = (i * Math.PI) / 3;
+            const bx = Math.cos(a) * tgt.radius;
+            const by = Math.sin(a) * tgt.radius;
+            if (i === 0) ctx.moveTo(bx, by);
+            else ctx.lineTo(bx, by);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#b45309';
+          ctx.beginPath();
+          ctx.arc(0, 0, tgt.radius * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.arc(0, 0, tgt.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, tgt.radius * 0.7, 0, Math.PI * 2);
+          ctx.stroke();
+
+          const sweepAngle = (frameCount * 0.08) % (Math.PI * 2);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(sweepAngle) * tgt.radius, Math.sin(sweepAngle) * tgt.radius);
+          ctx.stroke();
+        }
+
+        ctx.restore();
       });
 
-      // 3. Bullets
+      // 3. Power-up Items (Cool Vector Metallic Badges)
+      powerups.forEach(item => {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+
+        const badgeColor = item.type === 'HEART' ? '#ff4757' : (item.type === 'DOUBLE' ? '#38bdf8' : (item.type === 'FAN' ? '#c084fc' : '#facc15'));
+        
+        ctx.shadowColor = badgeColor;
+        ctx.shadowBlur = 14;
+
+        // Dark Metallic Inner Ring
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = badgeColor;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.shadowBlur = 6;
+
+        if (item.type === 'HEART') {
+          ctx.fillStyle = '#ff4757';
+          ctx.beginPath();
+          ctx.moveTo(0, 4);
+          ctx.bezierCurveTo(-6, -2, -10, -6, -5, -10);
+          ctx.bezierCurveTo(-2, -12, 0, -8, 0, -6);
+          ctx.bezierCurveTo(0, -8, 2, -12, 5, -10);
+          ctx.bezierCurveTo(10, -6, 6, -2, 0, 4);
+          ctx.fill();
+        } else if (item.type === 'DOUBLE') {
+          // Cool Dual Laser Blasters Icon
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(-5, -8, 3, 16);
+          ctx.fillRect(2, -8, 3, 16);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-4, -6, 1.5, 5);
+          ctx.fillRect(3, -6, 1.5, 5);
+        } else if (item.type === 'FAN') {
+          // Cool 3-Way Spread Ray Icon
+          ctx.fillStyle = '#c084fc';
+          ctx.fillRect(-1.5, -9, 3, 14);
+          
+          ctx.save();
+          ctx.rotate(-Math.PI / 6);
+          ctx.fillRect(-1.5, -9, 3, 12);
+          ctx.restore();
+
+          ctx.save();
+          ctx.rotate(Math.PI / 6);
+          ctx.fillRect(-1.5, -9, 3, 12);
+          ctx.restore();
+        } else if (item.type === 'WINGMAN') {
+          // Golden Jet Fighter Icon
+          ctx.fillStyle = '#facc15';
+          ctx.beginPath();
+          ctx.moveTo(0, -9);
+          ctx.lineTo(8, 5);
+          ctx.lineTo(3, 7);
+          ctx.lineTo(0, 4);
+          ctx.lineTo(-3, 7);
+          ctx.lineTo(-8, 5);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.restore();
+      });
+
+      // 4. Enemy AA Bullets
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#f87171';
+      ctx.shadowBlur = 10;
+      enemyBullets.forEach(eb => {
+        ctx.beginPath();
+        ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.shadowBlur = 0;
+
+      // 5. Player Bullets
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = '#38bdf8';
       ctx.shadowBlur = 8;
@@ -706,7 +1111,7 @@
       });
       ctx.shadowBlur = 0;
 
-      // 4. Smaller Alien UFO Enemies (Group Sorties)
+      // 6. Flying Air UFO Enemies
       enemies.forEach(enemy => {
         ctx.save();
         ctx.translate(enemy.x, enemy.y);
@@ -714,19 +1119,16 @@
         ctx.shadowColor = enemy.type === 'ufo_fast' ? '#ef4444' : '#a855f7';
         ctx.shadowBlur = 10;
 
-        // UFO Saucer Base
         ctx.fillStyle = '#475569';
         ctx.beginPath();
         ctx.ellipse(0, 3, enemy.radius, enemy.radius * 0.45, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Glowing Glass Dome
         ctx.fillStyle = enemy.type === 'ufo_fast' ? '#f87171' : '#c084fc';
         ctx.beginPath();
         ctx.arc(0, -1, enemy.radius * 0.55, Math.PI, 0);
         ctx.fill();
 
-        // Saucer Lights
         ctx.fillStyle = '#fef08a';
         for (let l = -2; l <= 2; l++) {
           ctx.beginPath();
@@ -737,7 +1139,17 @@
         ctx.restore();
       });
 
-      // 5. Particles
+      // 7. Overhead Clouds
+      clouds.forEach(cloud => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
+        ctx.beginPath();
+        ctx.arc(cloud.x, cloud.y, cloud.radius, 0, Math.PI * 2);
+        ctx.arc(cloud.x + cloud.radius * 0.5, cloud.y - cloud.radius * 0.2, cloud.radius * 0.7, 0, Math.PI * 2);
+        ctx.arc(cloud.x - cloud.radius * 0.5, cloud.y - cloud.radius * 0.2, cloud.radius * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 8. Particles
       particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = p.alpha;
@@ -748,16 +1160,30 @@
         ctx.restore();
       });
 
-      // 6. Player Airplane
-      if (state === 'PLAYING' || state === 'PAUSED' || state === 'START') {
+      // Helper function to render a plane
+      function drawAirplane(px, py, tilt, isSecondary = false) {
         ctx.save();
-        ctx.translate(player.x, player.y);
-        ctx.rotate(player.tilt);
+        ctx.translate(px, py);
+        ctx.rotate(tilt);
+        if (isSecondary) ctx.scale(0.85, 0.85);
+
+        // Invincibility Shield Visual Effect
+        if (player.invincibleTimer > 0) {
+          ctx.globalAlpha = Math.sin(frameCount * 0.3) * 0.3 + 0.65;
+          
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(0, 0, 32, 0, Math.PI * 2);
+          ctx.stroke();
+        }
 
         // Thruster Flame
         const flameLength = Math.random() * 12 + 14;
         const gradient = ctx.createLinearGradient(0, 18, 0, 18 + flameLength);
-        gradient.addColorStop(0, '#f97316');
+        gradient.addColorStop(0, isSecondary ? '#facc15' : '#f97316');
         gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -768,7 +1194,7 @@
         ctx.fill();
 
         // Main Wings
-        ctx.fillStyle = '#ef4444';
+        ctx.fillStyle = isSecondary ? '#eab308' : '#ef4444';
         ctx.beginPath();
         ctx.moveTo(0, -20);
         ctx.lineTo(24, 10);
@@ -779,14 +1205,14 @@
         ctx.closePath();
         ctx.fill();
 
-        // Airplane Fuselage
+        // Fuselage
         ctx.fillStyle = '#f8fafc';
         ctx.beginPath();
         ctx.ellipse(0, 0, 6.5, 22, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Tail Wings
-        ctx.fillStyle = '#dc2626';
+        ctx.fillStyle = isSecondary ? '#ca8a04' : '#dc2626';
         ctx.beginPath();
         ctx.moveTo(0, 12);
         ctx.lineTo(10, 20);
@@ -802,9 +1228,18 @@
 
         ctx.restore();
       }
+
+      // 9. Draw Player Main Airplane & Secondary Escort Wingman Plane
+      if (state === 'PLAYING' || state === 'PAUSED' || state === 'START') {
+        drawAirplane(player.x, player.y, player.tilt, false);
+
+        if (player.hasWingman) {
+          drawAirplane(player.x - 38, player.y + 12, player.tilt, true);
+        }
+      }
     }
 
-    // --- Main Game Loop ---
+    // --- Main Loop ---
     function loop() {
       update();
       draw();
@@ -812,15 +1247,24 @@
     }
     requestAnimationFrame(loop);
 
-    // --- Game Mode Transitions ---
+    // --- Mode Transitions ---
     function startGame() {
       initAudio();
       state = 'PLAYING';
       score = 0;
       lives = 3;
+      ufoDestroyedCount = 0;
       bullets = [];
+      enemyBullets = [];
       enemies = [];
+      groundTargets = [];
+      powerups = [];
       particles = [];
+      player.weaponMode = 'SINGLE';
+      player.hasWingman = false;
+      player.wingmanHp = 0;
+      player.invincibleTimer = 0;
+
       document.getElementById('scoreVal').innerText = '0';
       updateLivesUI();
       document.getElementById('startOverlay').classList.add('hidden');
