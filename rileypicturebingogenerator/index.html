@@ -1325,12 +1325,12 @@
       }
     }
 
-    // Helper to build valid Canvas 2D font specifier
+    // Helper to build valid Canvas 2D font specifier (supports single-weight display fonts & bold fonts)
     function getCanvasFont(sizePx) {
-      const font = state.fontFamily;
+      const font = state.fontFamily || 'Fredoka';
       const isGeneric = ['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui'].includes(font.toLowerCase());
       const fontSpec = isGeneric ? font : `"${font}"`;
-      return `bold ${sizePx}px ${fontSpec}, 'Fredoka', 'Nunito', sans-serif`;
+      return `${sizePx}px ${fontSpec}, 'Fredoka', 'Nunito', sans-serif`;
     }
 
     // Helper: Dynamic font sizing to scale text up to maxFontSize or down to minFontSize to fit maxW
@@ -1635,9 +1635,9 @@
       if (document.fonts) {
         try {
           await Promise.all([
-            document.fonts.load(`700 40px '${selectedFont}'`),
-            document.fonts.load(`900 200px '${selectedFont}'`),
-            document.fonts.load(`bold 64px '${selectedFont}'`)
+            document.fonts.load(`40px "${selectedFont}"`).catch(() => {}),
+            document.fonts.load(`700 40px "${selectedFont}"`).catch(() => {}),
+            document.fonts.load(`900 200px "${selectedFont}"`).catch(() => {})
           ]);
         } catch (err) {
           console.warn("Font loading:", err);
