@@ -1,0 +1,192 @@
+import * as THREE from 'three';
+import { generateTextureAtlas, GENERATORS, createThreeCanvasTexture } from '../assets/textureGen.js';
+import { BLOCKS } from './chunk.js';
+
+/**
+ * Texture Manager for Minecraft 1.5 WebGL Engine
+ * 
+ * Manages the procedural texture atlas and exports materials and UV lookups
+ * for voxel chunk meshing.
+ */
+
+let cachedAtlas = null;
+let cachedMaterial = null;
+
+/**
+ * Block ID to atlas texture name mapping.
+ * Specifies textures for specific faces ('top', 'bottom', 'side', or direction names 'north', 'south', 'east', 'west').
+ */
+export const BLOCK_TEXTURE_MAP = Object.freeze({
+    [BLOCKS.STONE]: { all: 'stone' },
+    [BLOCKS.GRASS]: { top: 'grass_top', bottom: 'dirt', side: 'grass_side' },
+    [BLOCKS.DIRT]: { all: 'dirt' },
+    [BLOCKS.COBBLESTONE]: { all: 'cobblestone' },
+    [BLOCKS.OAK_PLANKS]: { all: 'planks' },
+    [BLOCKS.OAK_SAPLING]: { all: 'leaves' },
+    [BLOCKS.BEDROCK]: { all: 'bedrock' },
+    [BLOCKS.WATER_FLOWING]: { all: 'water' },
+    [BLOCKS.WATER]: { all: 'water' },
+    [BLOCKS.LAVA_FLOWING]: { all: 'lava' },
+    [BLOCKS.LAVA]: { all: 'lava' },
+    [BLOCKS.SAND]: { all: 'sand' },
+    [BLOCKS.GRAVEL]: { all: 'gravel' },
+    [BLOCKS.GOLD_ORE]: { all: 'gold_ore' },
+    [BLOCKS.IRON_ORE]: { all: 'iron_ore' },
+    [BLOCKS.COAL_ORE]: { all: 'coal_ore' },
+    [BLOCKS.OAK_LOG]: { top: 'log_top', bottom: 'log_top', side: 'log_side' },
+    [BLOCKS.OAK_LEAVES]: { all: 'leaves' },
+    [BLOCKS.SPONGE]: { all: 'sponge' },
+    [BLOCKS.GLASS]: { all: 'glass' },
+    [BLOCKS.LAPIS_ORE]: { all: 'lapis_ore' },
+    [BLOCKS.LAPIS_BLOCK]: { all: 'lapis_block' },
+    [BLOCKS.SANDSTONE]: { top: 'sandstone_top', bottom: 'sandstone_bottom', side: 'sandstone_side' },
+    [BLOCKS.TALL_GRASS]: { all: 'grass_top' },
+    [BLOCKS.DEAD_BUSH]: { all: 'planks' },
+    [BLOCKS.WOOL]: { all: 'wool' },
+    [BLOCKS.DANDELION]: { all: 'gold_ore' },
+    [BLOCKS.POPPY]: { all: 'redstone_ore' },
+    [BLOCKS.BROWN_MUSHROOM]: { all: 'planks' },
+    [BLOCKS.RED_MUSHROOM]: { all: 'redstone_ore' },
+    [BLOCKS.GOLD_BLOCK]: { all: 'gold_block' },
+    [BLOCKS.IRON_BLOCK]: { all: 'iron_block' },
+    [BLOCKS.DOUBLE_STONE_SLAB]: { all: 'stone' },
+    [BLOCKS.STONE_SLAB]: { all: 'stone' },
+    [BLOCKS.BRICKS]: { all: 'brick' },
+    [BLOCKS.TNT]: { top: 'tnt_top', bottom: 'tnt_bottom', side: 'tnt_side' },
+    [BLOCKS.BOOKSHELF]: { top: 'planks', bottom: 'planks', side: 'bookshelf' },
+    [BLOCKS.MOSSY_COBBLESTONE]: { all: 'mossy_cobblestone' },
+    [BLOCKS.OBSIDIAN]: { all: 'obsidian' },
+    [BLOCKS.DIAMOND_ORE]: { all: 'diamond_ore' },
+    [BLOCKS.DIAMOND_BLOCK]: { all: 'diamond_block' },
+    [BLOCKS.CRAFTING_TABLE]: { top: 'crafting_table_top', bottom: 'planks', side: 'crafting_table_side' },
+    [BLOCKS.FARMLAND]: { top: 'dirt', bottom: 'dirt', side: 'dirt' },
+    [BLOCKS.FURNACE]: { top: 'furnace_top', bottom: 'furnace_top', north: 'furnace_front', side: 'furnace_side' },
+    [BLOCKS.LADDER]: { all: 'planks' },
+    [BLOCKS.REDSTONE_ORE]: { all: 'redstone_ore' },
+    [BLOCKS.SNOW_LAYER]: { all: 'snow' },
+    [BLOCKS.ICE]: { all: 'ice' },
+    [BLOCKS.SNOW_BLOCK]: { all: 'snow' },
+    [BLOCKS.CACTUS]: { top: 'cactus_top', bottom: 'cactus_bottom', side: 'cactus_side' },
+    [BLOCKS.CLAY]: { all: 'clay' },
+    [BLOCKS.SUGAR_CANE]: { all: 'leaves' },
+    [BLOCKS.FENCE]: { all: 'planks' },
+    [BLOCKS.PUMPKIN]: { top: 'pumpkin_top', bottom: 'pumpkin_top', south: 'pumpkin_face', side: 'pumpkin_side' },
+    [BLOCKS.NETHERRACK]: { all: 'netherrack' },
+    [BLOCKS.SOUL_SAND]: { all: 'soul_sand' },
+    [BLOCKS.GLOWSTONE]: { all: 'glowstone' },
+    [BLOCKS.REDSTONE_BLOCK]: { all: 'redstone_block' },
+    [BLOCKS.QUARTZ_ORE]: { all: 'quartz_ore' },
+    [BLOCKS.QUARTZ_BLOCK]: { top: 'quartz_block_top', bottom: 'quartz_block_bottom', side: 'quartz_block_side' },
+    [BLOCKS.QUARTZ_PILLAR]: { top: 'quartz_pillar_top', bottom: 'quartz_pillar_top', side: 'quartz_pillar_side' },
+    [BLOCKS.QUARTZ_CHISELED]: { top: 'quartz_chiseled_top', bottom: 'quartz_chiseled_top', side: 'quartz_chiseled_side' }
+});
+
+/**
+ * Returns the texture name for a given block ID and face type.
+ * @param {number} blockId
+ * @param {'top'|'bottom'|'side'} [faceType='side']
+ * @param {string} [faceName='']
+ * @returns {string} Texture key name in atlas
+ */
+export function getBlockFaceTexture(blockId, faceType = 'side', faceName = '') {
+    const entry = BLOCK_TEXTURE_MAP[blockId];
+    if (!entry) {
+        return 'stone';
+    }
+
+    if (faceName && entry[faceName]) {
+        return entry[faceName];
+    }
+    if (faceType && entry[faceType]) {
+        return entry[faceType];
+    }
+    if (entry.all) {
+        return entry.all;
+    }
+    return entry.side || 'stone';
+}
+
+/**
+ * Get or create the singleton procedural texture atlas.
+ * @param {string[]} [blockList]
+ * @param {number} [seed]
+ * @returns {{canvas: HTMLCanvasElement, texture: THREE.CanvasTexture, uvs: Object, atlasWidth: number, atlasHeight: number, dataURI: string}}
+ */
+export function getTextureAtlas(blockList, seed) {
+    if (!cachedAtlas || blockList || seed !== undefined) {
+        const atlas = generateTextureAtlas(blockList || Object.keys(GENERATORS), seed);
+        if (!blockList && seed === undefined) {
+            cachedAtlas = atlas;
+        }
+        return atlas;
+    }
+    return cachedAtlas;
+}
+
+/**
+ * Get UV coordinates for a block ID and face from the texture atlas.
+ * @param {number} blockId
+ * @param {'top'|'bottom'|'side'} [faceType='side']
+ * @param {string} [faceName='']
+ * @param {Object} [atlas=null]
+ * @returns {{uMin: number, vMin: number, uMax: number, vMax: number}}
+ */
+export function getBlockFaceUV(blockId, faceType = 'side', faceName = '', atlas = null) {
+    const activeAtlas = atlas || getTextureAtlas();
+    const texName = getBlockFaceTexture(blockId, faceType, faceName);
+    const uv = activeAtlas.uvs[texName] || activeAtlas.uvs['stone'];
+
+    if (!uv) {
+        return { uMin: 0, vMin: 0, uMax: 1, vMax: 1 };
+    }
+    return uv;
+}
+
+/**
+ * Get the Three.js CanvasTexture of the texture atlas.
+ * @param {number} [seed]
+ * @returns {THREE.CanvasTexture}
+ */
+export function getAtlasTexture(seed) {
+    return getTextureAtlas(undefined, seed).texture;
+}
+
+/**
+ * Builds a THREE.MeshStandardMaterial using the canvas texture atlas.
+ * @param {Object} [options={}]
+ * @returns {THREE.MeshStandardMaterial}
+ */
+export function getAtlasMaterial(options = {}) {
+    const atlas = getTextureAtlas();
+    
+    const materialOptions = {
+        map: atlas.texture,
+        roughness: 0.8,
+        metalness: 0.1,
+        alphaTest: 0.1,
+        transparent: true,
+        side: THREE.FrontSide,
+        vertexColors: true,
+        ...options
+    };
+
+    return new THREE.MeshStandardMaterial(materialOptions);
+}
+
+/**
+ * Reset / clear cached atlas and materials (useful for tests or seed reload).
+ */
+export function resetTextureManager() {
+    cachedAtlas = null;
+    cachedMaterial = null;
+}
+
+export default {
+    BLOCK_TEXTURE_MAP,
+    getBlockFaceTexture,
+    getTextureAtlas,
+    getBlockFaceUV,
+    getAtlasTexture,
+    getAtlasMaterial,
+    resetTextureManager
+};
