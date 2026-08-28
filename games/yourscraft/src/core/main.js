@@ -200,6 +200,12 @@ const furnaceUI = new FurnaceUI({ inventory, hud, audio, particles, world, playe
 
 // Unlock pointer when inventory opens
 document.addEventListener('keydown', (e) => {
+    // Release pointer lock on Mac OS screenshot shortcuts (Cmd+Shift+3/4/5)
+    if (e.metaKey && e.shiftKey && (e.code === 'Digit3' || e.code === 'Digit4' || e.code === 'Digit5')) {
+        controls.unlock();
+        return;
+    }
+
     if (e.code === 'KeyE' || e.code === 'Escape') {
         if (furnaceUI && furnaceUI.isOpen()) {
             furnaceUI.close();

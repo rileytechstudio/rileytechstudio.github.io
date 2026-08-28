@@ -7,7 +7,7 @@ export { getAtlasMaterial, getTextureAtlas, getBlockFaceUV, getBlockFaceTexture,
 /**
  * Standard Minecraft 1.5 block color mappings (RGB 0.0 - 1.0) retained for fallback/legacy reference.
  */
-export const SPRITE_BLOCKS = new Set([6, 31, 32, 37, 38, 39, 40, 51, 59, 83]); // Plants, fire, etc.
+export const SPRITE_BLOCKS = new Set([6, 31, 32, 37, 38, 39, 40, 50, 51, 59, 83]); // Plants, torches, fire, etc.
 export const BLOCK_COLORS = {
     // 0: Air (not rendered)
     1: { top: [0.50, 0.50, 0.50], side: [0.50, 0.50, 0.50], bottom: [0.50, 0.50, 0.50] }, // Stone
@@ -373,44 +373,7 @@ export function generateChunkGeometry(chunk, options = {}) {
                     continue;
                 }
                 
-                // Custom Meshing for Torches (Tiny Cube)
-                if (blockId === 50) { // TORCH
-                    torches.push({ x: (chunk ? chunk.x * sizeX : 0) + x, y, z: (chunk ? chunk.z * sizeZ : 0) + z });
-                    const uvsT = getBlockFaceUV(blockId, 'top', atlas);
-                    const uvsS = getBlockFaceUV(blockId, 'side', atlas);
-                    
-                    const lightVal = getLight(x, y, z);
-                    const skyLight = (lightVal >> 4) & 0x0F;
-                    const blockLight = lightVal & 0x0F;
-                    const shade = [blockLight / 15.0, skyLight / 15.0, 1.0];
-                    
-                    // Tiny Box bounds
-                    const minX = x + 0.4375, maxX = x + 0.5625;
-                    const minY = y, maxY = y + 0.625;
-                    const minZ = z + 0.4375, maxZ = z + 0.5625;
-                    
-                    // Simple manual box (no AO) for torch
-                    for (let f = 0; f < FACES.length; f++) {
-                        const face = FACES[f];
-                        const uvI = face.dir[1] !== 0 ? uvsT : uvsS;
-                        
-                        // Map 0,1 to tiny box bounds
-                        for(let i=0; i<4; i++) {
-                            const c = face.corners[i];
-                            positions.push(
-                                c[0] === 0 ? minX : maxX,
-                                c[1] === 0 ? minY : maxY,
-                                c[2] === 0 ? minZ : maxZ
-                            );
-                            normals.push(...face.dir);
-                            colors.push(...shade);
-                        }
-                        uvs.push(uvI.uMin, uvI.vMin, uvI.uMax, uvI.vMin, uvI.uMax, uvI.vMax, uvI.uMin, uvI.vMax);
-                        indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
-                        vertexCount += 4;
-                    }
-                    continue;
-                }
+
 
 
                 for (let f = 0; f < FACES.length; f++) {
