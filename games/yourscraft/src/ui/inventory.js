@@ -1030,7 +1030,7 @@ export class InventoryManager {
 
     handleSlotMouseUp(e, slotIndex) {
         slotIndex = Number(slotIndex);
-        if (this.dragState.startSlot && this.dragState.startSlot.type !== "inventory" && this.heldItem) {
+        if (e.button === 0 && this.dragState.startSlot && this.dragState.startSlot.type !== "inventory" && this.heldItem) {
             // Drag-and-drop from crafting/armor/output into inventory slot
             const currentSlot = this.slots[slotIndex];
             if (!currentSlot) {
@@ -1129,7 +1129,7 @@ export class InventoryManager {
     }
 
     handleCraftGridMouseUp(e, craftIndex, dimension) {
-        if (this.dragState.startSlot && this.dragState.startSlot.type !== "crafting" && this.heldItem) {
+        if (e.button === 0 && this.dragState.startSlot && this.dragState.startSlot.type !== "crafting" && this.heldItem) {
             const grid = dimension === 3 ? this.crafting3x3 : this.crafting2x2;
             const currentSlot = grid[craftIndex];
             if (!currentSlot) {
