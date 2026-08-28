@@ -210,10 +210,8 @@ if (audio && typeof audio.setMasterVolume === 'function') {
     audio.setMasterVolume(masterVolume);
 }
 const particles = new ParticleSystem(scene);
-const weather = new WeatherSystem(scene, camera, world, { dayNightCycle, audio });
-
-
 const world = new World({ seed: 12345, autoMesh: false, scene, dayNightCycle });
+const weather = new WeatherSystem(scene, camera, world, { dayNightCycle, audio });
 const lightingEngine = new LightingEngine(world);
 
 world.on('chunkLoad', (chunk) => {
