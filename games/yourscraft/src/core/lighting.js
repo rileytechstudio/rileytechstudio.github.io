@@ -196,6 +196,13 @@ export class LightingEngine {
                     else this.setBlockLight(n.x, n.y, n.z, 0);
                     
                     this.removeQueue.push({ x: n.x, y: n.y, z: n.z, val: neighborLight, isSky });
+                    
+                    const chunkInfo = this.world.worldToLocalCoords(n.x, n.y, n.z);
+                    const chunk = this.world.getChunk(chunkInfo.cx, chunkInfo.cz);
+                    if (chunk) {
+                        chunk.isDirty = true;
+                        chunk.lightDirty = true;
+                    }
                 } else if (neighborLight >= val) {
                     this.addQueue.push({ x: n.x, y: n.y, z: n.z, isSky });
                 }
