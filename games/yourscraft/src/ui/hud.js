@@ -14,6 +14,7 @@
  */
 
 import { BLOCKS } from '../core/chunk.js';
+import { renderBlockIcon, is3DBlock } from '../assets/iconRenderer.js';
 
 // ==========================================
 // 1. PROCEDURAL SVG / PIXEL ART ASSETS
@@ -132,13 +133,24 @@ const ICON_CACHE = new Map();
 
 /**
  * Generate a 32x32 crisp pixel-art preview canvas / data URI for any block or item.
+ * Uses 3D isometric WebGL rendering for blocks and 2D pixel-art sprites for items.
  * @param {number|string} blockOrItemId
  * @returns {string} Data URI
  */
 export function getItemIconDataUri(blockOrItemId) {
     const id = Number(blockOrItemId);
+    if (!id || id <= 0) return '';
     if (ICON_CACHE.has(id)) {
         return ICON_CACHE.get(id);
+    }
+
+    // 1. If 3D block, render with Three.js offscreen isometric snapshot renderer
+    if (is3DBlock(id)) {
+        const uri = renderBlockIcon(id);
+        if (uri) {
+            ICON_CACHE.set(id, uri);
+            return uri;
+        }
     }
 
     const canvas = document.createElement('canvas');

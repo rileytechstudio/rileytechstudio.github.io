@@ -578,6 +578,38 @@ export class DayNightCycle {
      * Return current sun angle in radians [0, 2*PI).
      * @returns {number}
      */
+    /**
+     * Get current computed sky color.
+     * @returns {THREE.Color}
+     */
+    getCurrentSkyColor() {
+        return this._currentSkyColor;
+    }
+
+    /**
+     * Get current computed fog color.
+     * @returns {THREE.Color}
+     */
+    getCurrentFogColor() {
+        return this._currentFogColor;
+    }
+
+    /**
+     * Get current computed sun color.
+     * @returns {THREE.Color}
+     */
+    getCurrentSunColor() {
+        return this._currentSunColor;
+    }
+
+    /**
+     * Get current computed ambient light color.
+     * @returns {THREE.Color}
+     */
+    getCurrentAmbientColor() {
+        return this._currentAmbientColor;
+    }
+
     getSunAngle() {
         return (this.time / TICKS_PER_DAY) * Math.PI * 2;
     }

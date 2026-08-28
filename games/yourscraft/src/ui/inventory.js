@@ -19,6 +19,7 @@
 
 import { BLOCKS } from "../core/chunk.js";
 import { getItemIconDataUri } from "./hud.js";
+import { renderBlockIcon, is3DBlock } from "../assets/iconRenderer.js";
 import { craft, RECIPES, ITEM_IDS, CRAFTING_RECIPES } from "../core/crafting.js";
 
 // ==========================================
@@ -145,6 +146,7 @@ export function createItemStack(id, count = 1, metadata = {}) {
     if (!id || count <= 0) return null;
     const numId = Number(id);
     const def = getItemDef(numId);
+    const iconUri = is3DBlock(numId) ? renderBlockIcon(numId) : getItemIconDataUri(numId);
     return {
         ...metadata,
         id: numId,
@@ -153,7 +155,7 @@ export function createItemStack(id, count = 1, metadata = {}) {
         maxStack: def.maxStack,
         durability: metadata.durability !== undefined ? metadata.durability : def.durability,
         maxDurability: def.durability || 0,
-        icon: getItemIconDataUri(numId)
+        icon: iconUri
     };
 }
 

@@ -26,6 +26,7 @@ import { ParticleSystem } from './particles.js';
 import { Arrow } from '../entity/arrow.js';
 import { createMob } from '../entity/mob.js';
 import { createMobRenderer } from '../entity/mobRenderer.js';
+import { WeatherSystem, WEATHER_TYPES, PRECIPITATION_TYPES } from '../environment/weather.js';
 console.log("Minecraft 1.5 WebGL Engine Initializing Phase 2...");
 
 // Force generate atlas once
@@ -38,8 +39,22 @@ scene.fog = new THREE.Fog('#99b3ff', 20, 6 * 16);
  // Sky blue
 scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
 
+// 1.5 Options & Settings Init
+let savedOptions = {};
+try {
+    const raw = localStorage.getItem('minecraft_options');
+    if (raw) savedOptions = JSON.parse(raw);
+} catch (e) {
+    console.warn("Failed to load options from storage:", e);
+}
+
+let baseFov = savedOptions.fov !== undefined ? Number(savedOptions.fov) : 70;
+let renderDistance = savedOptions.renderDistance !== undefined ? Number(savedOptions.renderDistance) : 6;
+let mouseSensitivity = savedOptions.sensitivity !== undefined ? Number(savedOptions.sensitivity) : 1.0;
+let masterVolume = savedOptions.volume !== undefined ? Number(savedOptions.volume) : 1.0;
+
 // 2. Camera Setup
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(baseFov, window.innerWidth / window.innerHeight, 0.1, 1000);
 
 // 3. Renderer Setup
 const renderer = new THREE.WebGLRenderer({ antialias: false }); // No antialias for pixel art
@@ -51,7 +66,10 @@ document.body.appendChild(renderer.domElement);
 
 // 4. Pointer Lock Controls
 const controls = new PointerLockControls(camera, renderer.domElement);
+controls.pointerSpeed = mouseSensitivity;
 const uiLayer = document.getElementById('ui-layer');
+
+let pauseMenu;
 
 const mainMenu = new MainMenu(
     () => { controls.lock(); }, // onStartGame
@@ -85,18 +103,64 @@ const mainMenu = new MainMenu(
         }
         controls.lock(); 
     },
-    () => {}, // onOptions
+    () => {
+        // onOptions from Main Menu
+        if (pauseMenu) {
+            mainMenu.element.style.display = 'none';
+            pauseMenu.showOptionsMenu();
+            pauseMenu.element.style.display = 'flex';
+        }
+    },
     () => {}  // onQuit
 );
 mainMenu.element.style.pointerEvents = 'auto';
 uiLayer.appendChild(mainMenu.element);
 
-const pauseMenu = new PauseMenu(
+pauseMenu = new PauseMenu(
     () => { controls.lock(); },
     () => {},
     () => {},
-    () => {},
-    () => { location.reload(); }
+    null,
+    () => { location.reload(); },
+    {
+        initialFov: baseFov,
+        initialRenderDistance: renderDistance,
+        initialSensitivity: mouseSensitivity,
+        initialVolume: masterVolume,
+        onFovChange: (newFov) => {
+            baseFov = newFov;
+            if (!isChargingBow) {
+                camera.fov = baseFov;
+                camera.updateProjectionMatrix();
+            }
+        },
+        onRenderDistanceChange: (newDist) => {
+            renderDistance = newDist;
+            if (world) world.loadRadius = renderDistance;
+            if (scene.fog && scene.fog.far !== undefined) {
+                scene.fog.far = renderDistance * 16;
+                scene.fog.near = Math.max(10, (renderDistance - 2) * 16);
+            }
+        },
+        onSensitivityChange: (newSens) => {
+            mouseSensitivity = newSens;
+            controls.pointerSpeed = newSens;
+        },
+        onVolumeChange: (newVol) => {
+            masterVolume = newVol;
+            if (audio && typeof audio.setMasterVolume === 'function') {
+                audio.setMasterVolume(masterVolume);
+            }
+        },
+        onDone: () => {
+            if (isFirstLock) {
+                pauseMenu.element.style.display = 'none';
+                mainMenu.element.style.display = 'flex';
+            } else {
+                pauseMenu.showMainMenu();
+            }
+        }
+    }
 );
 pauseMenu.element.style.display = 'none';
 pauseMenu.element.style.pointerEvents = 'auto';
@@ -115,6 +179,7 @@ controls.addEventListener('lock', () => {
 controls.addEventListener('unlock', () => {
     // Only show pause menu if we are already playing and no other UI is open
     if (!isFirstLock && !inventory.isOpen() && !(anvilUI && anvilUI.isOpen()) && !(enchantingUI && enchantingUI.isOpen()) && !(furnaceUI && furnaceUI.isOpen())) {
+        pauseMenu.showMainMenu();
         pauseMenu.element.style.display = 'flex';
     }
     document.getElementById('minecraft-hud').style.display = 'none';
@@ -141,7 +206,11 @@ scene.add(fillLight);
 // 6. Subsystems Init
 const dayNightCycle = new DayNightCycle(scene, ambientLight, sunLight, fillLight);
 const audio = new SoundManager(camera);
+if (audio && typeof audio.setMasterVolume === 'function') {
+    audio.setMasterVolume(masterVolume);
+}
 const particles = new ParticleSystem(scene);
+const weather = new WeatherSystem(scene, camera, world, { dayNightCycle, audio });
 
 
 const world = new World({ seed: 12345, autoMesh: false, scene, dayNightCycle });
@@ -194,6 +263,18 @@ window.player = player;
 document.getElementById('minecraft-hud').style.display = 'none';
 const inventory = new InventoryManager({ hud });
 window.inventory = inventory;
+window.weather = weather;
+window.dayNightCycle = dayNightCycle;
+window.setWeather = (type, duration) => weather.setWeather(type, duration);
+window.toggleWeather = () => weather.toggleWeather();
+
+// KeyP weather toggle shortcut
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyP' && !inventory.isOpen() && !(anvilUI && anvilUI.isOpen()) && !(enchantingUI && enchantingUI.isOpen()) && !(furnaceUI && furnaceUI.isOpen())) {
+        const next = weather.toggleWeather();
+        console.log('[Weather] Toggled to: ' + next);
+    }
+});
 const anvilUI = new AnvilUI({ inventory, hud, audio, particles });
 const enchantingUI = new EnchantingUI({ inventory, hud, audio, particles, world });
 const furnaceUI = new FurnaceUI({ inventory, hud, audio, particles, world, player });
@@ -235,11 +316,24 @@ document.addEventListener('keydown', (e) => {
 });
 
 
-let activeBlock = BLOCKS.COBBLESTONE; // Default place block
-hud.onSelectSlot = (slotIndex) => {
-    const item = inventory.getSlot(slotIndex);
+let activeBlock = BLOCKS.AIR;
+function syncActiveItem() {
+    const item = inventory.getSlot(hud.selectedSlot);
     activeBlock = item ? item.id : BLOCKS.AIR;
+    if (window.player) {
+        window.player.heldItem = item;
+    }
+}
+
+hud.onSelectSlot = (slotIndex) => {
+    syncActiveItem();
 };
+
+inventory.onInventoryChange = () => {
+    syncActiveItem();
+};
+
+syncActiveItem();
 
 // Handle chunk mesh rendering
 world.on('chunkLoad', (chunk) => {
@@ -450,8 +544,44 @@ document.addEventListener('mousedown', (event) => {
 
         isBreaking = true;
         breakTimer = 0;
-    } else if (event.button === 2) { // Right click: Bow charge OR Eat food OR Place block
+    } else if (event.button === 2) { // Right click: Interactive blocks OR Bow charge OR Eat food OR Place block
         const heldItem = inventory.getSlot(hud.selectedSlot);
+
+        // Raycast to check for targeted block first
+        raycaster.setFromCamera(center, camera);
+        const intersects = raycaster.intersectObjects(getMeshes(), true);
+
+        if (intersects.length > 0) {
+            const hit = intersects[0];
+            const hitX = Math.floor(hit.point.x - hit.face.normal.x * 0.01);
+            const hitY = Math.floor(hit.point.y - hit.face.normal.y * 0.01);
+            const hitZ = Math.floor(hit.point.z - hit.face.normal.z * 0.01);
+            const clickedBlock = world.getBlock(hitX, hitY, hitZ);
+
+            // If player is not sneaking, interactive blocks open their UIs
+            if (!moveState.down) {
+                if (clickedBlock === BLOCKS.CRAFTING_TABLE) {
+                    inventory.openCraftingTable();
+                    controls.unlock();
+                    return;
+                }
+                if (clickedBlock === BLOCKS.FURNACE) {
+                    furnaceUI.open(hitX, hitY, hitZ);
+                    controls.unlock();
+                    return;
+                }
+                if (clickedBlock === BLOCKS.ANVIL && anvilUI) {
+                    anvilUI.open();
+                    controls.unlock();
+                    return;
+                }
+                if (clickedBlock === BLOCKS.ENCHANTING_TABLE && enchantingUI) {
+                    enchantingUI.open();
+                    controls.unlock();
+                    return;
+                }
+            }
+        }
 
         // 1. Check if holding Bow (ITEM_IDS.BOW = 261) -> Start charging
         if (heldItem && (heldItem.id === ITEM_IDS.BOW || heldItem.id === 261)) {
@@ -472,9 +602,9 @@ document.addEventListener('mousedown', (event) => {
             }
         }
 
-        // 3. Otherwise place block if holding placeable block or activeBlock
-        const blockIdToPlace = (heldItem && heldItem.id > 0 && heldItem.id <= 255) ? heldItem.id : activeBlock;
-        if (blockIdToPlace > 0 && blockIdToPlace <= 255) {
+        // 3. Otherwise place block if holding placeable block
+        if (heldItem && heldItem.id > 0 && heldItem.id <= 255 && heldItem.count > 0) {
+            const blockIdToPlace = heldItem.id;
             raycaster.setFromCamera(center, camera);
             const intersects = raycaster.intersectObjects(getMeshes(), true);
             if (intersects.length > 0) {
@@ -503,9 +633,8 @@ document.addEventListener('mousedown', (event) => {
                 const targetBlock = world.getBlock(px, py, pz);
                 if ((targetBlock === BLOCKS.AIR || targetBlock === 78 || targetBlock === 9 || targetBlock === 8 || targetBlock === 31) && !intersectsPlayer) {
                     world.setBlock(px, py, pz, blockIdToPlace, true);
-                    if (heldItem) {
-                        inventory.consumeSlot(hud.selectedSlot, 1);
-                    }
+                    inventory.consumeSlot(hud.selectedSlot, 1);
+                    syncActiveItem();
                     audio.play('pop', new THREE.Vector3(px, py, pz));
                 }
             }
@@ -522,7 +651,7 @@ document.addEventListener('mouseup', (event) => {
         // Bow Release & Arrow Spawn
         if (isChargingBow) {
             isChargingBow = false;
-            camera.fov = 65;
+            camera.fov = baseFov;
             camera.updateProjectionMatrix();
 
             const chargeTime = (performance.now() - bowChargeStartTime) / 1000;
@@ -708,8 +837,6 @@ function animate() {
             scene.fog.density = 0.1;
         } else {
             if (waterOverlay) waterOverlay.style.display = 'none';
-            scene.fog.color.setHex(0x87CEEB);
-            scene.fog.density = 0.015;
         }
 
         handleMining(delta);
@@ -718,7 +845,7 @@ function animate() {
         if (isChargingBow) {
             const chargeTime = (time - bowChargeStartTime) / 1000;
             const charge = Math.min(1.0, chargeTime / 1.0);
-            camera.fov = 65 - charge * 6.0;
+            camera.fov = baseFov - charge * 6.0;
             camera.updateProjectionMatrix();
         }
 
@@ -730,7 +857,7 @@ function animate() {
     }
     
     // Process chunk streaming and terrain generation
-    world.update(camera.position.x, camera.position.z, 6);
+    world.update(camera.position.x, camera.position.z, renderDistance);
     
     // Process mob spawning and entity updates
     if (typeof world.spawnMobs === 'function') {
@@ -756,7 +883,8 @@ function animate() {
     }
     
     // Process environment
-    dayNightCycle.update(delta);
+    dayNightCycle.update(delta, camera.position);
+    weather.update(delta, player, camera);
     particles.update(delta);
     if (furnaceUI && furnaceUI.update) {
         furnaceUI.update(delta);
@@ -780,7 +908,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-window.MinecraftEngine = { scene, camera, renderer, world, player, redstone, hud, BLOCKS };
+window.MinecraftEngine = { scene, camera, renderer, world, player, redstone, hud, BLOCKS, weather, dayNightCycle };
 
 document.addEventListener('mouseup', (e) => {
     if (e.button === 0) {
