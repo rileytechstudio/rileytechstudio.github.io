@@ -197,20 +197,23 @@ export function getAtlasMaterial(options = {}) {
 #ifdef USE_COLOR
     float blockLight = vColor.r;
     float skyLight = vColor.g * sunLevel;
-    float maxLight = max(blockLight, skyLight);
     
-    // Smooth nonlinear curve
-    float lightCurve = max(0.04, pow(maxLight, 1.4));
+    // Smoother brightness curve
+    float bBright = pow(blockLight, 1.2);
+    float sBright = pow(skyLight, 1.2);
     
-    // vColor.b is Ambient Occlusion (0.0 to 1.0)
+    // Warm overdriven tint for torches, neutral for sky
+    vec3 bColor = bBright * vec3(1.2, 1.0, 0.75);
+    vec3 sColor = sBright * vec3(1.0, 1.0, 1.0);
+    
+    // Combine light
+    vec3 finalLight = max(bColor, sColor);
+    finalLight = clamp(finalLight, 0.05, 1.0); // Min ambient light 0.05
+    
+    // Ambient Occlusion
     float ao = vColor.b;
     
-    diffuseColor.rgb *= lightCurve * ao;
-    
-    // Torch tint
-    if (blockLight > skyLight + 0.1) {
-        diffuseColor.rgb *= vec3(1.0, 0.9, 0.75);
-    }
+    diffuseColor.rgb *= finalLight * ao;
 #endif
             `
         );
