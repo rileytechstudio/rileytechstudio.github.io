@@ -146,14 +146,14 @@ export function createItemStack(id, count = 1, metadata = {}) {
     const numId = Number(id);
     const def = getItemDef(numId);
     return {
+        ...metadata,
         id: numId,
         name: metadata.name || def.name,
         count: Math.min(count, def.maxStack),
         maxStack: def.maxStack,
         durability: metadata.durability !== undefined ? metadata.durability : def.durability,
         maxDurability: def.durability || 0,
-        icon: getItemIconDataUri(numId),
-        ...metadata
+        icon: getItemIconDataUri(numId)
     };
 }
 
