@@ -224,7 +224,7 @@ export class LightingEngine {
         const neighbors = [
             { x: x+1, y, z }, { x: x-1, y, z },
             { x, y: y+1, z }, { x, y: y-1, z },
-            { x, y, z: z+1 }, { x, y: z: z-1 }
+            { x, y, z: z+1 }, { x, y, z: z-1 }
         ];
 
         for (const n of neighbors) {
@@ -281,7 +281,7 @@ export class LightingEngine {
             const neighbors = [
                 { x: x+1, y, z }, { x: x-1, y, z },
                 { x, y: y+1, z }, { x, y: y-1, z },
-                { x, y, z: z+1 }, { x, y: z: z-1 }
+                { x, y, z: z+1 }, { x, y, z: z-1 }
             ];
 
             for (const n of neighbors) {
@@ -315,7 +315,7 @@ export class LightingEngine {
             const neighbors = [
                 { x: x+1, y, z }, { x: x-1, y, z },
                 { x, y: y+1, z }, { x, y: y-1, z },
-                { x, y, z: z+1 }, { x, y: z: z-1 }
+                { x, y, z: z+1 }, { x, y, z: z-1 }
             ];
 
             for (const n of neighbors) {
