@@ -427,6 +427,16 @@ export class DayNightCycle {
 
             // Optimize shadows: only cast shadow when sun is above horizon
             this.sunLight.castShadow = (sunY > -5);
+            
+            if (window.chunkMaterials) {
+                // Minimum ambient sky light at night is 0.05
+                const shaderSun = Math.max(0.05, sunIntensity);
+                for (const mat of window.chunkMaterials) {
+                    if (mat.userData && mat.userData.sunLevel) {
+                        mat.userData.sunLevel.value = shaderSun;
+                    }
+                }
+            }
         }
 
         // 4. Update Moon Light Position & Shadow

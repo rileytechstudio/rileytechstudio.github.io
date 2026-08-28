@@ -1,7 +1,8 @@
 import { GENERATORS } from '../assets/textureGen.js';
 export class MainMenu {
-    constructor(onStartGame, onOptions, onQuit) {
+    constructor(onStartGame, onLoadGame, onOptions, onQuit) {
         this.onStartGame = onStartGame;
+        this.onLoadGame = onLoadGame;
         this.onOptions = onOptions;
         this.onQuit = onQuit;
         this.element = this.createMenu();
@@ -26,7 +27,7 @@ export class MainMenu {
         container.style.fontFamily = 'monospace'; 
 
         const title = document.createElement('h1');
-        title.textContent = 'YOURSCRAFT';
+        title.textContent = 'MINECRAFT';
         title.style.color = 'white';
         title.style.textShadow = '4px 4px 0px #333';
         title.style.fontSize = '48px';
@@ -64,10 +65,12 @@ export class MainMenu {
         };
 
         const singleplayerBtn = createButton('Singleplayer', this.onStartGame);
+        const loadGameBtn = createButton('Load Game', this.onLoadGame);
         const optionsBtn = createButton('Options', this.onOptions);
         const quitBtn = createButton('Quit Game', this.onQuit);
 
         container.appendChild(singleplayerBtn);
+        container.appendChild(loadGameBtn);
         container.appendChild(optionsBtn);
         container.appendChild(quitBtn);
 

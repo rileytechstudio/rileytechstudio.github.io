@@ -1341,10 +1341,9 @@ export class Player {
                 const diveTarget = -this.waterUpwardSpeed * 0.8;
                 this.velocity.y += (diveTarget - this.velocity.y) * Math.min(1, 10 * dt);
             } else {
-                // Disable standard gravity and apply slow sink speed
-                const sinkTarget = -this.waterSinkSpeed;
-                this.velocity.y += (sinkTarget - this.velocity.y) * Math.min(1, 5 * dt);
-                this.velocity.y *= viscousDrag;
+                // Disable standard gravity and apply proper sink speed
+                const sinkTarget = -3.5;
+                this.velocity.y += (sinkTarget - this.velocity.y) * Math.min(1, 6 * dt);
             }
         } else {
             // Standard Ground & Air Kinematics

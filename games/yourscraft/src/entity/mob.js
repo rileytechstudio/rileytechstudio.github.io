@@ -30,6 +30,7 @@ import {
     GhastFlyGoal,
     GhastAttackGoal,
     ZombiePigmanAngerGoal,
+    NearestAttackableTargetGoal,
     isBlockSolid,
     checkClearance
 } from './ai.js';
@@ -865,6 +866,7 @@ export class Zombie extends Mob {
     initDefaultAI() {
         this.aiGoals = [
             new MeleeAttackGoal(this),
+            new NearestAttackableTargetGoal(this),
             new ChaseTargetGoal(this),
             new WanderGoal(this, 8, 5)
         ];
@@ -937,6 +939,7 @@ export class Creeper extends Mob {
     initDefaultAI() {
         this.aiGoals = [
             new CreeperExplodeGoal(this),
+            new NearestAttackableTargetGoal(this),
             new ChaseTargetGoal(this),
             new WanderGoal(this, 8, 5)
         ];
@@ -1054,6 +1057,7 @@ export class Skeleton extends Mob {
 
     initDefaultAI() {
         this.aiGoals = [
+            new NearestAttackableTargetGoal(this),
             new RangedAttackGoal(this),
             new WanderGoal(this, 8, 5)
         ];
@@ -1169,6 +1173,7 @@ export class Spider extends Mob {
             new SpiderTargetGoal(this),
             new SpiderLeapGoal(this),
             new MeleeAttackGoal(this),
+            new NearestAttackableTargetGoal(this),
             new ChaseTargetGoal(this),
             new WanderGoal(this, 8, 4)
         ];
@@ -1286,6 +1291,7 @@ export class Enderman extends Mob {
             new EndermanTeleportGoal(this),
             new EndermanStareGoal(this),
             new MeleeAttackGoal(this),
+            new NearestAttackableTargetGoal(this),
             new ChaseTargetGoal(this),
             new WanderGoal(this, 10, 5)
         ];
@@ -1602,6 +1608,7 @@ export class ZombiePigman extends Mob {
         this.aiGoals = [
             new ZombiePigmanAngerGoal(this),
             new MeleeAttackGoal(this),
+            new NearestAttackableTargetGoal(this),
             new ChaseTargetGoal(this),
             new WanderGoal(this, 8, 5)
         ];
@@ -1732,6 +1739,7 @@ export class WitherSkeleton extends Mob {
     initDefaultAI() {
         this.aiGoals = [
             new MeleeAttackGoal(this),
+            new NearestAttackableTargetGoal(this),
             new ChaseTargetGoal(this),
             new WanderGoal(this, 8, 5)
         ];
@@ -1782,12 +1790,46 @@ export class WitherSkeleton extends Mob {
     }
 }
 
+
+/**
+ * Sheep Entity (Minecraft 1.5)
+ * - Type: Passive
+ * - Health: 8 HP (4 hearts)
+ * - Hitbox: 0.9 Width x 1.3 Height
+ * - Movement Speed: 0.20
+ */
+export class Sheep extends Mob {
+    constructor(x = 0, y = 0, z = 0) {
+        super('sheep', x, y, z);
+
+        this.maxHealth = 8;
+        this.health = 8;
+        this.width = 0.9;
+        this.height = 1.3;
+        this.eyeHeight = 1.1;
+        this.movementSpeed = 0.20;
+
+        this.isHostile = false;
+        this.isPassive = true;
+
+        this.updateHitbox();
+    }
+
+    initDefaultAI() {
+        this.aiGoals = [
+            new FleeGoal(this),
+            new WanderGoal(this, 8, 5)
+        ];
+    }
+}
+
 /**
  * Mob Registry mapping type names to classes
  */
 export const MOB_REGISTRY = Object.freeze({
     pig: Pig,
     cow: Cow,
+    sheep: Sheep,
     zombie: Zombie,
     creeper: Creeper,
     skeleton: Skeleton,

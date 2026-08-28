@@ -88,7 +88,26 @@ export class PauseMenu {
         row1.appendChild(statsBtn);
 
         const optionsBtn = createButton('Options...', buttonStyle, this.onOptions);
-        const quitBtn = createButton('Save and Quit to Title', buttonStyle, this.onQuit);
+        const quitBtn = createButton('Save and Quit to Title', buttonStyle, () => {
+            if (window.player && window.inventory && window.world) {
+                const playerData = {
+                    position: { x: window.player.position.x, y: window.player.position.y, z: window.player.position.z },
+                    inventory: window.inventory.serialize()
+                };
+                
+                const chunkData = [];
+                window.world.chunks.forEach((chunk, key) => {
+                    // Only save modified chunks if there's an isModified flag, else save all
+                    // For simplicity, we just save the block array
+                    if (chunk.isModified || true) { // We'll save all chunks if isModified is missing
+                        chunkData.push({ key, blocks: Array.from(chunk.blocks) });
+                    }
+                });
+                
+                localStorage.setItem('minecraft_save', JSON.stringify({ player: playerData, chunks: chunkData }));
+            }
+            this.onQuit();
+        });
 
         container.appendChild(backBtn);
         container.appendChild(row1);

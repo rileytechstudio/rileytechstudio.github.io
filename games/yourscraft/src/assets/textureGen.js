@@ -1275,6 +1275,127 @@ export function generateWoolCanvas(seed = 3434) {
     return canvas;
 }
 
+
+export function generateDispenserFrontCanvas(seed = 4001) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const base = generateCobblestoneCanvas(seed);
+    ctx.drawImage(base, 0, 0);
+    ctx.fillStyle = "#333";
+    ctx.fillRect(6, 6, 4, 4);
+    ctx.fillStyle = "#555";
+    ctx.fillRect(7, 5, 2, 1);
+    ctx.fillRect(5, 7, 1, 2);
+    ctx.fillRect(10, 7, 1, 2);
+    ctx.fillRect(7, 10, 2, 1);
+    return canvas;
+}
+
+export function generateDropperFrontCanvas(seed = 4002) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const base = generateCobblestoneCanvas(seed);
+    ctx.drawImage(base, 0, 0);
+    ctx.fillStyle = "#333";
+    ctx.fillRect(6, 7, 4, 3);
+    ctx.fillRect(7, 10, 2, 1);
+    ctx.fillStyle = "#555";
+    ctx.fillRect(5, 8, 1, 3);
+    ctx.fillRect(10, 8, 1, 3);
+    ctx.fillRect(7, 6, 2, 1);
+    return canvas;
+}
+
+export function generatePistonSideCanvas(seed = 4003) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const base = generateCobblestoneCanvas(seed);
+    ctx.drawImage(base, 0, 0);
+    const wood = generatePlanksCanvas(seed);
+    ctx.drawImage(wood, 0, 0, 16, 4, 0, 0, 16, 4);
+    ctx.fillStyle = "#222";
+    ctx.fillRect(0, 4, 16, 1);
+    return canvas;
+}
+
+export function generatePistonTopCanvas(seed = 4004) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const wood = generatePlanksCanvas(seed);
+    ctx.drawImage(wood, 0, 0);
+    return canvas;
+}
+
+export function generateHopperTopCanvas(seed = 4005) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const base = generateSolidMineralBlockCanvas("iron", seed);
+    ctx.drawImage(base, 0, 0);
+    ctx.fillStyle = "#222";
+    ctx.fillRect(4, 4, 8, 8);
+    return canvas;
+}
+
+export function generateHopperSideCanvas(seed = 4006) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const base = generateSolidMineralBlockCanvas("iron", seed);
+    ctx.drawImage(base, 0, 0);
+    ctx.fillStyle = "#000";
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillRect(0, 8, 4, 8);
+    ctx.fillRect(12, 8, 4, 8);
+    ctx.globalCompositeOperation = "source-over";
+    return canvas;
+}
+
+export function generateRepeaterTopCanvas(seed = 4007) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const base = generateStoneCanvas(seed);
+    ctx.drawImage(base, 0, 0);
+    ctx.fillStyle = "#a00";
+    ctx.fillRect(7, 2, 2, 3);
+    ctx.fillRect(7, 10, 2, 3);
+    return canvas;
+}
+
+export function generateBedTopCanvas(seed = 4008) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    ctx.fillStyle = "#d00";
+    ctx.fillRect(0, 0, 16, 16);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(2, 2, 12, 6);
+    return canvas;
+}
+
+
+export function generateWoodenDoorCanvas(seed = 4010) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const wood = generatePlanksCanvas(seed);
+    ctx.drawImage(wood, 0, 0);
+    ctx.fillStyle = "#321"; // Dark wood windows
+    ctx.fillRect(2, 2, 4, 4);
+    ctx.fillRect(10, 2, 4, 4);
+    ctx.fillRect(2, 8, 4, 4);
+    ctx.fillRect(10, 8, 4, 4);
+    return canvas;
+}
+
+export function generateIronDoorCanvas(seed = 4011) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const iron = generateSolidMineralBlockCanvas("iron", seed);
+    ctx.drawImage(iron, 0, 0);
+    ctx.fillStyle = "#444";
+    ctx.fillRect(2, 2, 4, 4);
+    ctx.fillRect(10, 2, 4, 4);
+    ctx.fillRect(2, 8, 4, 4);
+    ctx.fillRect(10, 8, 4, 4);
+    return canvas;
+}
+
+export function generateBedSideCanvas(seed = 4009) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    const wood = generatePlanksCanvas(seed);
+    ctx.drawImage(wood, 0, 0);
+    ctx.fillStyle = "#d00";
+    ctx.fillRect(0, 0, 16, 8);
+    return canvas;
+}
+
 // ==========================================
 // 4. THREE.JS TEXTURE INTEGRATION
 // ==========================================
@@ -1304,6 +1425,66 @@ export function createThreeCanvasTexture(canvas) {
 /**
  * Procedural 16x16 Destroy Stage Canvas (0-9)
  */
+
+export function generateFlowerCanvas(type = "dandelion", seed = 9999) {
+    const { canvas, ctx } = createPixelCanvas();
+    const rng = createRNG(seed);
+    
+    // Transparent background
+    ctx.clearRect(0, 0, 16, 16);
+    
+    const stemColor = "#2d7b1a";
+    const leafColor = "#3c9e25";
+    const headColor = type === "dandelion" ? "#ffec30" : "#d12222";
+    const coreColor = type === "dandelion" ? "#d1a815" : "#871111";
+    
+    // Draw stem
+    ctx.fillStyle = stemColor;
+    ctx.fillRect(7, 8, 2, 8);
+    
+    // Draw leaves
+    ctx.fillStyle = leafColor;
+    ctx.fillRect(5, 12, 2, 2);
+    ctx.fillRect(9, 10, 2, 2);
+    
+    // Draw head
+    ctx.fillStyle = headColor;
+    ctx.fillRect(5, 4, 6, 5);
+    ctx.fillRect(6, 3, 4, 1);
+    ctx.fillRect(4, 5, 1, 3);
+    ctx.fillRect(11, 5, 1, 3);
+    
+    // Draw core
+    ctx.fillStyle = coreColor;
+    ctx.fillRect(7, 5, 2, 2);
+    
+    return canvas;
+}
+
+export function generateTorchCanvas(seed = 5050) {
+    const { canvas, ctx } = createPixelCanvas();
+    ctx.clearRect(0, 0, 16, 16);
+    
+    // Draw stick (2x6)
+    ctx.fillStyle = "#5c4a30";
+    ctx.fillRect(7, 6, 2, 6);
+    ctx.fillStyle = "#4a3b26"; // shadow
+    ctx.fillRect(8, 6, 1, 6);
+    
+    // Draw coal head (2x2)
+    ctx.fillStyle = "#222222";
+    ctx.fillRect(7, 4, 2, 2);
+    
+    // Draw fire
+    ctx.fillStyle = "#ffcc00";
+    ctx.fillRect(7, 3, 2, 1);
+    ctx.fillRect(7, 4, 1, 1);
+    ctx.fillStyle = "#ff9900";
+    ctx.fillRect(8, 4, 1, 1);
+    
+    return canvas;
+}
+
 export function generateDestroyStageCanvas(stage = 0) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     ctx.clearRect(0, 0, 16, 16);
@@ -1407,7 +1588,10 @@ export const GENERATORS = {
     coal_ore: (seed) => generateOreCanvas("coal", seed),
     iron_ore: (seed) => generateOreCanvas("iron", seed),
     gold_ore: (seed) => generateOreCanvas("gold", seed),
+    torch: generateTorchCanvas,
     redstone_ore: (seed) => generateOreCanvas("redstone", seed),
+    dandelion: () => generateFlowerCanvas("dandelion", 11),
+    poppy: () => generateFlowerCanvas("poppy", 12),
     diamond_ore: (seed) => generateOreCanvas("diamond", seed),
     lapis_ore: (seed) => generateOreCanvas("lapis", seed),
     emerald_ore: (seed) => generateOreCanvas("emerald", seed),
@@ -1421,7 +1605,18 @@ export const GENERATORS = {
     quartz_pillar_top: generateQuartzPillarTopCanvas,
     quartz_chiseled: generateQuartzChiseledCanvas,
     quartz_chiseled_top: generateQuartzChiseledCanvas,
-    quartz_chiseled_side: generateQuartzChiseledCanvas
+    quartz_chiseled_side: generateQuartzChiseledCanvas,
+    dispenser_front: generateDispenserFrontCanvas,
+    dropper_front: generateDropperFrontCanvas,
+    piston_side: generatePistonSideCanvas,
+    piston_top: generatePistonTopCanvas,
+    hopper_top: generateHopperTopCanvas,
+    hopper_side: generateHopperSideCanvas,
+    repeater_top: generateRepeaterTopCanvas,
+    bed_top: generateBedTopCanvas,
+    bed_side: generateBedSideCanvas,
+    wooden_door: generateWoodenDoorCanvas,
+    iron_door: generateIronDoorCanvas
 };
 
 /**

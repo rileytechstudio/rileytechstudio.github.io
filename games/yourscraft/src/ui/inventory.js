@@ -673,18 +673,7 @@ export class InventoryManager {
             this.dragState.visitedInvSlots.clear();
         });
 
-        // Keybind 'E' to toggle inventory & 'Escape' to close
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "e" || e.key === "E") {
-                if (this.isOpen()) {
-                    this.close();
-                } else {
-                    this.openInventory();
-                }
-            } else if (e.key === "Escape" && this.isOpen()) {
-                this.close();
-            }
-        });
+        // Keybinds for 'E' and 'Escape' are orchestrated globally in main.js to sync with PointerLockControls.
 
         // Prevent context menu in modal for smooth right-click splitting/painting
         this.dom.modal.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -986,7 +975,7 @@ export class InventoryManager {
                 const toAdd = Math.min(space, this.heldItem.count);
                 currentSlot.count += toAdd;
                 this.heldItem.count -= toAdd;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
             } else {
                 const temp = currentSlot;
                 this.slots[slotIndex] = this.heldItem;
@@ -1001,13 +990,13 @@ export class InventoryManager {
             } else if (this.heldItem && !currentSlot) {
                 this.slots[slotIndex] = createItemStack(this.heldItem.id, 1, this.heldItem);
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.dragState.dragType = "paint_right";
                 this.dragState.visitedInvSlots.add(slotIndex);
             } else if (this.heldItem && currentSlot && currentSlot.id === this.heldItem.id && currentSlot.count < currentSlot.maxStack) {
                 currentSlot.count++;
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.dragState.dragType = "paint_right";
                 this.dragState.visitedInvSlots.add(slotIndex);
             }
@@ -1026,13 +1015,13 @@ export class InventoryManager {
             if (!slot) {
                 this.slots[slotIndex] = createItemStack(this.heldItem.id, 1, this.heldItem);
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.updateSlotDOM(slotIndex);
                 this.syncHUD();
             } else if (slot.id === this.heldItem.id && slot.count < slot.maxStack) {
                 slot.count++;
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.updateSlotDOM(slotIndex);
                 this.syncHUD();
             }
@@ -1052,7 +1041,7 @@ export class InventoryManager {
                 const toAdd = Math.min(space, this.heldItem.count);
                 currentSlot.count += toAdd;
                 this.heldItem.count -= toAdd;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
             }
             this.renderAllSlots();
             this.syncHUD();
@@ -1084,7 +1073,7 @@ export class InventoryManager {
                 const toAdd = Math.min(space, this.heldItem.count);
                 currentSlot.count += toAdd;
                 this.heldItem.count -= toAdd;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
             } else {
                 const temp = currentSlot;
                 grid[craftIndex] = this.heldItem;
@@ -1099,13 +1088,13 @@ export class InventoryManager {
             } else if (this.heldItem && !currentSlot) {
                 grid[craftIndex] = createItemStack(this.heldItem.id, 1, this.heldItem);
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.dragState.dragType = "paint_right";
                 this.dragState.visitedCraftSlots.add(craftIndex);
             } else if (this.heldItem && currentSlot && currentSlot.id === this.heldItem.id && currentSlot.count < currentSlot.maxStack) {
                 currentSlot.count++;
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.dragState.dragType = "paint_right";
                 this.dragState.visitedCraftSlots.add(craftIndex);
             }
@@ -1126,13 +1115,13 @@ export class InventoryManager {
             if (!slot) {
                 grid[craftIndex] = createItemStack(this.heldItem.id, 1, this.heldItem);
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.renderCraftGrid(dimension);
                 this.updateCraftingOutput();
             } else if (slot.id === this.heldItem.id && slot.count < slot.maxStack) {
                 slot.count++;
                 this.heldItem.count--;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
                 this.renderCraftGrid(dimension);
                 this.updateCraftingOutput();
             }
@@ -1151,7 +1140,7 @@ export class InventoryManager {
                 const toAdd = Math.min(space, this.heldItem.count);
                 currentSlot.count += toAdd;
                 this.heldItem.count -= toAdd;
-                if (this.heldItem.count <= 0) this.setHeldItem(null);
+                if (this.heldItem.count <= 0) this.setHeldItem(null); else this.setHeldItem(this.heldItem);
             }
             this.renderCraftGrid(dimension);
             this.updateCraftingOutput();

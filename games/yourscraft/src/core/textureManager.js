@@ -56,6 +56,9 @@ export const BLOCK_TEXTURE_MAP = Object.freeze({
     [BLOCKS.BOOKSHELF]: { top: 'planks', bottom: 'planks', side: 'bookshelf' },
     [BLOCKS.MOSSY_COBBLESTONE]: { all: 'mossy_cobblestone' },
     [BLOCKS.OBSIDIAN]: { all: 'obsidian' },
+    [BLOCKS.TORCH]: { all: 'torch' },
+    [BLOCKS.DANDELION]: { all: 'dandelion' },
+    [BLOCKS.POPPY]: { all: 'poppy' },
     [BLOCKS.DIAMOND_ORE]: { all: 'diamond_ore' },
     [BLOCKS.DIAMOND_BLOCK]: { all: 'diamond_block' },
     [BLOCKS.CRAFTING_TABLE]: { top: 'crafting_table_top', bottom: 'planks', side: 'crafting_table_side' },
@@ -78,7 +81,15 @@ export const BLOCK_TEXTURE_MAP = Object.freeze({
     [BLOCKS.QUARTZ_ORE]: { all: 'quartz_ore' },
     [BLOCKS.QUARTZ_BLOCK]: { top: 'quartz_block_top', bottom: 'quartz_block_bottom', side: 'quartz_block_side' },
     [BLOCKS.QUARTZ_PILLAR]: { top: 'quartz_pillar_top', bottom: 'quartz_pillar_top', side: 'quartz_pillar_side' },
-    [BLOCKS.QUARTZ_CHISELED]: { top: 'quartz_chiseled_top', bottom: 'quartz_chiseled_top', side: 'quartz_chiseled_side' }
+    [BLOCKS.QUARTZ_CHISELED]: { top: 'quartz_chiseled_top', bottom: 'quartz_chiseled_top', side: 'quartz_chiseled_side' },
+    [BLOCKS.DISPENSER]: { top: 'furnace_top', bottom: 'furnace_top', north: 'dispenser_front', side: 'furnace_side' },
+    [BLOCKS.DROPPER]: { top: 'furnace_top', bottom: 'furnace_top', north: 'dropper_front', side: 'furnace_side' },
+    [BLOCKS.PISTON]: { top: 'piston_top', bottom: 'furnace_top', side: 'piston_side' },
+    [BLOCKS.HOPPER]: { top: 'hopper_top', bottom: 'hopper_side', side: 'hopper_side' },
+    [BLOCKS.REPEATER_BLOCK]: { top: 'repeater_top', bottom: 'stone', side: 'stone' },
+    [BLOCKS.BED]: { top: 'bed_top', bottom: 'planks', side: 'bed_side' },
+    324: { all: 'wooden_door' },
+    330: { all: 'iron_door' }
 });
 
 /**
@@ -152,25 +163,61 @@ export function getAtlasTexture(seed) {
 }
 
 /**
- * Builds a THREE.MeshStandardMaterial using the canvas texture atlas.
- * @param {Object} [options={}]
- * @returns {THREE.MeshStandardMaterial}
+ * Builds a THREE.MeshBasicMaterial using the canvas texture atlas, with custom Minecraft-style lighting.
  */
 export function getAtlasMaterial(options = {}) {
     const atlas = getTextureAtlas();
     
-    const materialOptions = {
+    const mat = new THREE.MeshBasicMaterial({
         map: atlas.texture,
-        roughness: 0.8,
-        metalness: 0.1,
         alphaTest: 0.1,
         transparent: true,
         side: THREE.FrontSide,
         vertexColors: true,
         ...options
+    });
+
+    mat.userData = {
+        sunLevel: { value: 1.0 }
     };
 
-    return new THREE.MeshStandardMaterial(materialOptions);
+    mat.onBeforeCompile = (shader) => {
+        shader.uniforms.sunLevel = mat.userData.sunLevel;
+        
+        shader.fragmentShader = `
+            uniform float sunLevel;
+        ` + shader.fragmentShader;
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            `#include <color_fragment>`,
+            `
+#ifdef USE_COLOR
+    float blockLight = vColor.r;
+    float skyLight = vColor.g * sunLevel;
+    float maxLight = max(blockLight, skyLight);
+    
+    // Smooth nonlinear curve
+    float lightCurve = max(0.04, pow(maxLight, 1.4));
+    
+    // vColor.b is Ambient Occlusion (0.0 to 1.0)
+    float ao = vColor.b;
+    
+    diffuseColor.rgb *= lightCurve * ao;
+    
+    // Torch tint
+    if (blockLight > skyLight + 0.1) {
+        diffuseColor.rgb *= vec3(1.0, 0.9, 0.75);
+    }
+#endif
+            `
+        );
+    };
+
+    // Store in global window for DayNightCycle to update sunLevel
+    if (!window.chunkMaterials) window.chunkMaterials = [];
+    window.chunkMaterials.push(mat);
+
+    return mat;
 }
 
 /**

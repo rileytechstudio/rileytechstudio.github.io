@@ -187,7 +187,7 @@ export const FACES = [
 export function isBlockTransparent(blockId) {
     if (!blockId || blockId === 0) return true;
     return blockId === 20 || blockId === 8 || blockId === 9 || blockId === 10 || blockId === 11 ||
-           blockId === 6 || blockId === 31 || blockId === 32 || blockId === 37 || blockId === 38 ||
+           blockId === 18 || blockId === 6 || blockId === 31 || blockId === 32 || blockId === 37 || blockId === 38 ||
            blockId === 39 || blockId === 40 || blockId === 50 || blockId === 51 || blockId === 59 ||
            blockId === 78 || blockId === 83;
 }
@@ -198,7 +198,7 @@ export function isBlockTransparent(blockId) {
  * @returns {boolean}
  */
 export function isBlockOccluding(blockId) {
-    if (!blockId || blockId === 0) return false;
+    if (!blockId || blockId === 0 || blockId === -1) return false;
     return !isBlockTransparent(blockId);
 }
 
@@ -258,6 +258,22 @@ export function generateChunkGeometry(chunk, options = {}) {
         ? options.getWorldBlock
         : (world ? (wx, wy, wz) => world.getBlock(wx, wy, wz) : null);
 
+    // Pre-calculate surface heightmap for cave darkening
+    const heightMap = new Int32Array(sizeX * sizeZ);
+    for (let hx = 0; hx < sizeX; hx++) {
+        for (let hz = 0; hz < sizeZ; hz++) {
+            let h = 0;
+            for (let hy = sizeY - 1; hy >= 0; hy--) {
+                const hb = getBlock(hx, hy, hz);
+                if (hb !== 0 && !isBlockTransparent(hb)) {
+                    h = hy;
+                    break;
+                }
+            }
+            heightMap[hx * sizeZ + hz] = h;
+        }
+    }
+
     const chunkOriginX = (chunk.x !== undefined ? chunk.x : chunk.cx || 0) * sizeX;
     const chunkOriginZ = (chunk.z !== undefined ? chunk.z : chunk.cz || 0) * sizeZ;
 
@@ -283,6 +299,17 @@ export function generateChunkGeometry(chunk, options = {}) {
         ? (id) => id === 0
         : (id) => isBlockTransparent(id);
 
+    const getLight = (wx, wy, wz) => {
+        if (wy < 0 || wy >= sizeY) return 15 << 4;
+        if (wx >= 0 && wx < sizeX && wz >= 0 && wz < sizeZ) {
+            return chunk && chunk.getLight ? chunk.getLight(wx, wy, wz) : (15 << 4);
+        }
+        if (world && world.getLight) {
+            return world.getLight(chunkOriginX + wx, wy, chunkOriginZ + wz);
+        }
+        return 15 << 4;
+    };
+
     const enableAO = options.enableAO !== false;
     const aoCurve = options.aoCurve || DEFAULT_AO_CURVE;
     const atlas = options.atlas || getTextureAtlas();
@@ -301,11 +328,18 @@ export function generateChunkGeometry(chunk, options = {}) {
             for (let x = 0; x < sizeX; x++) {
                 const blockId = getBlock(x, y, z);
                 if (blockId === 0) continue; // Skip air
+                
+                if (options.filter === 'opaque' && (blockId === 8 || blockId === 9)) continue;
+                if (options.filter === 'translucent' && blockId !== 8 && blockId !== 9) continue;
 
                 // Custom Meshing for Sprite Blocks (Crossed Squares)
                 if (SPRITE_BLOCKS.has(blockId)) {
+                    const lightVal = getLight(x, y, z);
+                    const skyLight = (lightVal >> 4) & 0x0F;
+                    const blockLight = lightVal & 0x0F;
+                    const shade = [blockLight / 15.0, skyLight / 15.0, 1.0];
+                    
                     const uvInfo = getBlockFaceUV(blockId, 'side', atlas);
-                    const shade = [1.0, 1.0, 1.0]; // No fake lighting for sprites
                     
                     // Cross plane 1 (diag 1)
                     const p1 = [
@@ -344,7 +378,11 @@ export function generateChunkGeometry(chunk, options = {}) {
                     torches.push({ x: (chunk ? chunk.x * sizeX : 0) + x, y, z: (chunk ? chunk.z * sizeZ : 0) + z });
                     const uvsT = getBlockFaceUV(blockId, 'top', atlas);
                     const uvsS = getBlockFaceUV(blockId, 'side', atlas);
-                    const shade = [1.0, 1.0, 1.0];
+                    
+                    const lightVal = getLight(x, y, z);
+                    const skyLight = (lightVal >> 4) & 0x0F;
+                    const blockLight = lightVal & 0x0F;
+                    const shade = [blockLight / 15.0, skyLight / 15.0, 1.0];
                     
                     // Tiny Box bounds
                     const minX = x + 0.4375, maxX = x + 0.5625;
@@ -360,9 +398,9 @@ export function generateChunkGeometry(chunk, options = {}) {
                         for(let i=0; i<4; i++) {
                             const c = face.corners[i];
                             positions.push(
-                                c.pos[0] === 0 ? minX : maxX,
-                                c.pos[1] === 0 ? minY : maxY,
-                                c.pos[2] === 0 ? minZ : maxZ
+                                c[0] === 0 ? minX : maxX,
+                                c[1] === 0 ? minY : maxY,
+                                c[2] === 0 ? minZ : maxZ
                             );
                             normals.push(...face.dir);
                             colors.push(...shade);
@@ -384,6 +422,9 @@ export function generateChunkGeometry(chunk, options = {}) {
                     const neighborId = getVoxel(x + nx, y + ny, z + nz);
 
                     // Face is visible if adjacent neighbor is transparent/passable
+                    // CRITICAL FIX: Cull internal faces between identical blocks to prevent water lag!
+                    if (blockId === neighborId) continue;
+
                     if (transparentCheck(neighborId)) {
                         const uvBounds = getBlockFaceUV(blockId, face.type, face.name, atlas);
                         const faceAoScores = [3, 3, 3, 3];
@@ -423,7 +464,16 @@ export function generateChunkGeometry(chunk, options = {}) {
                             const v = uvBounds.vMin + v_local * (uvBounds.vMax - uvBounds.vMin);
                             uvs.push(u, v);
 
+                            // Read block light and sky light for this face vertex
+                            let skyLight = 15;
+                            let blockLight = 0;
+                            
+                            const lightVal = getLight(ax, ay, az);
+                            skyLight = (lightVal >> 4) & 0x0F;
+                            blockLight = lightVal & 0x0F;
+
                             // Calculate Vertex Ambient Occlusion (AO)
+                            let aoFactor = 1.0;
                             if (enableAO) {
                                 let s1 = false;
                                 let s2 = false;
@@ -452,11 +502,11 @@ export function generateChunkGeometry(chunk, options = {}) {
 
                                 const aoScore = calculateVertexAO(s1, s2, c);
                                 faceAoScores[i] = aoScore;
-                                const aoFactor = aoCurve[aoScore];
-                                colors.push(aoFactor, aoFactor, aoFactor);
-                            } else {
-                                colors.push(1.0, 1.0, 1.0);
+                                aoFactor = aoCurve[aoScore];
                             }
+
+                            // Push packed light data into vertex colors (R=block, G=sky, B=AO)
+                            colors.push(blockLight / 15.0, skyLight / 15.0, aoFactor);
                         }
 
                         // Quad Triangulation with Anisotropy-Fixing Diagonal Flip
@@ -489,6 +539,7 @@ export function generateChunkGeometry(chunk, options = {}) {
         geometry.setIndex(indices);
     }
 
+    geometry.torches = torches;
     return geometry;
 }
 
@@ -517,23 +568,51 @@ export function createChunkMesh(chunk, worldOrMaterial = null, customMaterial = 
         material = customMaterial || null;
     }
 
-    const geometry = generateChunkGeometry(chunk, { world });
+    const opaqueGeo = generateChunkGeometry(chunk, { world, filter: 'opaque' });
+    const transGeo = generateChunkGeometry(chunk, { world, filter: 'translucent' });
 
+    let opaqueMat, transMat;
     if (!material) {
-        material = getAtlasMaterial({ vertexColors: true });
+        opaqueMat = getAtlasMaterial({ vertexColors: true, transparent: false, alphaTest: 0.5 });
+        transMat = getAtlasMaterial({ vertexColors: true, transparent: true, alphaTest: 0.1 });
     } else {
-        material.vertexColors = true;
-        material.needsUpdate = true;
+        opaqueMat = material.clone();
+        opaqueMat.vertexColors = true;
+        opaqueMat.transparent = false;
+        opaqueMat.alphaTest = 0.5;
+        
+        transMat = material.clone();
+        transMat.vertexColors = true;
+        transMat.transparent = true;
+        transMat.alphaTest = 0.1;
     }
 
-    const mesh = new THREE.Mesh(geometry, material);
+    const group = new THREE.Group();
+    
+    if (opaqueGeo.attributes.position) {
+        const opaqueMesh = new THREE.Mesh(opaqueGeo, opaqueMat);
+        opaqueMesh.castShadow = true;
+        opaqueMesh.receiveShadow = true;
+        opaqueMesh.userData = { chunk };
+        group.add(opaqueMesh);
+    }
+    
+    if (transGeo.attributes.position) {
+        const transMesh = new THREE.Mesh(transGeo, transMat);
+        transMesh.receiveShadow = true;
+        transMesh.userData = { chunk };
+        group.add(transMesh);
+    }
+
     const sizeX = chunk.sizeX || CHUNK_SIZE_X;
     const sizeZ = chunk.sizeZ || CHUNK_SIZE_Z;
     const posX = (chunk.x !== undefined ? chunk.x : chunk.cx || 0) * sizeX;
     const posZ = (chunk.z !== undefined ? chunk.z : chunk.cz || 0) * sizeZ;
-    mesh.position.set(posX, 0, posZ);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    chunk.mesh = mesh;
-    return mesh;
+    group.position.set(posX, 0, posZ);
+    
+    chunk.mesh = group;
+    // Combine torches from both passes
+    const allTorches = [...(opaqueGeo.torches || []), ...(transGeo.torches || [])];
+    group.userData = { torches: allTorches, chunk };
+    return group;
 }

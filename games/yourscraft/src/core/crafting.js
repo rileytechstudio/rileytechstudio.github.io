@@ -87,7 +87,25 @@ export const ITEM_IDS = Object.freeze({
     GOLDEN_SWORD: 283,
     GOLDEN_SHOVEL: 284,
     GOLDEN_PICKAXE: 285,
-    GOLDEN_AXE: 286
+    GOLDEN_AXE: 286,
+    GOLDEN_HOE: 294,
+    WOODEN_HOE: 290,
+    STONE_HOE: 291,
+    IRON_HOE: 292,
+    DIAMOND_HOE: 293,
+
+    // Armor
+    LEATHER_HELMET: 298,
+    LEATHER_CHESTPLATE: 299,
+    LEATHER_LEGGINGS: 300,
+    LEATHER_BOOTS: 301,
+    LEATHER: 334,
+
+    // Misc
+    WOODEN_DOOR: 324,
+    IRON_DOOR: 330,
+    BED: 355,
+    REPEATER: 356
 });
 
 export const QUARTZ = ITEM_IDS.QUARTZ;
@@ -678,7 +696,45 @@ export const RECIPES = Object.freeze({
             ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT
         ],
         result: { id: ITEM_IDS.GOLDEN_APPLE, count: 1 }
-    }
+    },
+    // Hoes
+    WOODEN_HOE: { id: "wooden_hoe", name: "Wooden Hoe", width: 2, height: 3, grid: [BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, 0, ITEM_IDS.STICK, 0, ITEM_IDS.STICK], result: { id: ITEM_IDS.WOODEN_HOE, count: 1 } },
+    STONE_HOE: { id: "stone_hoe", name: "Stone Hoe", width: 2, height: 3, grid: [BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, 0, ITEM_IDS.STICK, 0, ITEM_IDS.STICK], result: { id: ITEM_IDS.STONE_HOE, count: 1 } },
+    IRON_HOE: { id: "iron_hoe", name: "Iron Hoe", width: 2, height: 3, grid: [ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.STICK, 0, ITEM_IDS.STICK], result: { id: ITEM_IDS.IRON_HOE, count: 1 } },
+    DIAMOND_HOE: { id: "diamond_hoe", name: "Diamond Hoe", width: 2, height: 3, grid: [ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, 0, ITEM_IDS.STICK, 0, ITEM_IDS.STICK], result: { id: ITEM_IDS.DIAMOND_HOE, count: 1 } },
+    GOLDEN_HOE: { id: "golden_hoe", name: "Golden Hoe", width: 2, height: 3, grid: [ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, 0, ITEM_IDS.STICK, 0, ITEM_IDS.STICK], result: { id: ITEM_IDS.GOLDEN_HOE, count: 1 } },
+    // Armor
+    LEATHER_HELMET: { id: "leather_helmet", name: "Leather Helmet", width: 3, height: 2, grid: [ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, 0, ITEM_IDS.LEATHER], result: { id: ITEM_IDS.LEATHER_HELMET, count: 1 } },
+    LEATHER_CHESTPLATE: { id: "leather_chestplate", name: "Leather Tunic", width: 3, height: 3, grid: [ITEM_IDS.LEATHER, 0, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER], result: { id: ITEM_IDS.LEATHER_CHESTPLATE, count: 1 } },
+    LEATHER_LEGGINGS: { id: "leather_leggings", name: "Leather Pants", width: 3, height: 3, grid: [ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, 0, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, 0, ITEM_IDS.LEATHER], result: { id: ITEM_IDS.LEATHER_LEGGINGS, count: 1 } },
+    LEATHER_BOOTS: { id: "leather_boots", name: "Leather Boots", width: 3, height: 2, grid: [ITEM_IDS.LEATHER, 0, ITEM_IDS.LEATHER, ITEM_IDS.LEATHER, 0, ITEM_IDS.LEATHER], result: { id: ITEM_IDS.LEATHER_BOOTS, count: 1 } },
+    IRON_HELMET: { id: "iron_helmet", name: "Iron Helmet", width: 3, height: 2, grid: [ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT], result: { id: ITEM_IDS.IRON_HELMET, count: 1 } },
+    IRON_CHESTPLATE: { id: "iron_chestplate", name: "Iron Chestplate", width: 3, height: 3, grid: [ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT], result: { id: ITEM_IDS.IRON_CHESTPLATE, count: 1 } },
+    IRON_LEGGINGS: { id: "iron_leggings", name: "Iron Leggings", width: 3, height: 3, grid: [ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT], result: { id: ITEM_IDS.IRON_LEGGINGS, count: 1 } },
+    IRON_BOOTS: { id: "iron_boots", name: "Iron Boots", width: 3, height: 2, grid: [ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT], result: { id: ITEM_IDS.IRON_BOOTS, count: 1 } },
+    GOLDEN_HELMET: { id: "golden_helmet", name: "Golden Helmet", width: 3, height: 2, grid: [ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, 0, ITEM_IDS.GOLD_INGOT], result: { id: ITEM_IDS.GOLDEN_HELMET, count: 1 } },
+    GOLDEN_CHESTPLATE: { id: "golden_chestplate", name: "Golden Chestplate", width: 3, height: 3, grid: [ITEM_IDS.GOLD_INGOT, 0, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT], result: { id: ITEM_IDS.GOLDEN_CHESTPLATE, count: 1 } },
+    GOLDEN_LEGGINGS: { id: "golden_leggings", name: "Golden Leggings", width: 3, height: 3, grid: [ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, 0, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, 0, ITEM_IDS.GOLD_INGOT], result: { id: ITEM_IDS.GOLDEN_LEGGINGS, count: 1 } },
+    GOLDEN_BOOTS: { id: "golden_boots", name: "Golden Boots", width: 3, height: 2, grid: [ITEM_IDS.GOLD_INGOT, 0, ITEM_IDS.GOLD_INGOT, ITEM_IDS.GOLD_INGOT, 0, ITEM_IDS.GOLD_INGOT], result: { id: ITEM_IDS.GOLDEN_BOOTS, count: 1 } },
+    DIAMOND_HELMET: { id: "diamond_helmet", name: "Diamond Helmet", width: 3, height: 2, grid: [ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, 0, ITEM_IDS.DIAMOND], result: { id: ITEM_IDS.DIAMOND_HELMET, count: 1 } },
+    DIAMOND_CHESTPLATE: { id: "diamond_chestplate", name: "Diamond Chestplate", width: 3, height: 3, grid: [ITEM_IDS.DIAMOND, 0, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND], result: { id: ITEM_IDS.DIAMOND_CHESTPLATE, count: 1 } },
+    DIAMOND_LEGGINGS: { id: "diamond_leggings", name: "Diamond Leggings", width: 3, height: 3, grid: [ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, 0, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, 0, ITEM_IDS.DIAMOND], result: { id: ITEM_IDS.DIAMOND_LEGGINGS, count: 1 } },
+    DIAMOND_BOOTS: { id: "diamond_boots", name: "Diamond Boots", width: 3, height: 2, grid: [ITEM_IDS.DIAMOND, 0, ITEM_IDS.DIAMOND, ITEM_IDS.DIAMOND, 0, ITEM_IDS.DIAMOND], result: { id: ITEM_IDS.DIAMOND_BOOTS, count: 1 } },
+    // Misc (Fences, Stairs, Slabs, Doors, Beds)
+    FENCE: { id: "fence", name: "Fence", width: 3, height: 2, grid: [ITEM_IDS.STICK, ITEM_IDS.STICK, ITEM_IDS.STICK, ITEM_IDS.STICK, ITEM_IDS.STICK, ITEM_IDS.STICK], result: { id: BLOCKS.FENCE, count: 2 } },
+    OAK_STAIRS: { id: "oak_stairs", name: "Oak Wood Stairs", width: 3, height: 3, grid: [BLOCKS.OAK_PLANKS, 0, 0, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, 0, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS], result: { id: 53, count: 4 } },
+    COBBLESTONE_STAIRS: { id: "cobblestone_stairs", name: "Cobblestone Stairs", width: 3, height: 3, grid: [BLOCKS.COBBLESTONE, 0, 0, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, 0, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE], result: { id: 67, count: 4 } },
+    STONE_SLAB: { id: "stone_slab", name: "Stone Slab", width: 3, height: 1, grid: [BLOCKS.STONE, BLOCKS.STONE, BLOCKS.STONE], result: { id: BLOCKS.STONE_SLAB, count: 6 } },
+    WOODEN_DOOR: { id: "wooden_door", name: "Wooden Door", width: 2, height: 3, grid: [BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS], result: { id: ITEM_IDS.WOODEN_DOOR, count: 1 } },
+    IRON_DOOR: { id: "iron_door", name: "Iron Door", width: 2, height: 3, grid: [ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT], result: { id: ITEM_IDS.IRON_DOOR, count: 1 } },
+    BED: { id: "bed", name: "Bed", width: 3, height: 2, grid: [BLOCKS.WOOL, BLOCKS.WOOL, BLOCKS.WOOL, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS], result: { id: ITEM_IDS.BED, count: 1 } },
+    // Redstone Components
+    REPEATER: { id: "repeater", name: "Redstone Repeater", width: 3, height: 3, grid: [0,0,0, BLOCKS.TORCH, ITEM_IDS.REDSTONE, BLOCKS.TORCH, BLOCKS.STONE, BLOCKS.STONE, BLOCKS.STONE], result: { id: ITEM_IDS.REPEATER, count: 1 } },
+    DISPENSER: { id: "dispenser", name: "Dispenser", width: 3, height: 3, grid: [BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, ITEM_IDS.BOW, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, ITEM_IDS.REDSTONE, BLOCKS.COBBLESTONE], result: { id: 23, count: 1 } },
+    PISTON: { id: "piston", name: "Piston", width: 3, height: 3, grid: [BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.OAK_PLANKS, BLOCKS.COBBLESTONE, ITEM_IDS.IRON_INGOT, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, ITEM_IDS.REDSTONE, BLOCKS.COBBLESTONE], result: { id: 33, count: 1 } },
+    DROPPER: { id: "dropper", name: "Dropper", width: 3, height: 3, grid: [BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, 0, BLOCKS.COBBLESTONE, BLOCKS.COBBLESTONE, ITEM_IDS.REDSTONE, BLOCKS.COBBLESTONE], result: { id: 158, count: 1 } },
+    HOPPER: { id: "hopper", name: "Hopper", width: 3, height: 3, grid: [ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT, ITEM_IDS.IRON_INGOT, 54, ITEM_IDS.IRON_INGOT, 0, ITEM_IDS.IRON_INGOT, 0], result: { id: 154, count: 1 } }
+
 });
 
 export const CRAFTING_RECIPES = Object.values(RECIPES);

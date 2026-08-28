@@ -15,6 +15,7 @@
 import { Chunk, BLOCKS, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z } from './chunk.js';
 import { TerrainGenerator } from '../terrain/generator.js';
 import { createChunkMesh } from './mesher.js';
+import { createMob } from '../entity/mob.js';
 
 export const DEFAULT_LOAD_RADIUS = 4;
 
@@ -385,7 +386,7 @@ export class World {
         const chunk = this.getChunk(cx, cz);
 
         if (!chunk) {
-            return BLOCKS.AIR;
+            return -1; // -1 represents an unloaded chunk. Treated as solid to cull chunk boundaries and prevent player from falling into the void.
         }
 
         return chunk.getBlock(lx, ly, lz);
@@ -459,6 +460,28 @@ export class World {
         });
 
         return true;
+    }
+
+    /**
+     * Get light level at integer world coordinate.
+     */
+    getLight(worldX, worldY, worldZ) {
+        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return 15 << 4;
+        const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
+        const chunk = this.getChunk(cx, cz);
+        if (!chunk) return 15 << 4;
+        return chunk.getLight(lx, ly, lz);
+    }
+
+    /**
+     * Set light level at integer world coordinate.
+     */
+    setLight(worldX, worldY, worldZ, lightValue) {
+        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return false;
+        const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
+        const chunk = this.getChunk(cx, cz);
+        if (!chunk) return false;
+        return chunk.setLight(lx, ly, lz, lightValue);
     }
 
     /**
@@ -661,6 +684,74 @@ export class World {
     /**
      * Clear and unload all chunks and entities.
      */
+
+    /**
+     * Placeholder light level calculation
+     */
+    getLight(x, y, z) {
+        for (let checkY = Math.floor(y); checkY < 256; checkY++) {
+            const blockId = this.getBlock(x, checkY, z);
+            if (blockId !== BLOCKS.AIR && blockId !== BLOCKS.GLASS) {
+                return 0; // Shadowed
+            }
+        }
+        return 15; // Direct sky light
+    }
+
+    /**
+     * Spawns mobs around the player based on light levels
+     */
+    spawnMobs(player, dt) {
+        if (!this.spawnTimer) this.spawnTimer = 0;
+        this.spawnTimer -= dt;
+        if (this.spawnTimer > 0) return;
+        this.spawnTimer = 2.0; // Try spawning every 2 seconds
+
+        // Don't spawn if too many entities
+        if (this.entities.size > 100) return;
+
+        // Pick a random location around player (radius 24 to 64 blocks)
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 24 + Math.random() * 40;
+        const spawnX = Math.floor(player.position.x + Math.sin(angle) * dist);
+        const spawnZ = Math.floor(player.position.z + Math.cos(angle) * dist);
+        const spawnY = this.getHighestBlockY(spawnX, spawnZ);
+
+        if (spawnY <= 0) return; // No solid ground found
+
+        const blockId = this.getBlock(spawnX, spawnY, spawnZ);
+        if (!this.isSolid(spawnX, spawnY, spawnZ)) return;
+        if (blockId === BLOCKS.WATER || blockId === BLOCKS.LAVA) return; // don't spawn in liquid
+
+        const lightLevel = this.getLight(spawnX, spawnY + 1, spawnZ);
+        
+        let mobTypeToSpawn = null;
+
+        // Passive mobs: exclusively on Grass Blocks under direct sky light
+        if (blockId === BLOCKS.GRASS && lightLevel === 15) {
+            if (Math.random() < 0.2) {
+                const passives = ['pig', 'cow', 'sheep'];
+                mobTypeToSpawn = passives[Math.floor(Math.random() * passives.length)];
+            }
+        }
+        
+        // Hostile mobs: solid blocks where light level <= 7
+        if (lightLevel <= 7) {
+            if (Math.random() < 0.5) {
+                const hostiles = ['zombie', 'skeleton', 'creeper', 'spider'];
+                mobTypeToSpawn = hostiles[Math.floor(Math.random() * hostiles.length)];
+            }
+        }
+
+        if (mobTypeToSpawn) {
+            // Need to import createMob dynamically if not available, or just require it at the top
+            // Since we cannot dynamically import easily synchronously, let's just trigger an event 
+            // or we must import createMob in world.js. Let's add the import at the top of world.js.
+            const mob = createMob(mobTypeToSpawn, spawnX + 0.5, spawnY + 1.0, spawnZ + 0.5);
+            this.addEntity(mob);
+        }
+    }
+
     clear() {
         for (const chunk of Array.from(this.chunks.values())) {
             this.unloadChunk(chunk.x, chunk.z);

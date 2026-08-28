@@ -6,8 +6,9 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { Chunk, BLOCKS, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z } from './chunk.js';
 import { createChunkMesh } from './mesher.js';
-import { getTextureAtlas } from './textureManager.js';
+import { getTextureAtlas, getBlockFaceUV } from './textureManager.js';
 import { World } from './world.js';
+import { LightingEngine } from './lighting.js';
 import { Player } from '../physics/player.js';
 import { RedstoneSimulator } from '../redstone/simulator.js';
 import { HUD } from '../ui/hud.js';
@@ -24,9 +25,7 @@ import { SoundManager } from './audio.js';
 import { ParticleSystem } from './particles.js';
 import { Arrow } from '../entity/arrow.js';
 import { createMob } from '../entity/mob.js';
-
-
-
+import { createMobRenderer } from '../entity/mobRenderer.js';
 console.log("Minecraft 1.5 WebGL Engine Initializing Phase 2...");
 
 // Force generate atlas once
@@ -55,9 +54,39 @@ const controls = new PointerLockControls(camera, renderer.domElement);
 const uiLayer = document.getElementById('ui-layer');
 
 const mainMenu = new MainMenu(
-    () => { controls.lock(); },
-    () => {},
-    () => {}
+    () => { controls.lock(); }, // onStartGame
+    () => {
+        // onLoadGame
+        const savedData = localStorage.getItem('minecraft_save');
+        if (savedData) {
+            try {
+                const data = JSON.parse(savedData);
+                if (data.player && window.player && window.inventory) {
+                    if (data.player.position) {
+                        window.player.position.set(data.player.position.x, data.player.position.y, data.player.position.z);
+                    }
+                    if (data.player.inventory) {
+                        window.inventory.deserialize(data.player.inventory);
+                    }
+                }
+                if (data.chunks && window.world) {
+                    data.chunks.forEach(chunkData => {
+                        const chunk = window.world.chunks.get(chunkData.key);
+                        if (chunk) {
+                            chunk.blocks = new Uint8Array(chunkData.blocks);
+                            chunk.isModified = true;
+                            chunk.isDirty = true;
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load save:", e);
+            }
+        }
+        controls.lock(); 
+    },
+    () => {}, // onOptions
+    () => {}  // onQuit
 );
 mainMenu.element.style.pointerEvents = 'auto';
 uiLayer.appendChild(mainMenu.element);
@@ -97,17 +126,6 @@ scene.add(controls.getObject());
 const ambientLight = new THREE.AmbientLight(0xe8f0ff, 0.55);
 scene.add(ambientLight);
 
-// Dynamic Torch Lighting Pool
-const MAX_TORCH_LIGHTS = 4;
-const torchLights = [];
-for (let i = 0; i < MAX_TORCH_LIGHTS; i++) {
-    const light = new THREE.PointLight(0xffddaa, 0, 15);
-    light.position.set(0, 0, 0);
-    scene.add(light);
-    torchLights.push(light);
-}
-let torchUpdateTick = 0;
-
 const sunLight = new THREE.DirectionalLight(0xfffbe8, 0.95);
 sunLight.position.set(40, 70, 30);
 sunLight.castShadow = true;
@@ -127,8 +145,42 @@ const particles = new ParticleSystem(scene);
 
 
 const world = new World({ seed: 12345, autoMesh: false, scene, dayNightCycle });
+const lightingEngine = new LightingEngine(world);
+
+world.on('chunkLoad', (chunk) => {
+    lightingEngine.initializeChunkLighting(chunk);
+});
+world.on('blockChange', (e) => {
+    if (e.newBlock === 0) lightingEngine.onBlockRemoved(e.x, e.y, e.z);
+    else lightingEngine.onBlockPlaced(e.x, e.y, e.z, e.newBlock);
+});
+
 world.scene = scene;
 world.dayNightCycle = dayNightCycle;
+world.spawnMobs = function(player, delta) {
+    if (!this.lastMobSpawn) this.lastMobSpawn = 0;
+    this.lastMobSpawn += delta;
+    if (this.lastMobSpawn > 5.0) {
+        this.lastMobSpawn = 0;
+        if (this.entities.size < 10) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 15 + Math.random() * 10;
+            const tx = player.position.x + Math.cos(angle) * dist;
+            const tz = player.position.z + Math.sin(angle) * dist;
+            for (let ty = 200; ty > 10; ty--) {
+                const b = this.getBlock(Math.floor(tx), ty, Math.floor(tz));
+                if (b !== 0 && b !== BLOCKS.WATER && b !== BLOCKS.WATER_FLOWING) {
+                    const mobType = Math.random() < 0.5 ? 'zombie' : 'pig';
+                    const mob = createMob(mobType, tx, ty + 1, tz);
+                    const renderer = createMobRenderer(mob);
+                    mob.mesh = renderer.group;
+                    this.addEntity(mob);
+                    break;
+                }
+            }
+        }
+    }
+};
 const player = new Player(8, 150, 8); // spawn high up, gravity will pull down
 const redstone = new RedstoneSimulator(world);
 
@@ -137,8 +189,11 @@ const hud = new HUD({ container: uiLayer, scoreboard });
 
 window.scoreboard = scoreboard;
 window.hud = hud;
+window.world = world;
+window.player = player;
 document.getElementById('minecraft-hud').style.display = 'none';
 const inventory = new InventoryManager({ hud });
+window.inventory = inventory;
 const anvilUI = new AnvilUI({ inventory, hud, audio, particles });
 const enchantingUI = new EnchantingUI({ inventory, hud, audio, particles, world });
 const furnaceUI = new FurnaceUI({ inventory, hud, audio, particles, world, player });
@@ -192,7 +247,11 @@ world.on('chunkLoad', (chunk) => {
 world.on('chunkUnload', (chunk) => {
     if (chunk.userData && chunk.userData.mesh) {
         scene.remove(chunk.userData.mesh);
-        chunk.userData.mesh.geometry.dispose();
+        if (chunk.userData.mesh.type === 'Group') {
+            chunk.userData.mesh.children.forEach(c => c.geometry && c.geometry.dispose());
+        } else if (chunk.userData.mesh.geometry) {
+            chunk.userData.mesh.geometry.dispose();
+        }
         chunk.userData.mesh = null;
     }
 });
@@ -204,7 +263,11 @@ world.on('blockChange', (data) => {
     if (chunk) {
         if (chunk.userData && chunk.userData.mesh) {
              scene.remove(chunk.userData.mesh);
-             chunk.userData.mesh.geometry.dispose();
+             if (chunk.userData.mesh.type === 'Group') {
+                 chunk.userData.mesh.children.forEach(c => c.geometry && c.geometry.dispose());
+             } else if (chunk.userData.mesh.geometry) {
+                 chunk.userData.mesh.geometry.dispose();
+             }
         }
         chunk.userData.mesh = createChunkMesh(chunk);
         scene.add(chunk.userData.mesh);
@@ -216,7 +279,11 @@ world.on('blockChange', (data) => {
     world.chunks.forEach((c) => {
         if (c.isDirty && c.userData && c.userData.mesh) {
             scene.remove(c.userData.mesh);
-            c.userData.mesh.geometry.dispose();
+            if (c.userData.mesh.type === 'Group') {
+                c.userData.mesh.children.forEach(child => child.geometry && child.geometry.dispose());
+            } else if (c.userData.mesh.geometry) {
+                c.userData.mesh.geometry.dispose();
+            }
             c.userData.mesh = createChunkMesh(c);
             scene.add(c.userData.mesh);
             c.isDirty = false;
@@ -403,19 +470,37 @@ document.addEventListener('mousedown', (event) => {
         const blockIdToPlace = (heldItem && heldItem.id > 0 && heldItem.id <= 255) ? heldItem.id : activeBlock;
         if (blockIdToPlace > 0 && blockIdToPlace <= 255) {
             raycaster.setFromCamera(center, camera);
-            const intersects = raycaster.intersectObjects(getMeshes(), false);
+            const intersects = raycaster.intersectObjects(getMeshes(), true);
             if (intersects.length > 0) {
                 const hit = intersects[0];
                 const placePt = hit.point.clone().addScaledVector(hit.face.normal, 0.01);
-                const px = Math.floor(placePt.x);
-                const py = Math.floor(placePt.y);
-                const pz = Math.floor(placePt.z);
-                if (world.getBlock(px, py, pz) === BLOCKS.AIR) {
+                let px = Math.floor(placePt.x);
+                let py = Math.floor(placePt.y);
+                let pz = Math.floor(placePt.z);
+                
+                // If the block we clicked ON is a snow layer, replace the snow layer instead of placing above it
+                const hitX = Math.floor(hit.point.x - hit.face.normal.x * 0.01);
+                const hitY = Math.floor(hit.point.y - hit.face.normal.y * 0.01);
+                const hitZ = Math.floor(hit.point.z - hit.face.normal.z * 0.01);
+                if (world.getBlock(hitX, hitY, hitZ) === 78) { // 78 = SNOW_LAYER
+                    px = hitX; py = hitY; pz = hitZ;
+                }
+                
+                // Prevent placing block inside player's body
+                const pAABB = player.getAABB();
+                const intersectsPlayer = (
+                    pAABB.minX < px + 1 && pAABB.maxX > px &&
+                    pAABB.minY < py + 1 && pAABB.maxY > py &&
+                    pAABB.minZ < pz + 1 && pAABB.maxZ > pz
+                );
+                
+                const targetBlock = world.getBlock(px, py, pz);
+                if ((targetBlock === BLOCKS.AIR || targetBlock === 78 || targetBlock === 9 || targetBlock === 8 || targetBlock === 31) && !intersectsPlayer) {
                     world.setBlock(px, py, pz, blockIdToPlace, true);
                     if (heldItem) {
                         inventory.consumeSlot(hud.selectedSlot, 1);
                     }
-                    audio.play('pop', placePt);
+                    audio.play('pop', new THREE.Vector3(px, py, pz));
                 }
             }
         }
@@ -496,7 +581,7 @@ function handleMining(delta) {
     if (!isBreaking || !controls.isLocked) return;
 
     raycaster.setFromCamera(center, camera);
-    const intersects = raycaster.intersectObjects(getMeshes(), false);
+    const intersects = raycaster.intersectObjects(getMeshes(), true);
     
     if (intersects.length > 0) {
         const hit = intersects[0];
@@ -508,24 +593,55 @@ function handleMining(delta) {
         if (world.getBlock(bx, by, bz) !== BLOCKS.AIR && world.getBlock(bx, by, bz) !== BLOCKS.BEDROCK) {
             if (!breakingBlockPos || breakingBlockPos.x !== bx || breakingBlockPos.y !== by || breakingBlockPos.z !== bz) {
                 breakingBlockPos = { x: bx, y: by, z: bz };
-                breakTimer = 0;
+                blockBreaking.startBreaking(bx, by, bz, getMiningTime(world.getBlock(bx, by, bz), activeBlock));
             }
             
-            breakTimer += delta;
-            const requiredTime = getMiningTime(world.getBlock(bx, by, bz), activeBlock); // Assuming activeBlock is toolId for now
-            if (breakTimer >= requiredTime) {
+            blockBreaking.update(delta, 1.0);
+            
+            if (blockBreaking.isBreaking && blockBreaking.stage >= 0 && blockBreaking.stage <= 9) {
+                if (!breakingDecal) {
+                    const decalGeo = new THREE.BoxGeometry(1.02, 1.02, 1.02);
+                    const decalMat = new THREE.MeshBasicMaterial({ 
+                        map: getTextureAtlas().texture, 
+                        transparent: true, 
+                        alphaTest: 0.1, 
+                        depthWrite: false 
+                    });
+                    breakingDecal = new THREE.Mesh(decalGeo, decalMat);
+                    breakingDecal.userData.origUvs = new Float32Array(decalGeo.attributes.uv.array);
+                    scene.add(breakingDecal);
+                }
+                breakingDecal.visible = true;
+                breakingDecal.position.set(bx + 0.5, by + 0.5, bz + 0.5);
+                const uvInfo = getBlockFaceUV(-1, 'side', `destroy_stage_${blockBreaking.stage}`);
+                const uvs = breakingDecal.geometry.attributes.uv.array;
+                const origUvs = breakingDecal.userData.origUvs;
+                for (let i = 0; i < uvs.length; i += 2) {
+                    const origU = origUvs[i] > 0.5 ? 1 : 0;
+                    const origV = origUvs[i+1] > 0.5 ? 1 : 0;
+                    uvs[i] = uvInfo.uMin + origU * (uvInfo.uMax - uvInfo.uMin);
+                    uvs[i+1] = uvInfo.vMin + origV * (uvInfo.vMax - uvInfo.vMin);
+                }
+                breakingDecal.geometry.attributes.uv.needsUpdate = true;
+            } else if (breakingDecal) {
+                breakingDecal.visible = false;
+            }
+            
+            if (blockBreaking.isFinished()) {
                 const oldBlockId = world.getBlock(bx, by, bz);
                 world.setBlock(bx, by, bz, BLOCKS.AIR, true);
                 audio.play('crunch', breakPt);
                 particles.emitBlockDebris(bx, by, bz, oldBlockId, 15);
                 isBreaking = false;
-                breakTimer = 0;
+                blockBreaking.stopBreaking();
                 breakingBlockPos = null;
+                if (breakingDecal) breakingDecal.visible = false;
             }
         }
     } else {
-        breakTimer = 0;
+        blockBreaking.stopBreaking();
         breakingBlockPos = null;
+        if (breakingDecal) breakingDecal.visible = false;
     }
 }
 
@@ -576,6 +692,20 @@ function animate() {
 
         player.update(delta, world, moveState);
         camera.position.set(player.position.x, player.position.y + player.eyeHeight, player.position.z);
+        
+        // Underwater Visuals
+        const headBlock = world.getBlock(Math.floor(camera.position.x), Math.floor(camera.position.y), Math.floor(camera.position.z));
+        const waterOverlay = document.getElementById('water-overlay');
+        if (headBlock === BLOCKS.WATER || headBlock === BLOCKS.WATER_FLOWING) {
+            if (waterOverlay) waterOverlay.style.display = 'block';
+            scene.fog.color.setHex(0x1133aa);
+            scene.fog.density = 0.1;
+        } else {
+            if (waterOverlay) waterOverlay.style.display = 'none';
+            scene.fog.color.setHex(0x87CEEB);
+            scene.fog.density = 0.015;
+        }
+
         handleMining(delta);
 
         // Bow Zoom FOV update

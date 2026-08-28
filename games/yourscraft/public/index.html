@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yourscraft</title>
+    <title>Minecraft 1.5 WebGL</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: monospace; }
         canvas { display: block; }
@@ -12,6 +12,7 @@
 </head>
 <body>
     <div id="ui-layer"></div>
+    <div id="water-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(17, 51, 170, 0.5); pointer-events:none; display:none; z-index:10;"></div>
     <script type="importmap">
         {
             "imports": {

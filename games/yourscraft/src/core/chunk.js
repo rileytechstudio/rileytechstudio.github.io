@@ -81,7 +81,12 @@ export const BLOCKS = Object.freeze({
     QUARTZ_PILLAR: 156,
     QUARTZ_CHISELED: 157,
     ENCHANTING_TABLE: 116,
-    ANVIL: 145
+    ANVIL: 145,
+    DISPENSER: 23,
+    PISTON: 33,
+    DROPPER: 158,
+    HOPPER: 154,
+    REPEATER_BLOCK: 93
 });
 
 export class Chunk {
@@ -99,8 +104,11 @@ export class Chunk {
         this.sizeY = sizeY;
         this.sizeZ = sizeZ;
         this.blocks = new Uint8Array(sizeX * sizeY * sizeZ);
+        // Light map: upper 4 bits = sky light (0-15), lower 4 bits = block light (0-15)
+        this.light = new Uint8Array(sizeX * sizeY * sizeZ);
         this.isDirty = true;
         this.mesh = null;
+        this.lightDirty = true; // Flag for lighting engine
     }
 
     /**
@@ -132,6 +140,28 @@ export class Chunk {
     }
 
     /**
+     * Get light level at local coordinate
+     */
+    getLight(x, y, z) {
+        const idx = this.getIndex(x, y, z);
+        if (idx === -1) return 15 << 4; // Default to full sky light out of bounds
+        return this.light[idx];
+    }
+
+    /**
+     * Set light level at local coordinate
+     */
+    setLight(x, y, z, lightValue) {
+        const idx = this.getIndex(x, y, z);
+        if (idx === -1) return false;
+        if (this.light[idx] !== lightValue) {
+            this.light[idx] = lightValue;
+            this.isDirty = true;
+        }
+        return true;
+    }
+
+    /**
      * Set block ID at local coordinate
      * @param {number} x 
      * @param {number} y 
@@ -145,6 +175,7 @@ export class Chunk {
         if (this.blocks[idx] !== blockId) {
             this.blocks[idx] = blockId;
             this.isDirty = true;
+            this.lightDirty = true; // Block change requires light update
         }
         return true;
     }

@@ -1595,3 +1595,45 @@ export class ZombiePigmanAngerGoal extends Goal {
         }
     }
 }
+
+/**
+ * NearestAttackableTargetGoal: Hostile mobs passively scan for targets within follow range
+ */
+export class NearestAttackableTargetGoal extends Goal {
+    constructor(mob, targetType = 'player', searchInterval = 1.0) {
+        super(mob);
+        this.targetType = targetType;
+        this.searchInterval = searchInterval;
+        this.searchTimer = Math.random() * searchInterval;
+    }
+
+    canStart() {
+        return this.mob.isAlive() && !this.mob.target && this.mob.isHostile;
+    }
+
+    tick(dt, world) {
+        this.searchTimer += dt;
+        if (this.searchTimer >= this.searchInterval) {
+            this.searchTimer = 0;
+            if (!world || !world.entities) return;
+
+            let closest = null;
+            let closestDist = this.mob.followRange || 16.0;
+
+            for (const entity of world.entities) {
+                if (entity.type === this.targetType && typeof entity.isAlive === 'function' && entity.isAlive()) {
+                    const dist = this.mob.distanceTo(entity);
+                    if (dist <= closestDist) {
+                        closestDist = dist;
+                        closest = entity;
+                    }
+                }
+            }
+
+            if (closest) {
+                this.mob.setTarget(closest);
+                this.mob.state = 'CHASE';
+            }
+        }
+    }
+}
