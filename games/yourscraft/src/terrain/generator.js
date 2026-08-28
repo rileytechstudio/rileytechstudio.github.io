@@ -454,7 +454,7 @@ export class TerrainGenerator {
      * @param {Chunk} [targetChunk=null]
      * @returns {Chunk} Populated chunk instance
      */
-    generateChunk(chunkX, chunkZ, targetChunk = null) {
+    generateChunk(chunkX, chunkZ, targetChunk = null, world = null) {
         if (this.dimension === 'nether' || this.config.dimension === 'nether') {
             return this.generateNetherChunk(chunkX, chunkZ, targetChunk);
         }
@@ -557,7 +557,7 @@ export class TerrainGenerator {
         }
 
         // Decorate Chunk with Trees, Cacti, Flowers, Tall Grass, Snow layers
-        this.decorateChunk(chunk, heightmap, biomeMap);
+        this.decorateChunk(chunk, heightmap, biomeMap, world);
 
         chunk.isDirty = true;
         return chunk;
@@ -574,7 +574,7 @@ export class TerrainGenerator {
      * @param {Chunk} [targetChunk=null]
      * @returns {Chunk} Populated chunk instance
      */
-    generateNetherChunk(chunkX, chunkZ, targetChunk = null) {
+    generateNetherChunk(chunkX, chunkZ, targetChunk = null, world = null) {
         const chunk = targetChunk || new Chunk(chunkX, chunkZ, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
         const startX = chunkX * CHUNK_SIZE_X;
         const startZ = chunkZ * CHUNK_SIZE_Z;
@@ -709,7 +709,7 @@ export class TerrainGenerator {
      * @param {Int16Array} heightmap 
      * @param {Array} biomeMap 
      */
-    decorateChunk(chunk, heightmap, biomeMap) {
+    decorateChunk(chunk, heightmap, biomeMap, world = null) {
         const decoRng = new Random(((chunk.x * 49287) ^ (chunk.z * 93821)) + 54321);
 
         for (let cz = 0; cz < CHUNK_SIZE_Z; cz++) {
@@ -730,9 +730,9 @@ export class TerrainGenerator {
                 if (this.config.enableTrees && biome.treeDensity > 0 && roll < biome.treeDensity) {
                     if (topBlock === BLOCKS.GRASS || topBlock === BLOCKS.DIRT || topBlock === BLOCKS.SNOW_BLOCK) {
                         if (biome === BIOMES.TAIGA || biome === BIOMES.SNOW || biome === BIOMES.TUNDRA) {
-                            this.generateTaigaTree(chunk, cx, surfaceHeight, cz, decoRng);
+                            this.generateTaigaTree(chunk, cx, surfaceHeight, cz, decoRng, world);
                         } else {
-                            this.generateOakTree(chunk, cx, surfaceHeight, cz, decoRng);
+                            this.generateOakTree(chunk, cx, surfaceHeight, cz, decoRng, world);
                         }
                         continue;
                     }
@@ -788,9 +788,24 @@ export class TerrainGenerator {
      * @param {number} z Local Z (0-15)
      * @param {Random} rng Seeded random
      */
-    generateOakTree(chunk, x, startY, z, rng) {
+    generateOakTree(chunk, x, startY, z, rng, world = null) {
+        const setBlock = (tx, ty, tz, block) => {
+            if (world) {
+                world.setDeferredBlock(chunk.x * 16 + tx, ty, chunk.z * 16 + tz, block);
+            } else {
+                if (chunk.inBounds(tx, ty, tz)) chunk.setBlock(tx, ty, tz, block);
+            }
+        };
+        const getBlock = (tx, ty, tz) => {
+            if (world) {
+                return world.getBlock(chunk.x * 16 + tx, ty, chunk.z * 16 + tz);
+            } else {
+                return chunk.inBounds(tx, ty, tz) ? chunk.getBlock(tx, ty, tz) : 0;
+            }
+        };
+
         if (rng.next() < 0.1) {
-            this.generateLargeOakTree(chunk, x, startY, z, rng);
+            this.generateLargeOakTree(chunk, x, startY, z, rng, world);
             return;
         }
 
@@ -814,11 +829,8 @@ export class TerrainGenerator {
                     const targetX = x + lx;
                     const targetZ = z + lz;
 
-                    if (chunk.inBounds(targetX, ly, targetZ)) {
-                        // Don't overwrite existing solid wood trunk
-                        if (chunk.getBlock(targetX, ly, targetZ) === BLOCKS.AIR) {
-                            chunk.setBlock(targetX, ly, targetZ, BLOCKS.OAK_LEAVES);
-                        }
+                    if (getBlock(targetX, ly, targetZ) === BLOCKS.AIR) {
+                        setBlock(targetX, ly, targetZ, BLOCKS.OAK_LEAVES);
                     }
                 }
             }
@@ -828,18 +840,26 @@ export class TerrainGenerator {
         for (let h = 0; h < treeHeight; h++) {
             const targetY = startY + h;
             if (targetY < CHUNK_SIZE_Y) {
-                chunk.setBlock(x, targetY, z, BLOCKS.OAK_LOG);
+                setBlock(x, targetY, z, BLOCKS.OAK_LOG);
             }
         }
 
         // Turn dirt below trunk into dirt (prevents grass under tree trunk)
-        chunk.setBlock(x, startY - 1, z, BLOCKS.DIRT);
+        setBlock(x, startY - 1, z, BLOCKS.DIRT);
     }
 
     /**
      * Generate Large Oak Tree with branches
      */
-    generateLargeOakTree(chunk, x, startY, z, rng) {
+    generateLargeOakTree(chunk, x, startY, z, rng, world = null) {
+        const setBlock = (tx, ty, tz, block) => {
+            if (world) {
+                world.setDeferredBlock(chunk.x * 16 + tx, ty, chunk.z * 16 + tz, block);
+            } else {
+                if (chunk.inBounds(tx, ty, tz)) chunk.setBlock(tx, ty, tz, block);
+            }
+        };
+
         const treeHeight = rng.nextInt(10, 14);
         const trunkTopY = startY + treeHeight - 2;
 
@@ -849,7 +869,7 @@ export class TerrainGenerator {
         for (let h = 0; h < treeHeight; h++) {
             const targetY = startY + h;
             if (targetY < CHUNK_SIZE_Y) {
-                chunk.setBlock(x, targetY, z, BLOCKS.OAK_LOG);
+                setBlock(x, targetY, z, BLOCKS.OAK_LOG);
             }
         }
         chunk.setBlock(x, startY - 1, z, BLOCKS.DIRT);
@@ -874,23 +894,36 @@ export class TerrainGenerator {
                 by += (rng.next() < 0.3 ? 1 : 0); // Occasionally go up
                 bz += dz;
 
-                if (chunk.inBounds(bx, by, bz)) {
-                    chunk.setBlock(bx, by, bz, BLOCKS.OAK_LOG);
-                }
+                setBlock(bx, by, bz, BLOCKS.OAK_LOG);
             }
             
             // Add leaves at the end of the branch
-            this.generateLeafCluster(chunk, bx, by, bz, rng);
+            this.generateLeafCluster(chunk, bx, by, bz, rng, world);
         }
         
         // Leaves at top of trunk
-        this.generateLeafCluster(chunk, x, trunkTopY, z, rng);
+        this.generateLeafCluster(chunk, x, trunkTopY, z, rng, world);
     }
 
     /**
      * Generate a cluster of leaves around a branch node
      */
-    generateLeafCluster(chunk, bx, by, bz, rng) {
+    generateLeafCluster(chunk, bx, by, bz, rng, world = null) {
+        const setBlock = (tx, ty, tz, block) => {
+            if (world) {
+                world.setDeferredBlock(chunk.x * 16 + tx, ty, chunk.z * 16 + tz, block);
+            } else {
+                if (chunk.inBounds(tx, ty, tz)) chunk.setBlock(tx, ty, tz, block);
+            }
+        };
+        const getBlock = (tx, ty, tz) => {
+            if (world) {
+                return world.getBlock(chunk.x * 16 + tx, ty, chunk.z * 16 + tz);
+            } else {
+                return chunk.inBounds(tx, ty, tz) ? chunk.getBlock(tx, ty, tz) : 0;
+            }
+        };
+
         const radius = 2;
         for (let ly = by - 1; ly <= by + 1; ly++) {
             for (let lx = -radius; lx <= radius; lx++) {
@@ -898,10 +931,8 @@ export class TerrainGenerator {
                     if (Math.abs(lx) === radius && Math.abs(lz) === radius && rng.next() < 0.5) continue;
                     const tx = bx + lx;
                     const tz = bz + lz;
-                    if (chunk.inBounds(tx, ly, tz)) {
-                        if (chunk.getBlock(tx, ly, tz) === BLOCKS.AIR) {
-                            chunk.setBlock(tx, ly, tz, BLOCKS.OAK_LEAVES);
-                        }
+                    if (getBlock(tx, ly, tz) === BLOCKS.AIR) {
+                        setBlock(tx, ly, tz, BLOCKS.OAK_LEAVES);
                     }
                 }
             }
@@ -916,7 +947,22 @@ export class TerrainGenerator {
      * @param {number} z Local Z (0-15)
      * @param {Random} rng Seeded random
      */
-    generateTaigaTree(chunk, x, startY, z, rng) {
+    generateTaigaTree(chunk, x, startY, z, rng, world = null) {
+        const setBlock = (tx, ty, tz, block) => {
+            if (world) {
+                world.setDeferredBlock(chunk.x * 16 + tx, ty, chunk.z * 16 + tz, block);
+            } else {
+                if (chunk.inBounds(tx, ty, tz)) chunk.setBlock(tx, ty, tz, block);
+            }
+        };
+        const getBlock = (tx, ty, tz) => {
+            if (world) {
+                return world.getBlock(chunk.x * 16 + tx, ty, chunk.z * 16 + tz);
+            } else {
+                return chunk.inBounds(tx, ty, tz) ? chunk.getBlock(tx, ty, tz) : 0;
+            }
+        };
+
         const treeHeight = rng.nextInt(6, 8);
         const topY = startY + treeHeight;
 
@@ -926,18 +972,14 @@ export class TerrainGenerator {
         for (let h = 0; h < treeHeight; h++) {
             const targetY = startY + h;
             if (targetY < CHUNK_SIZE_Y) {
-                chunk.setBlock(x, targetY, z, BLOCKS.OAK_LOG);
+                setBlock(x, targetY, z, BLOCKS.OAK_LOG);
             }
         }
         chunk.setBlock(x, startY - 1, z, BLOCKS.DIRT);
 
         // Top apex leaf
-        if (chunk.inBounds(x, topY, z)) {
-            chunk.setBlock(x, topY, z, BLOCKS.OAK_LEAVES);
-            if (chunk.inBounds(x, topY + 1, z)) {
-                chunk.setBlock(x, topY + 1, z, BLOCKS.SNOW_LAYER);
-            }
-        }
+        setBlock(x, topY, z, BLOCKS.OAK_LEAVES);
+        setBlock(x, topY + 1, z, BLOCKS.SNOW_LAYER);
 
         // Conical stepped foliage layers downwards
         let radius = 1;
@@ -950,12 +992,10 @@ export class TerrainGenerator {
                     }
                     const tx = x + lx;
                     const tz = z + lz;
-                    if (chunk.inBounds(tx, y, tz)) {
-                        if (chunk.getBlock(tx, y, tz) === BLOCKS.AIR) {
-                            chunk.setBlock(tx, y, tz, BLOCKS.OAK_LEAVES);
-                            if (chunk.inBounds(tx, y + 1, tz) && chunk.getBlock(tx, y + 1, tz) === BLOCKS.AIR) {
-                                chunk.setBlock(tx, y + 1, tz, BLOCKS.SNOW_LAYER);
-                            }
+                    if (getBlock(tx, y, tz) === BLOCKS.AIR) {
+                        setBlock(tx, y, tz, BLOCKS.OAK_LEAVES);
+                        if (getBlock(tx, y + 1, tz) === BLOCKS.AIR) {
+                            setBlock(tx, y + 1, tz, BLOCKS.SNOW_LAYER);
                         }
                     }
                 }

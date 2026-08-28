@@ -88,6 +88,9 @@ export class World {
         /** @type {Map<string, Set<Function>>} Event listeners */
         this.listeners = new Map();
 
+        /** @type {Map<string, Array<{lx: number, ly: number, lz: number, blockId: number}>>} */
+        this.deferredBlocks = new Map();
+
         // Track player last chunk coordinates to optimize updates
         this.lastPlayerChunkX = null;
         this.lastPlayerChunkZ = null;
@@ -214,6 +217,35 @@ export class World {
      * @param {number} cz - Chunk Z index
      * @returns {Chunk} The loaded and populated Chunk instance
      */
+    /**
+     * Set Block ID at world coordinate, or defer if chunk is not loaded.
+     */
+    setDeferredBlock(worldX, worldY, worldZ, blockId) {
+        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return false;
+        
+        const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
+        const chunk = this.getChunk(cx, cz);
+        
+        if (chunk) {
+            return this.setBlock(worldX, worldY, worldZ, blockId, false);
+        } else {
+            const key = this.getChunkKey(cx, cz);
+            if (!this.deferredBlocks.has(key)) {
+                this.deferredBlocks.set(key, []);
+            }
+            this.deferredBlocks.get(key).push({ lx, ly, lz, blockId });
+            return true;
+        }
+    }
+
+    /**
+     * Load and populate a Chunk at chunk grid coordinates (cx, cz).
+     * Uses TerrainGenerator to generate procedural terrain.
+     *
+     * @param {number} cx - Chunk X index
+     * @param {number} cz - Chunk Z index
+     * @returns {Chunk} The loaded and populated Chunk instance
+     */
     loadChunk(cx, cz) {
         const key = this.getChunkKey(cx, cz);
         if (this.chunks.has(key)) {
@@ -222,13 +254,21 @@ export class World {
 
         // Create new chunk instance
         const chunk = new Chunk(cx, cz, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
+        this.chunks.set(key, chunk);
 
         // Populate chunk voxels via TerrainGenerator
-        this.generator.generateChunk(cx, cz, chunk);
-        chunk.isDirty = true;
+        this.generator.generateChunk(cx, cz, chunk, this);
 
-        // Register in chunk map
-        this.chunks.set(key, chunk);
+        // Apply deferred blocks
+        if (this.deferredBlocks.has(key)) {
+            const pending = this.deferredBlocks.get(key);
+            for (const pb of pending) {
+                chunk.setBlock(pb.lx, pb.ly, pb.lz, pb.blockId);
+            }
+            this.deferredBlocks.delete(key);
+        }
+
+        chunk.isDirty = true;
 
         // Create Three.js mesh if scene and autoMesh are enabled
         if (this.scene && this.autoMesh) {
