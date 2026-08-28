@@ -77,7 +77,28 @@ export class LightingEngine {
                         lightVal = (lightVal & 0x0F) | (currentSkyLight << 4);
                         chunk.setLight(x, y, z, lightVal);
                         
-                        this.addQueue.push({ x: worldX, y: worldY, z: worldZ, isSky: true });
+                        // Optimization: Only push to BFS queue if it actually needs to spread horizontally
+                        let needsSpread = false;
+                        if (currentSkyLight < 15) {
+                            needsSpread = true; // Diminished light must spread
+                        } else if (x === 0 || x === CHUNK_SIZE_X - 1 || z === 0 || z === CHUNK_SIZE_Z - 1) {
+                            needsSpread = true; // Chunk boundaries must spread to adjacent chunks
+                        } else if (y === 0 || y === CHUNK_SIZE_Y - 1) {
+                            needsSpread = true; // World boundaries
+                        } else {
+                            // If any adjacent block is solid, sunlight might need to spread horizontally under it
+                            if (BLOCK_LIGHT_OPACITY[chunk.getBlock(x+1, y, z)] > 0 ||
+                                BLOCK_LIGHT_OPACITY[chunk.getBlock(x-1, y, z)] > 0 ||
+                                BLOCK_LIGHT_OPACITY[chunk.getBlock(x, y, z+1)] > 0 ||
+                                BLOCK_LIGHT_OPACITY[chunk.getBlock(x, y, z-1)] > 0 ||
+                                BLOCK_LIGHT_OPACITY[chunk.getBlock(x, y-1, z)] > 0) {
+                                needsSpread = true;
+                            }
+                        }
+                        
+                        if (needsSpread) {
+                            this.addQueue.push({ x: worldX, y: worldY, z: worldZ, isSky: true });
+                        }
                     }
                 }
             }
