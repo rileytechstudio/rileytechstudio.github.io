@@ -309,7 +309,7 @@ export function renderBlockIcon(blockId, size = 32) {
     const numId = Number(blockId);
     if (!numId || numId <= 0) return '';
 
-    const cacheKey = ;
+    const cacheKey = `${numId}_${size}`;
     if (ICON_CACHE.has(cacheKey)) {
         return ICON_CACHE.get(cacheKey);
     }
