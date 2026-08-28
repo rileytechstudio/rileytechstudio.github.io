@@ -57,13 +57,13 @@ export function getBlockColor(blockId, faceType) {
 }
 
 /**
- * Default Ambient Occlusion brightness curve mapping AO score (0, 1, 2, 3) to light multiplier.
- * 0: heavily occluded (inner corner between solid blocks) -> 0.45
- * 1: two occluders -> 0.65
- * 2: one occluder -> 0.82
- * 3: unoccluded -> 1.0
+ * Standard Minecraft 1.5 Ambient Occlusion brightness curve mapping AO score (0, 1, 2, 3) to light multiplier.
+ * 0: fully occluded (inner corner between 2 solid side blocks) -> 0.50
+ * 1: 2 occluding blocks -> 0.70
+ * 2: 1 occluding block -> 0.85
+ * 3: unoccluded -> 1.00
  */
-export const DEFAULT_AO_CURVE = Object.freeze([0.45, 0.65, 0.82, 1.0]);
+export const DEFAULT_AO_CURVE = Object.freeze([0.5, 0.7, 0.85, 1.0]);
 
 /**
  * 6 Cube faces definitions with unit offsets, normals, and local UVs.
@@ -211,7 +211,7 @@ export function isBlockOccluding(blockId) {
  * @param {boolean|number} corner - Solid state of diagonal corner block
  * @returns {number} AO level [0, 3] (0 = fully occluded/dark, 3 = unoccluded/bright)
  */
-export function calculateVertexAO(side1, side2, corner) {
+export function calculateAO(side1, side2, corner) {
     const s1 = Boolean(side1);
     const s2 = Boolean(side2);
     const c = Boolean(corner);
@@ -221,6 +221,8 @@ export function calculateVertexAO(side1, side2, corner) {
     }
     return 3 - (Number(s1) + Number(s2) + Number(c));
 }
+
+export const calculateVertexAO = calculateAO;
 
 /**
  * Meshes a chunk into a Three.js BufferGeometry with texture atlas UV coordinates and Vertex Ambient Occlusion colors.
@@ -372,9 +374,6 @@ export function generateChunkGeometry(chunk, options = {}) {
                     addSpritePlane(p2);
                     continue;
                 }
-                
-
-
 
                 for (let f = 0; f < FACES.length; f++) {
                     const face = FACES[f];
@@ -427,49 +426,88 @@ export function generateChunkGeometry(chunk, options = {}) {
                             const v = uvBounds.vMin + v_local * (uvBounds.vMax - uvBounds.vMin);
                             uvs.push(u, v);
 
-                            // Read block light and sky light for this face vertex
-                            let skyLight = 15;
-                            let blockLight = 0;
-                            
-                            const lightVal = getLight(ax, ay, az);
-                            skyLight = (lightVal >> 4) & 0x0F;
-                            blockLight = lightVal & 0x0F;
-
-                            // Calculate Vertex Ambient Occlusion (AO)
+                            // Calculate Vertex Ambient Occlusion (AO) and Smooth Lighting
+                            let aoScore = 3;
                             let aoFactor = 1.0;
+                            let vertexSkyLight = 15;
+                            let vertexBlockLight = 0;
+
                             if (enableAO) {
-                                let s1 = false;
-                                let s2 = false;
-                                let c = false;
+                                let s1x = ax, s1y = ay, s1z = az;
+                                let s2x = ax, s2y = ay, s2z = az;
+                                let crnx = ax, crny = ay, crnz = az;
 
                                 if (nx !== 0) {
                                     const dy = cy === 1 ? 1 : -1;
                                     const dz = cz === 1 ? 1 : -1;
-                                    s1 = isBlockOccluding(getVoxel(ax, ay, az + dz));
-                                    s2 = isBlockOccluding(getVoxel(ax, ay + dy, az));
-                                    c  = isBlockOccluding(getVoxel(ax, ay + dy, az + dz));
+                                    s1z += dz;
+                                    s2y += dy;
+                                    crny += dy;
+                                    crnz += dz;
                                 } else if (ny !== 0) {
                                     const dx = cx === 1 ? 1 : -1;
                                     const dz = cz === 1 ? 1 : -1;
-                                    s1 = isBlockOccluding(getVoxel(ax + dx, ay, az));
-                                    s2 = isBlockOccluding(getVoxel(ax, ay, az + dz));
-                                    c  = isBlockOccluding(getVoxel(ax + dx, ay, az + dz));
+                                    s1x += dx;
+                                    s2z += dz;
+                                    crnx += dx;
+                                    crnz += dz;
                                 } else {
                                     // nz !== 0
                                     const dx = cx === 1 ? 1 : -1;
                                     const dy = cy === 1 ? 1 : -1;
-                                    s1 = isBlockOccluding(getVoxel(ax + dx, ay, az));
-                                    s2 = isBlockOccluding(getVoxel(ax + dx, ay + dy, az));
-                                    c  = isBlockOccluding(getVoxel(ax + dx, ay + dy, az));
+                                    s1x += dx;
+                                    s2y += dy;
+                                    crnx += dx;
+                                    crny += dy;
                                 }
 
-                                const aoScore = calculateVertexAO(s1, s2, c);
+                                const s1 = isBlockOccluding(getVoxel(s1x, s1y, s1z));
+                                const s2 = isBlockOccluding(getVoxel(s2x, s2y, s2z));
+                                const c  = isBlockOccluding(getVoxel(crnx, crny, crnz));
+
+                                aoScore = calculateAO(s1, s2, c);
                                 faceAoScores[i] = aoScore;
                                 aoFactor = aoCurve[aoScore];
+
+                                // Smooth lighting: sample 4 surrounding blocks (center, side1, side2, corner)
+                                const l0 = getLight(ax, ay, az);
+                                let skySum = (l0 >> 4) & 0x0F;
+                                let blkSum = l0 & 0x0F;
+                                let sampleCount = 1;
+
+                                if (!s1) {
+                                    const l1 = getLight(s1x, s1y, s1z);
+                                    skySum += (l1 >> 4) & 0x0F;
+                                    blkSum += (l1 & 0x0F);
+                                }
+                                sampleCount++;
+
+                                if (!s2) {
+                                    const l2 = getLight(s2x, s2y, s2z);
+                                    skySum += (l2 >> 4) & 0x0F;
+                                    blkSum += (l2 & 0x0F);
+                                }
+                                sampleCount++;
+
+                                if (!s1 || !s2) {
+                                    if (!c) {
+                                        const l3 = getLight(crnx, crny, crnz);
+                                        skySum += (l3 >> 4) & 0x0F;
+                                        blkSum += (l3 & 0x0F);
+                                    }
+                                    sampleCount++;
+                                }
+
+                                vertexSkyLight = skySum / sampleCount;
+                                vertexBlockLight = blkSum / sampleCount;
+                            } else {
+                                const lightVal = getLight(ax, ay, az);
+                                vertexSkyLight = (lightVal >> 4) & 0x0F;
+                                vertexBlockLight = lightVal & 0x0F;
                             }
 
                             // Push packed light data into vertex colors (R=block, G=sky, B=AO)
-                            colors.push(blockLight / 15.0, skyLight / 15.0, aoFactor);
+                            colors.push(vertexBlockLight / 15.0, vertexSkyLight / 15.0, aoFactor);
                         }
 
                         // Quad Triangulation with Anisotropy-Fixing Diagonal Flip

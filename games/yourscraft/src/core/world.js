@@ -16,6 +16,7 @@ import { Chunk, BLOCKS, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z } from './chunk
 import { TerrainGenerator } from '../terrain/generator.js';
 import { createChunkMesh } from './mesher.js';
 import { createMob } from '../entity/mob.js';
+import { getMobDrop, spawnDroppedItem } from '../entity/droppedItem.js';
 
 export const DEFAULT_LOAD_RADIUS = 4;
 
@@ -621,10 +622,19 @@ export class World {
      * Update all active entities with delta time dt.
      * @param {number} dt Delta time in seconds
      */
-    updateEntities(dt = 0.05) {
+    updateEntities(dt = 0.05, player = null, inventory = null, audio = null) {
         for (const entity of this.entities) {
             if (typeof entity.update === 'function') {
-                entity.update(dt, this);
+                entity.update(dt, this, player, inventory, audio);
+            }
+            if (entity.isDead && !entity.userData.lootDropped && entity.type !== 'item' && entity.type !== 'arrow') {
+                entity.userData.lootDropped = true;
+                const drops = getMobDrop(entity.type);
+                for (const d of drops) {
+                    if (d && d.count > 0) {
+                        spawnDroppedItem(d.id, d.count, entity.position.x, entity.position.y + 0.5, entity.position.z, this, this.scene);
+                    }
+                }
             }
             if (entity.removed || (entity.isDead && entity.deathTime > 1.0)) {
                 this.removeEntity(entity);

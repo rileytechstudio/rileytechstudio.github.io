@@ -100,6 +100,9 @@ export const BLOCK_TEXTURE_MAP = Object.freeze({
  * @returns {string} Texture key name in atlas
  */
 export function getBlockFaceTexture(blockId, faceType = 'side', faceName = '') {
+    if (faceName && typeof faceName === 'string' && faceName.startsWith('destroy_stage_')) {
+        return faceName;
+    }
     const entry = BLOCK_TEXTURE_MAP[blockId];
     if (!entry) {
         return 'stone';

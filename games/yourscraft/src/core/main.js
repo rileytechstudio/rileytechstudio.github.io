@@ -27,6 +27,7 @@ import { Arrow } from '../entity/arrow.js';
 import { createMob } from '../entity/mob.js';
 import { createMobRenderer } from '../entity/mobRenderer.js';
 import { WeatherSystem, WEATHER_TYPES, PRECIPITATION_TYPES } from '../environment/weather.js';
+import { DroppedItem, spawnDroppedItem, spawnBlockDrop, getMobDrop } from '../entity/droppedItem.js';
 console.log("Minecraft 1.5 WebGL Engine Initializing Phase 2...");
 
 // Force generate atlas once
@@ -177,6 +178,12 @@ controls.addEventListener('lock', () => {
 });
 
 controls.addEventListener('unlock', () => {
+    isHoldingLeftClick = false;
+    if (blockBreaking.isBreaking) {
+        blockBreaking.stopBreaking();
+    }
+    breakingBlockPos = null;
+    if (breakingDecal) breakingDecal.visible = false;
     // Only show pause menu if we are already playing and no other UI is open
     if (!isFirstLock && !inventory.isOpen() && !(anvilUI && anvilUI.isOpen()) && !(enchantingUI && enchantingUI.isOpen()) && !(furnaceUI && furnaceUI.isOpen())) {
         pauseMenu.showMainMenu();
@@ -271,6 +278,35 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'KeyP' && !inventory.isOpen() && !(anvilUI && anvilUI.isOpen()) && !(enchantingUI && enchantingUI.isOpen()) && !(furnaceUI && furnaceUI.isOpen())) {
         const next = weather.toggleWeather();
         console.log('[Weather] Toggled to: ' + next);
+    }
+});
+
+// KeyQ item drop shortcut
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyQ' && controls.isLocked && !inventory.isOpen() && !(anvilUI && anvilUI.isOpen()) && !(enchantingUI && enchantingUI.isOpen()) && !(furnaceUI && furnaceUI.isOpen())) {
+        const slotItem = inventory.getSlot(hud.selectedSlot);
+        if (slotItem && slotItem.count > 0) {
+            const dropId = slotItem.id;
+            inventory.consumeSlot(hud.selectedSlot, 1);
+            syncActiveItem();
+
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+
+            const spawnX = camera.position.x + dir.x * 0.4;
+            const spawnY = camera.position.y - 0.2 + dir.y * 0.4;
+            const spawnZ = camera.position.z + dir.z * 0.4;
+
+            spawnDroppedItem(dropId, 1, spawnX, spawnY, spawnZ, world, scene, {
+                velocity: {
+                    x: dir.x * 5.0 + (Math.random() - 0.5) * 0.5,
+                    y: dir.y * 5.0 + 1.5,
+                    z: dir.z * 5.0 + (Math.random() - 0.5) * 0.5
+                },
+                pickupDelay: 1.0
+            });
+            audio.play('pop', new THREE.Vector3(spawnX, spawnY, spawnZ));
+        }
     }
 });
 const anvilUI = new AnvilUI({ inventory, hud, audio, particles });
@@ -399,7 +435,7 @@ const center = new THREE.Vector2(0, 0);
 
 let breakTimer = 0;
 let breakingBlockPos = null;
-let isBreaking = false;
+let isHoldingLeftClick = false;
 
 // Bow charging state
 let isChargingBow = false;
@@ -490,6 +526,7 @@ document.addEventListener('mousedown', (event) => {
     if (!controls.isLocked || inventory.isOpen()) return;
     
     if (event.button === 0) { // Left click: Attack mob OR Start breaking block
+        isHoldingLeftClick = true;
         const target = findTargetMob(4.0);
         if (target && target.mob) {
             const mob = target.mob;
@@ -518,6 +555,15 @@ document.addEventListener('mousedown', (event) => {
             if (particles && particles.emitBlockDebris) {
                 particles.emitBlockDebris(mob.position.x, mob.position.y + 1, mob.position.z, BLOCKS.REDSTONE_BLOCK, 12);
             }
+            if (mob.isDead && !mob.userData.lootDropped) {
+                mob.userData.lootDropped = true;
+                const drops = getMobDrop(mob.type);
+                for (const d of drops) {
+                    if (d && d.count > 0) {
+                        spawnDroppedItem(d.id, d.count, mob.position.x, mob.position.y + 0.5, mob.position.z, world, scene);
+                    }
+                }
+            }
 
             // Flash red on hurt
             if (mob.mesh) {
@@ -535,12 +581,10 @@ document.addEventListener('mousedown', (event) => {
                 });
             }
 
-            isBreaking = false;
             breakTimer = 0;
             return;
         }
 
-        isBreaking = true;
         breakTimer = 0;
     } else if (event.button === 2) { // Right click: Interactive blocks OR Bow charge OR Eat food OR Place block
         const heldItem = inventory.getSlot(hud.selectedSlot);
@@ -642,9 +686,15 @@ document.addEventListener('mousedown', (event) => {
 
 document.addEventListener('mouseup', (event) => {
     if (event.button === 0) {
-        isBreaking = false;
+        isHoldingLeftClick = false;
         breakTimer = 0;
         breakingBlockPos = null;
+        if (blockBreaking.isBreaking) {
+            blockBreaking.stopBreaking();
+        }
+        if (breakingDecal) {
+            breakingDecal.visible = false;
+        }
     } else if (event.button === 2) {
         // Bow Release & Arrow Spawn
         if (isChargingBow) {
@@ -711,7 +761,14 @@ document.addEventListener('mouseup', (event) => {
 });
 
 function handleMining(delta) {
-    if (!isBreaking || !controls.isLocked) return;
+    if (!isHoldingLeftClick || !controls.isLocked || inventory.isOpen()) {
+        if (blockBreaking.isBreaking) {
+            blockBreaking.stopBreaking();
+        }
+        breakingBlockPos = null;
+        if (breakingDecal) breakingDecal.visible = false;
+        return;
+    }
 
     raycaster.setFromCamera(center, camera);
     const intersects = raycaster.intersectObjects(getMeshes(), true);
@@ -722,11 +779,12 @@ function handleMining(delta) {
         const bx = Math.floor(breakPt.x);
         const by = Math.floor(breakPt.y);
         const bz = Math.floor(breakPt.z);
+        const targetBlock = world.getBlock(bx, by, bz);
         
-        if (world.getBlock(bx, by, bz) !== BLOCKS.AIR && world.getBlock(bx, by, bz) !== BLOCKS.BEDROCK) {
+        if (targetBlock !== BLOCKS.AIR && targetBlock !== BLOCKS.BEDROCK) {
             if (!breakingBlockPos || breakingBlockPos.x !== bx || breakingBlockPos.y !== by || breakingBlockPos.z !== bz) {
                 breakingBlockPos = { x: bx, y: by, z: bz };
-                blockBreaking.startBreaking(bx, by, bz, getMiningTime(world.getBlock(bx, by, bz), activeBlock));
+                blockBreaking.startBreaking(bx, by, bz, getMiningTime(targetBlock, activeBlock));
             }
             
             blockBreaking.update(delta, 1.0);
@@ -765,11 +823,15 @@ function handleMining(delta) {
                 world.setBlock(bx, by, bz, BLOCKS.AIR, true);
                 audio.play('crunch', breakPt);
                 particles.emitBlockDebris(bx, by, bz, oldBlockId, 15);
-                isBreaking = false;
+                spawnBlockDrop(oldBlockId, activeBlock, bx, by, bz, world, scene);
                 blockBreaking.stopBreaking();
                 breakingBlockPos = null;
                 if (breakingDecal) breakingDecal.visible = false;
             }
+        } else {
+            blockBreaking.stopBreaking();
+            breakingBlockPos = null;
+            if (breakingDecal) breakingDecal.visible = false;
         }
     } else {
         blockBreaking.stopBreaking();
@@ -837,7 +899,17 @@ function animate() {
             if (waterOverlay) waterOverlay.style.display = 'none';
         }
 
-        handleMining(delta);
+        if (isHoldingLeftClick) {
+            handleMining(delta);
+        } else {
+            if (blockBreaking.isBreaking) {
+                blockBreaking.stopBreaking();
+            }
+            breakingBlockPos = null;
+            if (breakingDecal && breakingDecal.visible) {
+                breakingDecal.visible = false;
+            }
+        }
 
         // Bow Zoom FOV update
         if (isChargingBow) {
@@ -862,7 +934,7 @@ function animate() {
         world.spawnMobs(player, delta);
     }
     if (typeof world.updateEntities === 'function') {
-        world.updateEntities(delta);
+        world.updateEntities(delta, player, inventory, audio);
     }
 
     // Synchronize entity meshes in scene
@@ -873,7 +945,7 @@ function animate() {
                     scene.add(entity.mesh);
                 }
                 entity.mesh.position.set(entity.position.x, entity.position.y, entity.position.z);
-                if (entity.rotation && entity.type !== 'arrow') {
+                if (entity.rotation && entity.type !== 'arrow' && entity.type !== 'item') {
                     entity.mesh.rotation.y = entity.rotation.yaw || 0;
                 }
             }
@@ -906,10 +978,6 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-window.MinecraftEngine = { scene, camera, renderer, world, player, redstone, hud, BLOCKS, weather, dayNightCycle };
+window.MinecraftEngine = { scene, camera, renderer, world, player, redstone, hud, BLOCKS, weather, dayNightCycle, audio, inventory, DroppedItem, spawnDroppedItem, spawnBlockDrop, getMobDrop };
 
-document.addEventListener('mouseup', (e) => {
-    if (e.button === 0) {
-        blockBreaking.stopBreaking();
-    }
-});
+
