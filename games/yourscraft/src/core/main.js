@@ -71,6 +71,8 @@ controls.pointerSpeed = mouseSensitivity;
 const uiLayer = document.getElementById('ui-layer');
 
 let pauseMenu;
+let world;
+let audio;
 
 const mainMenu = new MainMenu(
     () => { controls.lock(); }, // onStartGame
@@ -212,12 +214,12 @@ scene.add(fillLight);
 
 // 6. Subsystems Init
 const dayNightCycle = new DayNightCycle(scene, ambientLight, sunLight, fillLight);
-const audio = new SoundManager(camera);
+audio = new SoundManager(camera);
 if (audio && typeof audio.setMasterVolume === 'function') {
     audio.setMasterVolume(masterVolume);
 }
 const particles = new ParticleSystem(scene);
-const world = new World({ seed: 12345, autoMesh: false, scene, dayNightCycle });
+world = new World({ seed: 12345, autoMesh: false, scene, dayNightCycle });
 const weather = new WeatherSystem(scene, camera, world, { dayNightCycle, audio });
 const lightingEngine = new LightingEngine(world);
 
