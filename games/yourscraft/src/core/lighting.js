@@ -186,8 +186,9 @@ export class LightingEngine {
     }
 
     processLightRemoval() {
-        while (this.removeQueue.length > 0) {
-            const node = this.removeQueue.shift();
+        let head = 0;
+        while (head < this.removeQueue.length) {
+            const node = this.removeQueue[head++];
             const { x, y, z, val, isSky } = node;
 
             const neighbors = [
@@ -212,11 +213,13 @@ export class LightingEngine {
                 }
             }
         }
+        this.removeQueue = [];
     }
 
     processLightAddition() {
-        while (this.addQueue.length > 0) {
-            const node = this.addQueue.shift();
+        let head = 0;
+        while (head < this.addQueue.length) {
+            const node = this.addQueue[head++];
             const { x, y, z, isSky } = node;
 
             const currentLight = isSky ? this.getSkyLight(x, y, z) : this.getBlockLight(x, y, z);
@@ -259,5 +262,6 @@ export class LightingEngine {
                 }
             }
         }
+        this.addQueue = [];
     }
 }
