@@ -490,15 +490,15 @@ export class World {
                 const neighbor = this.getChunk(cx, cz + 1);
                 if (neighbor) neighbor.isDirty = true;
             }
-        }
 
-        this.emit('blockChange', {
-            x: worldX,
-            y: worldY,
-            z: worldZ,
-            oldBlock,
-            newBlock: blockId
-        });
+            this.emit('blockChange', {
+                x: worldX,
+                y: worldY,
+                z: worldZ,
+                oldBlock,
+                newBlock: blockId
+            });
+        }
 
         return true;
     }
