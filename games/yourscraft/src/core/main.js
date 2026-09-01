@@ -681,6 +681,49 @@ document.addEventListener('mousedown', (event) => {
             }
         }
 
+        // 2.6 Check if holding Hoe -> Till Dirt/Grass into Farmland
+        const isHoe = heldItem && (heldItem.id === ITEM_IDS.WOODEN_HOE || heldItem.id === ITEM_IDS.STONE_HOE || heldItem.id === ITEM_IDS.IRON_HOE || heldItem.id === ITEM_IDS.DIAMOND_HOE || heldItem.id === ITEM_IDS.GOLDEN_HOE);
+        if (isHoe) {
+            raycaster.setFromCamera(center, camera);
+            const intersects = raycaster.intersectObjects(getMeshes(), true);
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                const hitX = Math.floor(hit.point.x - hit.face.normal.x * 0.01);
+                const hitY = Math.floor(hit.point.y - hit.face.normal.y * 0.01);
+                const hitZ = Math.floor(hit.point.z - hit.face.normal.z * 0.01);
+                const clickedBlock = world.getBlock(hitX, hitY, hitZ);
+                const blockAbove = world.getBlock(hitX, hitY + 1, hitZ);
+                if ((clickedBlock === BLOCKS.DIRT || clickedBlock === BLOCKS.GRASS) && blockAbove === BLOCKS.AIR) {
+                    world.setBlock(hitX, hitY, hitZ, BLOCKS.FARMLAND);
+                    audio.play('dig_gravel'); 
+                    return; 
+                }
+            }
+        }
+
+        // 2.7 Check if holding Seeds -> Plant on Farmland
+        if (heldItem && heldItem.id === ITEM_IDS.SEEDS) {
+            raycaster.setFromCamera(center, camera);
+            const intersects = raycaster.intersectObjects(getMeshes(), true);
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                const hitX = Math.floor(hit.point.x - hit.face.normal.x * 0.01);
+                const hitY = Math.floor(hit.point.y - hit.face.normal.y * 0.01);
+                const hitZ = Math.floor(hit.point.z - hit.face.normal.z * 0.01);
+                const clickedBlock = world.getBlock(hitX, hitY, hitZ);
+                const blockAbove = world.getBlock(hitX, hitY + 1, hitZ);
+                if (clickedBlock === BLOCKS.FARMLAND && blockAbove === BLOCKS.AIR) {
+                    world.setBlock(hitX, hitY + 1, hitZ, BLOCKS.WHEAT);
+                    if (typeof world.setBlockData === 'function') {
+                        world.setBlockData(hitX, hitY + 1, hitZ, { age: 0 });
+                    }
+                    inventory.consumeSlot(hud.selectedSlot, 1);
+                    audio.play('dig_grass');
+                    return;
+                }
+            }
+        }
+
         // 3. Otherwise place block if holding placeable block
         if (heldItem && heldItem.id > 0 && heldItem.id <= 255 && heldItem.count > 0) {
             const blockIdToPlace = heldItem.id;
@@ -874,10 +917,10 @@ function handleMining(delta) {
             
             if (blockBreaking.isFinished()) {
                 const oldBlockId = world.getBlock(bx, by, bz);
+                spawnBlockDrop(oldBlockId, activeBlock, bx, by, bz, world, scene);
                 world.setBlock(bx, by, bz, BLOCKS.AIR, true);
                 audio.play('crunch', breakPt);
                 particles.emitBlockDebris(bx, by, bz, oldBlockId, 15);
-                spawnBlockDrop(oldBlockId, activeBlock, bx, by, bz, world, scene);
                 blockBreaking.stopBreaking();
                 breakingBlockPos = null;
                 if (breakingDecal) breakingDecal.visible = false;
@@ -1007,6 +1050,9 @@ function animate() {
     }
     if (typeof world.updateEntities === 'function') {
         world.updateEntities(delta, player, inventory, audio);
+    }
+    if (typeof world.tickBlocks === 'function') {
+        world.tickBlocks(delta);
     }
 
     // Synchronize entity meshes in scene

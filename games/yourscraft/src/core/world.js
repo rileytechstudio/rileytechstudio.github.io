@@ -376,6 +376,32 @@ export class World {
         return true;
     }
 
+    getBlockData(worldX, worldY, worldZ) {
+        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return null;
+        const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
+        const chunk = this.getChunk(cx, cz);
+        if (!chunk) return null;
+        if (typeof chunk.getMetadata === 'function') {
+            const meta = chunk.getMetadata(lx, ly, lz);
+            // Default wheat age parsing or general metadata
+            return { age: meta };
+        }
+        return null;
+    }
+
+    setBlockData(worldX, worldY, worldZ, data) {
+        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return false;
+        const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
+        const chunk = this.getChunk(cx, cz);
+        if (!chunk) return false;
+        if (typeof chunk.setMetadata === 'function' && data && data.age !== undefined) {
+            chunk.setMetadata(lx, ly, lz, data.age);
+            chunk.isDirty = true;
+            return true;
+        }
+        return false;
+    }
+
     getLight(worldX, worldY, worldZ) {
         if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return 15 << 4;
         const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
@@ -528,6 +554,40 @@ export class World {
                     // Push away from player
                     entity.velocity.x += (dx / dist) * 2.0 * dt;
                     entity.velocity.z += (dz / dist) * 2.0 * dt;
+                }
+            }
+        }
+    }
+
+    tickBlocks(dt) {
+        this.blockTickAccumulator = (this.blockTickAccumulator || 0) + dt;
+        if (this.blockTickAccumulator < 0.2) return; 
+        this.blockTickAccumulator = 0;
+        
+        for (const chunk of this.chunks.values()) {
+            if (!chunk.isGenerated) continue;
+            // 3 random block ticks per chunk per tick (Minecraft default is 3 per chunk per tick)
+            for (let i = 0; i < 3; i++) {
+                const lx = Math.floor(Math.random() * CHUNK_SIZE_X);
+                const ly = Math.floor(Math.random() * CHUNK_SIZE_Y);
+                const lz = Math.floor(Math.random() * CHUNK_SIZE_Z);
+                const blockId = chunk.getBlock(lx, ly, lz);
+                
+                if (blockId === BLOCKS.WHEAT) {
+                    if (typeof chunk.getMetadata === 'function') {
+                        const meta = chunk.getMetadata(lx, ly, lz);
+                        if (meta < 7 && Math.random() < 0.25) { 
+                            chunk.setMetadata(lx, ly, lz, meta + 1);
+                            chunk.isDirty = true;
+                        }
+                    }
+                } else if (blockId === BLOCKS.FARMLAND) {
+                    const blockAbove = (ly + 1 < CHUNK_SIZE_Y) ? chunk.getBlock(lx, ly + 1, lz) : BLOCKS.AIR;
+                    if (blockAbove !== BLOCKS.WHEAT && Math.random() < 0.05) {
+                        const wx = chunk.x * CHUNK_SIZE_X + lx;
+                        const wz = chunk.z * CHUNK_SIZE_Z + lz;
+                        this.setBlock(wx, ly, wz, BLOCKS.DIRT);
+                    }
                 }
             }
         }

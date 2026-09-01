@@ -43,7 +43,7 @@ function applyBoxFaceUV(uvAttr, faceIndex, uvInfo) {
     uvAttr.setXY(base + 3, uMax, vMin);
 }
 
-export function getBlockDrop(blockId, toolId = null) {
+export function getBlockDrop(blockId, toolId = null, blockAge = 7) {
     if (
         blockId === BLOCKS.AIR ||
         blockId === BLOCKS.BEDROCK ||
@@ -86,7 +86,13 @@ export function getBlockDrop(blockId, toolId = null) {
         case BLOCKS.GLASS:
             return null; // Glass shatters without silk touch
         case BLOCKS.TALL_GRASS:
-            return Math.random() < 0.12 ? { id: ITEM_IDS.WHEAT, count: 1 } : null;
+            return Math.random() < 0.125 ? { id: ITEM_IDS.SEEDS, count: 1 } : null;
+        case BLOCKS.WHEAT:
+            if (blockAge >= 7) {
+                return { id: ITEM_IDS.WHEAT, count: 1, extra: [{id: ITEM_IDS.SEEDS, count: Math.floor(Math.random() * 4)}] };
+            } else {
+                return { id: ITEM_IDS.SEEDS, count: 1 };
+            }
         case BLOCKS.DEAD_BUSH:
             return { id: ITEM_IDS.STICK, count: Math.floor(Math.random() * 3) };
         case BLOCKS.GRAVEL:
@@ -119,12 +125,6 @@ export function getMobDrop(mobType) {
             return [{ id: ITEM_IDS.GUNPOWDER, count: 1 + Math.floor(Math.random() * 2) }];
         case 'spider':
             return [{ id: ITEM_IDS.STICK, count: 1 + Math.floor(Math.random() * 2) }];
-        case 'minecart':
-            return [{ id: ITEM_IDS.MINECART, count: 1 }];
-        case 'minecart_tnt':
-            return [{ id: ITEM_IDS.MINECART_TNT, count: 1 }];
-        case 'minecart_hopper':
-            return [{ id: ITEM_IDS.MINECART_HOPPER, count: 1 }];
         default:
             return [];
     }
@@ -439,14 +439,30 @@ export function spawnDroppedItem(itemId, count = 1, x = 0, y = 0, z = 0, world =
 }
 
 export function spawnBlockDrop(blockId, toolId = null, x = 0, y = 0, z = 0, world = null, scene = null, options = {}) {
-    const drop = getBlockDrop(blockId, toolId);
+    let age = 7;
+    if (blockId === 59 && world && typeof world.getBlockData === 'function') {
+        const data = world.getBlockData(x, y, z);
+        if (data && data.age !== undefined) age = data.age;
+    }
+
+    const drop = getBlockDrop(blockId, toolId, age);
     if (!drop || !drop.id || drop.count <= 0) return null;
 
     const spawnX = Math.floor(x) + 0.5;
     const spawnY = Math.floor(y) + 0.2;
     const spawnZ = Math.floor(z) + 0.5;
 
-    return spawnDroppedItem(drop.id, drop.count, spawnX, spawnY, spawnZ, world, scene, options);
+    const mainItem = spawnDroppedItem(drop.id, drop.count, spawnX, spawnY, spawnZ, world, scene, options);
+    
+    if (drop.extra && Array.isArray(drop.extra)) {
+        for (const ext of drop.extra) {
+            if (ext.id && ext.count > 0) {
+                spawnDroppedItem(ext.id, ext.count, spawnX + (Math.random()-0.5)*0.5, spawnY, spawnZ + (Math.random()-0.5)*0.5, world, scene, options);
+            }
+        }
+    }
+    
+    return mainItem;
 }
 
 export default {

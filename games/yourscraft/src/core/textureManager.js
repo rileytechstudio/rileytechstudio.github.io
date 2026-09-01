@@ -13,6 +13,8 @@ export const BLOCK_TEXTURE_MAP = Object.freeze({
     [BLOCKS.STONE]: { all: 'stone' },
     [BLOCKS.GRASS]: { top: 'grass_top', bottom: 'dirt', side: 'grass_side' },
     [BLOCKS.DIRT]: { all: 'dirt' },
+    [BLOCKS.FARMLAND]: { top: 'farmland_wet', bottom: 'dirt', side: 'dirt' },
+    [BLOCKS.WHEAT]: { all: 'wheat_stage_7' }, // Fallback, mesher will handle stages if implemented
     [BLOCKS.COBBLESTONE]: { all: 'cobblestone' },
     [BLOCKS.OAK_PLANKS]: { all: 'planks' },
     [BLOCKS.OAK_SAPLING]: { all: 'leaves' },

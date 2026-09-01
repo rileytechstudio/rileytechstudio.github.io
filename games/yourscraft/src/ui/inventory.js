@@ -49,6 +49,7 @@ export const ITEM_TYPES = Object.freeze({
     IRON_INGOT: { id: ITEM_IDS.IRON_INGOT, name: "Iron Ingot", maxStack: 64, isBlock: false },
     GOLD_INGOT: { id: ITEM_IDS.GOLD_INGOT, name: "Gold Ingot", maxStack: 64, isBlock: false },
     STICK: { id: ITEM_IDS.STICK, name: "Stick", maxStack: 64, isBlock: false },
+    SEEDS: { id: ITEM_IDS.SEEDS, name: "Seeds", maxStack: 64, isBlock: false },
     REDSTONE: { id: ITEM_IDS.REDSTONE, name: "Redstone Dust", maxStack: 64, isBlock: false },
     WHEAT: { id: ITEM_IDS.WHEAT, name: "Wheat", maxStack: 64, isBlock: false },
     BREAD: { id: ITEM_IDS.BREAD, name: "Bread", maxStack: 64, isBlock: false, isFood: true, foodValue: 5, saturation: 6.0 },

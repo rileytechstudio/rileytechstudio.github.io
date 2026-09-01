@@ -1433,6 +1433,15 @@ export function generateRailActivatorCanvas() {
 }
 
 export const GENERATORS = {
+    farmland_wet: generateFarmlandCanvas,
+    wheat_stage_0: () => generateWheatCanvas(0),
+    wheat_stage_1: () => generateWheatCanvas(1),
+    wheat_stage_2: () => generateWheatCanvas(2),
+    wheat_stage_3: () => generateWheatCanvas(3),
+    wheat_stage_4: () => generateWheatCanvas(4),
+    wheat_stage_5: () => generateWheatCanvas(5),
+    wheat_stage_6: () => generateWheatCanvas(6),
+    wheat_stage_7: () => generateWheatCanvas(7),
     rail_normal: generateRailNormalCanvas,
     rail_curved: generateRailCurvedCanvas,
     rail_golden: generateRailGoldenCanvas,
@@ -1720,3 +1729,41 @@ export default {
     generateDestroyStageCanvas,
     GENERATORS
 };
+
+export function generateFarmlandCanvas() {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    ctx.fillStyle = "#3e2815"; // dark wet dirt
+    ctx.fillRect(0, 0, 16, 16);
+    ctx.fillStyle = "#2d1a0b"; // furrows
+    for (let i = 0; i < 16; i += 4) {
+        ctx.fillRect(i, 0, 2, 16);
+    }
+    return canvas;
+}
+
+export function generateWheatCanvas(stage) {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    
+    // Draw wheat based on stage (0 to 7)
+    // Stage 0: tiny green sprouts
+    // Stage 7: tall yellow wheat
+    
+    const height = 4 + Math.floor((stage / 7) * 10);
+    const color = stage < 4 ? "#558230" : (stage < 7 ? "#a8a834" : "#d4c063");
+    
+    ctx.fillStyle = color;
+    
+    // Draw stalks
+    for (let i = 2; i < 16; i += 4) {
+        ctx.fillRect(i, 16 - height, 2, height);
+    }
+    
+    if (stage === 7) {
+        ctx.fillStyle = "#ab9430"; // dark tops
+        for (let i = 2; i < 16; i += 4) {
+            ctx.fillRect(i-1, 16 - height, 4, 3);
+        }
+    }
+    
+    return canvas;
+}

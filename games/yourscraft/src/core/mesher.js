@@ -368,7 +368,17 @@ export function generateChunkGeometry(chunk, options = {}) {
                     const blockLight = lightVal & 0x0F;
                     const shade = [blockLight / 15.0, skyLight / 15.0, 1.0];
                     
-                    const uvInfo = getBlockFaceUV(blockId, 'side', atlas);
+                    let uvInfo = getBlockFaceUV(blockId, 'side', atlas);
+                    if (blockId === 59) {
+                        let age = 7;
+                        if (chunk && chunk.getBlockData) {
+                            const data = chunk.getBlockData(lx, y, lz); // Wait! In mesher.js we don't have chunk directly for x,y,z if neighbor? Oh wait, lx,y,lz is current block!
+                            if (data && data.age !== undefined) age = data.age;
+                        }
+                        if (age < 0) age = 0; if (age > 7) age = 7;
+                        const customUV = typeof atlas.getUV === 'function' ? atlas.getUV(`wheat_stage_${age}`) : null;
+                        if (customUV) uvInfo = customUV;
+                    }
                     
                     // Cross plane 1 (diag 1)
                     const p1 = [
