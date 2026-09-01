@@ -511,7 +511,12 @@ export class World {
         const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
         const chunk = this.getChunk(cx, cz);
         if (!chunk) {
-            return 15 << 4;
+            // Fake lighting for unloaded chunks mathematically
+            if (this.generator && typeof this.generator.getHeight === 'function') {
+                const surfaceY = this.generator.getHeight(worldX, worldZ);
+                return worldY > surfaceY ? (15 << 4) : 0;
+            }
+            return 0;
         }
         return chunk.getLight(lx, ly, lz);
     }

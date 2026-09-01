@@ -207,8 +207,9 @@ export function getAtlasMaterial(options = {}) {
     vec3 sColor = sBright * vec3(1.0, 1.0, 1.0);
     
     // Combine light
-    vec3 finalLight = max(bColor, sColor);
-    finalLight = clamp(finalLight, 0.05, 1.0); // Min ambient light 0.05
+    vec3 finalLight = bColor + sColor;
+    finalLight = min(finalLight, vec3(1.5)); // Allow some over-exposure for torches
+    finalLight = max(finalLight, vec3(0.05)); // Min ambient light 0.05
     
     // Ambient Occlusion
     float ao = vColor.b;

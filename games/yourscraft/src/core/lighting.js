@@ -186,41 +186,32 @@ export class LightingEngine {
         const startX = chunk.x * CHUNK_SIZE_X;
         const startZ = chunk.z * CHUNK_SIZE_Z;
         
+        // Helper to push boundary light
+        const pushBoundaryLight = (lx, ly, lz) => {
+            const bLight = this.getBlockLight(lx, ly, lz);
+            if (bLight > 1) this.addQueue.push({ x: lx, y: ly, z: lz, isSky: false });
+            const sLight = this.getSkyLight(lx, ly, lz);
+            if (sLight > 1) this.addQueue.push({ x: lx, y: ly, z: lz, isSky: true });
+        };
+        
         // Scan X boundaries (-1 and +16)
         for (let z = 0; z < CHUNK_SIZE_Z; z++) {
             for (let y = 0; y < CHUNK_SIZE_Y; y++) {
-                // Left neighbor (x = -1)
-                let lx = startX - 1;
-                let lz = startZ + z;
-                let bLight = this.getBlockLight(lx, y, lz);
-                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
-                
-                // Right neighbor (x = 16)
-                lx = startX + CHUNK_SIZE_X;
-                bLight = this.getBlockLight(lx, y, lz);
-                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
+                pushBoundaryLight(startX - 1, y, startZ + z);
+                pushBoundaryLight(startX + CHUNK_SIZE_X, y, startZ + z);
             }
         }
         
         // Scan Z boundaries (-1 and +16)
         for (let x = 0; x < CHUNK_SIZE_X; x++) {
             for (let y = 0; y < CHUNK_SIZE_Y; y++) {
-                // Top neighbor (z = -1)
-                let lx = startX + x;
-                let lz = startZ - 1;
-                let bLight = this.getBlockLight(lx, y, lz);
-                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
-                
-                // Bottom neighbor (z = 16)
-                lz = startZ + CHUNK_SIZE_Z;
-                bLight = this.getBlockLight(lx, y, lz);
-                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
+                pushBoundaryLight(startX + x, y, startZ - 1);
+                pushBoundaryLight(startX + x, y, startZ + CHUNK_SIZE_Z);
             }
         }
         
-        if (this.addQueue.length > 0) {
-            this.processLightAddition();
-        }
+        // We MUST process the queue for the light to actually propagate across the newly loaded chunk!
+        this.processLightAddition();
     }
 
     onBlockPlaced(x, y, z, blockId) {
