@@ -60,20 +60,12 @@ let masterVolume = savedOptions.volume !== undefined ? Number(savedOptions.volum
 const camera = new THREE.PerspectiveCamera(baseFov, window.innerWidth / window.innerHeight, 0.1, 1000);
 
 // 3. Renderer Setup
-const VIRTUAL_WIDTH = 320; // 90s resolution aesthetic
-const initialAspect = window.innerWidth / window.innerHeight;
 const renderer = new THREE.WebGLRenderer({ antialias: false }); // No antialias for pixel art
-renderer.setSize(VIRTUAL_WIDTH, VIRTUAL_WIDTH / initialAspect, false);
-renderer.setPixelRatio(1);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.BasicShadowMap; // Hard shadows for 90s feel
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
-
-// Ensure the canvas stretches to fill the screen but stays pixelated
-renderer.domElement.style.width = '100vw';
-renderer.domElement.style.height = '100vh';
-renderer.domElement.style.imageRendering = 'pixelated';
-renderer.domElement.style.objectFit = 'fill';
 
 // 4. Pointer Lock Controls
 const controls = new PointerLockControls(camera, renderer.domElement);
@@ -1071,7 +1063,7 @@ animate();
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(VIRTUAL_WIDTH, VIRTUAL_WIDTH / camera.aspect, false);
+    renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 window.MinecraftEngine = { scene, camera, renderer, world, player, redstone, hud, BLOCKS, weather, dayNightCycle, audio, inventory, DroppedItem, spawnDroppedItem, spawnBlockDrop, getMobDrop };

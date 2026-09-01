@@ -179,10 +179,6 @@ export function getAtlasMaterial(options = {}) {
     float ao = vColor.b;
     
     diffuseColor.rgb *= finalLight * ao;
-
-    // 90s VGA style color banding (posterization)
-    float colors = 16.0;
-    diffuseColor.rgb = floor(diffuseColor.rgb * colors + 0.5) / colors;
 #endif
             `
         );
