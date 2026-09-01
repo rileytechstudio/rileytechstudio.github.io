@@ -185,7 +185,14 @@ export class World {
      * @returns {Chunk|null} Chunk instance or null if not loaded
      */
     getChunk(cx, cz) {
-        return this.chunks.get(this.getChunkKey(cx, cz)) || null;
+        if (this._lastCx === cx && this._lastCz === cz && this._lastChunk !== undefined) {
+            return this._lastChunk;
+        }
+        const chunk = this.chunks.get(this.getChunkKey(cx, cz)) || null;
+        this._lastCx = cx;
+        this._lastCz = cz;
+        this._lastChunk = chunk;
+        return chunk;
     }
 
     /**
@@ -289,6 +296,9 @@ export class World {
      * @returns {boolean} True if a chunk was unloaded, false if it wasn't loaded
      */
     unloadChunk(cx, cz) {
+        if (this._lastCx === cx && this._lastCz === cz) {
+            this._lastChunk = undefined;
+        }
         const key = this.getChunkKey(cx, cz);
         const chunk = this.chunks.get(key);
         if (!chunk) return false;
