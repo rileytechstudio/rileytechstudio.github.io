@@ -209,7 +209,6 @@ sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
 scene.add(sunLight);
 
-
 const fillLight = new THREE.DirectionalLight(0x8090b0, 0.3);
 fillLight.position.set(-20, -10, -20);
 scene.add(fillLight);
@@ -379,7 +378,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-
 let activeBlock = BLOCKS.AIR;
 function syncActiveItem() {
     const item = inventory.getSlot(hud.selectedSlot);
@@ -425,7 +423,6 @@ world.on('blockChange', (data) => {
     redstone.updateBlock && redstone.updateBlock(data.x, data.y, data.z);
 });
 
-
 // 7. Raycaster Input & Combat
 const blockBreaking = new BlockBreakingSystem();
 let breakingDecal = null;
@@ -449,11 +446,6 @@ function getMeshes() {
     return meshes;
 }
 
-/**
- * Intersect with mob hitboxes or meshes using THREE.Raycaster within maxDist (default 4 blocks)
- * @param {number} [maxDist=4.0]
- * @returns {{ mob: Object|null, distance: number }}
- */
 function findTargetMob(maxDist = 4.0) {
     raycaster.setFromCamera(center, camera);
     const ray = raycaster.ray;
@@ -901,7 +893,6 @@ function handleMining(delta) {
     }
 }
 
-
 // 8. Player Movement Input
 const moveState = { forward: false, backward: false, left: false, right: false, up: false, down: false, sprint: false, yaw: 0, pitch: 0 };
 document.addEventListener('keydown', (e) => {
@@ -941,7 +932,6 @@ function animate() {
         euler.setFromQuaternion(camera.quaternion);
         moveState.yaw = euler.y;
         moveState.pitch = euler.x;
-        
 
         // Sync held item
         player.heldItem = inventory.getSlot(hud.selectedSlot);
@@ -1043,7 +1033,6 @@ function animate() {
         furnaceUI.update(delta);
     }
 
-    
     // Process redstone simulation
     if (redstone.step) {
         redstone.step(delta);
@@ -1076,5 +1065,4 @@ window.addEventListener('resize', () => {
 });
 
 window.MinecraftEngine = { scene, camera, renderer, world, player, redstone, hud, BLOCKS, weather, dayNightCycle, audio, inventory, DroppedItem, spawnDroppedItem, spawnBlockDrop, getMobDrop };
-
 

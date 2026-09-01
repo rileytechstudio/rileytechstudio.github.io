@@ -2,13 +2,6 @@ import * as THREE from 'three';
 import { getTextureAtlas, getBlockFaceTexture, BLOCK_TEXTURE_MAP } from '../core/textureManager.js';
 import { BLOCKS } from '../core/chunk.js';
 
-/**
- * 3D Isometric Icon Renderer for Minecraft 1.5 WebGL Engine
- *
- * Renders authentic 3D isometric cube snapshots of block IDs using an offscreen
- * Three.js WebGLRenderer and textures from the procedural texture atlas.
- */
-
 // Blocks that should be rendered as 2D sprites (plants, torch, ladder, liquids, etc.)
 export const SPRITE_BLOCKS = new Set([
     0,   // AIR
@@ -34,11 +27,6 @@ export const SPRITE_BLOCKS = new Set([
     157  // ACTIVATOR_RAIL
 ]);
 
-/**
- * Checks if a block or item ID should be rendered as a 3D isometric cube.
- * @param {number|string} id
- * @returns {boolean}
- */
 export function is3DBlock(id) {
     const numId = Number(id);
     if (!numId || isNaN(numId) || numId <= 0) return false;
@@ -299,12 +287,6 @@ function updateCubeUVs(blockId) {
     uvAttr.needsUpdate = true;
 }
 
-/**
- * Render a 3D isometric snapshot for a block ID.
- * @param {number|string} blockId 
- * @param {number} [size=32] 
- * @returns {string} Data URI
- */
 export function renderBlockIcon(blockId, size = 32) {
     const numId = Number(blockId);
     if (!numId || numId <= 0) return '';
@@ -337,24 +319,14 @@ export function renderBlockIcon(blockId, size = 32) {
     return dataUri;
 }
 
-/**
- * Alias for renderBlockIcon
- */
 export function getBlockIconDataUri(blockId, size = 32) {
     return renderBlockIcon(blockId, size);
 }
 
-/**
- * Clear the icon cache (e.g. upon texture atlas regeneration or seed reset).
- */
 export function clearIconCache() {
     ICON_CACHE.clear();
 }
 
-/**
- * Preload 3D block icons into the cache.
- * @param {number[]} [blockList] 
- */
 export function preloadBlockIcons(blockList) {
     const list = blockList || Object.values(BLOCKS);
     for (const id of list) {

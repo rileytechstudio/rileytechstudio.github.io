@@ -1,24 +1,6 @@
-/**
- * Hierarchical 3D Mob Renderer and Animation System for Minecraft 1.5 WebGL Engine
- * 
- * Supports:
- * - Zombie (Green skin, blue shirt, dark pants, outstretched walking arms, head tracking)
- * - Skeleton (Bone white body, ribcage, thin limbs, bow aiming/strafe animations)
- * - Creeper (Iconic sad face, 4-leg gait, fuse swelling & flashing animation)
- * - Spider (Wide low body, glowing red eyes, 8 animated crawling legs, wall climb tilt)
- * - Enderman (Tall slender black body, glowing purple eyes, jaw open / stare screaming, carried block)
- * - Pig (Pink skin, darker snout, 4-leg walk cycle, head bobbing)
- * - Cow (Dark brown hide, horns, muzzle, udder, 4-leg walk cycle)
- * - ZombiePigman (Pig zombie skin, golden sword, biped walk)
- * - WitherSkeleton (Tall charcoal skeleton, stone sword)
- * - Ghast (2x2 floating cube, 9 animated swaying tentacles)
- */
+
 
 import * as THREE from 'three';
-
-/* ========================================================================= */
-/* MATERIAL AND COLOR PALETTES                                              */
-/* ========================================================================= */
 
 // Shared color palette for mobs
 const PALETTE = Object.freeze({
@@ -73,12 +55,6 @@ const PALETTE = Object.freeze({
     ghastRed: 0x882222
 });
 
-/**
- * Create a MeshLambertMaterial with color and optional emissive
- * @param {number} color 
- * @param {number} [emissive=0x000000] 
- * @returns {THREE.MeshLambertMaterial}
- */
 function createLambert(color, emissive = 0x000000) {
     return new THREE.MeshLambertMaterial({
         color: color,
@@ -86,17 +62,6 @@ function createLambert(color, emissive = 0x000000) {
     });
 }
 
-/**
- * Helper to build a box mesh with pivot offset
- * @param {number} width 
- * @param {number} height 
- * @param {number} depth 
- * @param {THREE.Material} material 
- * @param {number} [offsetX=0] 
- * @param {number} [offsetY=0] 
- * @param {number} [offsetZ=0] 
- * @returns {THREE.Mesh}
- */
 function createBoxMesh(width, height, depth, material, offsetX = 0, offsetY = 0, offsetZ = 0) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const mesh = new THREE.Mesh(geo, material);
@@ -106,17 +71,6 @@ function createBoxMesh(width, height, depth, material, offsetX = 0, offsetY = 0,
     return mesh;
 }
 
-/**
- * Helper to create a limb with a pivot group at the joint
- * @param {number} width 
- * @param {number} height 
- * @param {number} depth 
- * @param {THREE.Material} material 
- * @param {number} pivotX 
- * @param {number} pivotY 
- * @param {number} pivotZ 
- * @returns {{pivot: THREE.Group, mesh: THREE.Mesh}}
- */
 function createLimbPivot(width, height, depth, material, pivotX, pivotY, pivotZ) {
     const pivot = new THREE.Group();
     pivot.position.set(pivotX, pivotY, pivotZ);
@@ -127,14 +81,6 @@ function createLimbPivot(width, height, depth, material, pivotX, pivotY, pivotZ)
     return { pivot, mesh };
 }
 
-/* ========================================================================= */
-/* MOB MODEL BUILDERS                                                        */
-/* ========================================================================= */
-
-/**
- * Build Zombie 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildZombieModel() {
     const root = new THREE.Group();
     root.name = 'Zombie';
@@ -200,10 +146,6 @@ export function buildZombieModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Skeleton 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildSkeletonModel() {
     const root = new THREE.Group();
     root.name = 'Skeleton';
@@ -269,10 +211,6 @@ export function buildSkeletonModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Creeper 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildCreeperModel() {
     const root = new THREE.Group();
     root.name = 'Creeper';
@@ -329,10 +267,6 @@ export function buildCreeperModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Spider 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildSpiderModel() {
     const root = new THREE.Group();
     root.name = 'Spider';
@@ -424,10 +358,6 @@ export function buildSpiderModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Enderman 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildEndermanModel() {
     const root = new THREE.Group();
     root.name = 'Enderman';
@@ -491,10 +421,6 @@ export function buildEndermanModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Pig 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildPigModel() {
     const root = new THREE.Group();
     root.name = 'Pig';
@@ -549,10 +475,6 @@ export function buildPigModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Cow 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildCowModel() {
     const root = new THREE.Group();
     root.name = 'Cow';
@@ -619,10 +541,6 @@ export function buildCowModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Zombie Pigman 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildZombiePigmanModel() {
     const root = new THREE.Group();
     root.name = 'ZombiePigman';
@@ -678,10 +596,6 @@ export function buildZombiePigmanModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Wither Skeleton 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildWitherSkeletonModel() {
     const root = new THREE.Group();
     root.name = 'WitherSkeleton';
@@ -731,10 +645,6 @@ export function buildWitherSkeletonModel() {
     return { root, parts, materials };
 }
 
-/**
- * Build Ghast 3D Model
- * @returns {Object} { root, parts, materials }
- */
 export function buildGhastModel() {
     const root = new THREE.Group();
     root.name = 'Ghast';
@@ -779,10 +689,6 @@ export function buildGhastModel() {
     return { root, parts, materials };
 }
 
-/* ========================================================================= */
-/* MOB MODEL REGISTRY                                                        */
-/* ========================================================================= */
-
 export const MOB_MODEL_BUILDERS = Object.freeze({
     zombie: buildZombieModel,
     skeleton: buildSkeletonModel,
@@ -798,18 +704,8 @@ export const MOB_MODEL_BUILDERS = Object.freeze({
     ghast: buildGhastModel
 });
 
-/* ========================================================================= */
-/* MOB RENDERER CONTROLLER                                                   */
-/* ========================================================================= */
-
-/**
- * MobRenderer manages the Three.js mesh hierarchy, walk animations,
- * limb rotations, damage flashing, and death animation for a single mob.
- */
 export class MobRenderer {
-    /**
-     * @param {Object} mob Mob entity instance
-     */
+    
     constructor(mob) {
         this.mob = mob;
         this.mobType = (mob.type || 'zombie').toLowerCase().trim();
@@ -817,14 +713,11 @@ export class MobRenderer {
         const builder = MOB_MODEL_BUILDERS[this.mobType] || buildZombieModel;
         const modelData = builder();
 
-        /** @type {THREE.Group} */
         this.mesh = modelData.root;
         this.mesh.name = `mob_${this.mobType}_${mob.id}`;
 
-        /** @type {Object} */
         this.parts = modelData.parts;
 
-        /** @type {THREE.Material[]} */
         this.materials = modelData.materials;
 
         // Store base colors for damage flashing
@@ -841,10 +734,6 @@ export class MobRenderer {
         }
     }
 
-    /**
-     * Update mob mesh transform, animation poses, and shaders
-     * @param {number} dt Delta time in seconds
-     */
     update(dt = 0.05) {
         const mob = this.mob;
         if (!mob) return;
@@ -905,12 +794,6 @@ export class MobRenderer {
         }
     }
 
-    /**
-     * Animate specific mob limbs and behaviors
-     * @private
-     * @param {number} dt 
-     * @param {boolean} isMoving 
-     */
     _animateMobType(dt, isMoving) {
         const mob = this.mob;
         const sinWalk = Math.sin(this.walkProgress);
@@ -1050,9 +933,6 @@ export class MobRenderer {
         }
     }
 
-    /**
-     * Clean up and dispose all Three.js geometries and materials
-     */
     dispose() {
         this.mesh.traverse((child) => {
             if (child.isMesh) {
@@ -1069,20 +949,10 @@ export class MobRenderer {
     }
 }
 
-/**
- * Factory helper to create a MobRenderer instance for an entity
- * @param {Object} mob 
- * @returns {MobRenderer}
- */
 export function createMobRenderer(mob) {
     return new MobRenderer(mob);
 }
 
-/**
- * Helper to build and attach a mesh to a mob
- * @param {Object} mob 
- * @returns {THREE.Group}
- */
 export function createMobMesh(mob) {
     const renderer = new MobRenderer(mob);
     if (!mob.userData) mob.userData = {};

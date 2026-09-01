@@ -62,14 +62,6 @@ export class LightingEngine {
         this.removeQueue = [];
     }
 
-    /**
-     * Marks the chunk containing (wx, wy, wz) and any adjacent neighbor chunks dirty
-     * so that lighting changes on borders and corners trigger immediate remeshing.
-     *
-     * @param {number} wx
-     * @param {number} wy
-     * @param {number} wz
-     */
     markBlockAndNeighborsDirty(wx, wy, wz) {
         if (!this.world) return;
         const { cx, cz, lx, ly, lz } = this.world.worldToLocalCoords(wx, wy, wz);

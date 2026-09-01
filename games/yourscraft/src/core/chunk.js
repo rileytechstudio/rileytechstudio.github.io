@@ -1,7 +1,4 @@
-/**
- * Chunk data structure for Minecraft 1.5 WebGL Engine
- * Represents a 16x256x16 column of voxels
- */
+
 
 export const CHUNK_SIZE_X = 16;
 export const CHUNK_SIZE_Y = 256;
@@ -90,13 +87,7 @@ export const BLOCKS = Object.freeze({
 });
 
 export class Chunk {
-    /**
-     * @param {number} x - Chunk grid coordinate X (world X = x * CHUNK_SIZE_X)
-     * @param {number} z - Chunk grid coordinate Z (world Z = z * CHUNK_SIZE_Z)
-     * @param {number} [sizeX=CHUNK_SIZE_X]
-     * @param {number} [sizeY=CHUNK_SIZE_Y]
-     * @param {number} [sizeZ=CHUNK_SIZE_Z]
-     */
+    
     constructor(x = 0, z = 0, sizeX = CHUNK_SIZE_X, sizeY = CHUNK_SIZE_Y, sizeZ = CHUNK_SIZE_Z) {
         this.x = x;
         this.z = z;
@@ -112,14 +103,6 @@ export class Chunk {
         this.lightDirty = true; // Flag for lighting engine
     }
 
-    /**
-     * Convert local (x, y, z) to linear buffer index.
-     * Uses layout: index = (y * sizeZ + z) * sizeX + x
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @returns {number} Index, or -1 if out of bounds
-     */
     getIndex(x, y, z) {
         if (x < 0 || x >= this.sizeX || y < 0 || y >= this.sizeY || z < 0 || z >= this.sizeZ) {
             return -1;
@@ -127,31 +110,18 @@ export class Chunk {
         return (y * this.sizeZ + z) * this.sizeX + x;
     }
 
-    /**
-     * Get block ID at local coordinate
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} Block ID (0 = AIR)
-     */
     getBlock(x, y, z) {
         const idx = this.getIndex(x, y, z);
         if (idx === -1) return BLOCKS.AIR;
         return this.blocks[idx];
     }
 
-    /**
-     * Get light level at local coordinate
-     */
     getLight(x, y, z) {
         const idx = this.getIndex(x, y, z);
         if (idx === -1) return 15 << 4; // Default to full sky light out of bounds
         return this.light[idx];
     }
 
-    /**
-     * Set light level at local coordinate
-     */
     setLight(x, y, z, lightValue) {
         const idx = this.getIndex(x, y, z);
         if (idx === -1) return false;
@@ -178,14 +148,6 @@ export class Chunk {
         return true;
     }
 
-    /**
-     * Set block ID at local coordinate
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} blockId 
-     * @returns {boolean} True if set successfully
-     */
     setBlock(x, y, z, blockId) {
         const idx = this.getIndex(x, y, z);
         if (idx === -1) return false;
@@ -197,24 +159,10 @@ export class Chunk {
         return true;
     }
 
-    /**
-     * Check if local coordinate is inside this chunk
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean}
-     */
     inBounds(x, y, z) {
         return x >= 0 && x < this.sizeX && y >= 0 && y < this.sizeY && z >= 0 && z < this.sizeZ;
     }
 
-    /**
-     * Get world coordinate of a block in this chunk
-     * @param {number} localX
-     * @param {number} localY
-     * @param {number} localZ
-     * @returns {{x: number, y: number, z: number}}
-     */
     getWorldPos(localX, localY, localZ) {
         return {
             x: this.x * this.sizeX + localX,
@@ -223,12 +171,6 @@ export class Chunk {
         };
     }
 
-    /**
-     * Fill vertical layer from minY to maxY with blockId
-     * @param {number} blockId
-     * @param {number} [minY=0]
-     * @param {number} [maxY=CHUNK_SIZE_Y-1]
-     */
     fillLayer(blockId, minY = 0, maxY = this.sizeY - 1) {
         const clampedMinY = Math.max(0, minY);
         const clampedMaxY = Math.min(this.sizeY - 1, maxY);
@@ -240,13 +182,6 @@ export class Chunk {
         this.isDirty = true;
     }
 
-    /**
-     * Get the collision bounding box for a block at local coordinate.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @returns {{minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number}|null}
-     */
     getBlockAABB(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (blockId === BLOCKS.AIR) return null;

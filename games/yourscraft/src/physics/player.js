@@ -1,29 +1,8 @@
-/**
- * Player Entity & Swept AABB Voxel Physics for Minecraft 1.5 WebGL Engine
- *
- * Features:
- * - Player class with position, velocity, dimensions, and orientation
- * - Survival Mechanics (foodLevel 0-20, saturation 0-20, exhaustion, xp/levels, health 0-20)
- * - Hunger depletion on sprinting and jumping (Minecraft 1.5 mechanics)
- * - Health regeneration when foodLevel >= 18
- * - Starvation damage when foodLevel == 0
- * - Right-click food eating / consumption (eat method)
- * - update(delta, world, moveState) method
- * - Exact Swept AABB collision detection against voxel grid
- * - Water physics (AABB intersection, viscous drag, buoyancy on jump, slow sink, fall damage prevention)
- * - Gravity acceleration (32 m/s^2)
- * - Step-up (0.6 blocks) for slabs and steps
- * - Sneaking edge-fall prevention
- * - Ground & air friction, jumping, and creative flight
- * - Multi-provider world support (Chunk, World, Map, function)
- */
+
 
 import { BLOCKS, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, Chunk } from '../core/chunk.js';
 import { getFoodProperties, isFoodItem, ITEM_IDS } from '../core/crafting.js';
 
-/**
- * Set of block IDs that are non-solid and passable (entities can occupy or walk through).
- */
 export const NON_SOLID_BLOCKS = new Set([
     BLOCKS.AIR,            // 0
     BLOCKS.OAK_SAPLING,    // 6
@@ -44,11 +23,6 @@ export const NON_SOLID_BLOCKS = new Set([
     BLOCKS.SUGAR_CANE      // 83
 ]);
 
-/**
- * Check if a block ID is solid terrain.
- * @param {number} blockId
- * @returns {boolean}
- */
 export function isBlockSolid(blockId) {
     if (blockId === undefined || blockId === null || blockId === BLOCKS.AIR || blockId === 0) {
         return false;
@@ -56,21 +30,6 @@ export function isBlockSolid(blockId) {
     return !NON_SOLID_BLOCKS.has(blockId);
 }
 
-/**
- * Retrieve block ID at integer world coordinates from any supported world provider.
- * Supports:
- * - Function: world(x, y, z)
- * - Object with getBlock(x, y, z)
- * - Chunk instance (world.sizeX, world.x, world.z)
- * - Map of chunks keyed by 'cx,cz'
- * - Object with getChunk(cx, cz)
- *
- * @param {Object|Function|Map} world
- * @param {number} x
- * @param {number} y
- * @param {number} z
- * @returns {number} Block ID (0 for AIR / out of bounds)
- */
 export function getBlockAt(world, x, y, z) {
     if (!world) return BLOCKS.AIR;
     const maxY = (typeof CHUNK_SIZE_Y === 'number') ? CHUNK_SIZE_Y : 256;
@@ -134,14 +93,6 @@ export function getBlockAt(world, x, y, z) {
     return BLOCKS.AIR;
 }
 
-/**
- * Check if the block at integer world coordinate (x, y, z) is solid.
- * @param {Object|Function|Map} world
- * @param {number} x
- * @param {number} y
- * @param {number} z
- * @returns {boolean}
- */
 export function isSolidAt(world, x, y, z) {
     if (!world) return false;
     if (typeof world.isSolid === 'function') {
@@ -154,18 +105,8 @@ export function isSolidAt(world, x, y, z) {
     return isBlockSolid(blockId);
 }
 
-/**
- * Axis-Aligned Bounding Box (AABB) with swept collision query and offset routines.
- */
 export class AABB {
-    /**
-     * @param {number} [minX=0]
-     * @param {number} [minY=0]
-     * @param {number} [minZ=0]
-     * @param {number} [maxX=0]
-     * @param {number} [maxY=0]
-     * @param {number} [maxZ=0]
-     */
+    
     constructor(minX = 0, minY = 0, minZ = 0, maxX = 0, maxY = 0, maxZ = 0) {
         this.minX = minX;
         this.minY = minY;
@@ -175,10 +116,6 @@ export class AABB {
         this.maxZ = maxZ;
     }
 
-    /**
-     * Set bounds directly
-     * @returns {AABB} this
-     */
     set(minX, minY, minZ, maxX, maxY, maxZ) {
         this.minX = minX;
         this.minY = minY;
@@ -189,15 +126,6 @@ export class AABB {
         return this;
     }
 
-    /**
-     * Set bounds from center position (feet at y) and dimensions
-     * @param {number} x - Center X
-     * @param {number} y - Bottom Y (feet level)
-     * @param {number} z - Center Z
-     * @param {number} width - Horizontal extent (width in X and Z)
-     * @param {number} height - Vertical extent (height in Y)
-     * @returns {AABB} this
-     */
     setFromCenterAndSize(x, y, z, width, height) {
         const halfW = width / 2;
         this.minX = x - halfW;
@@ -209,19 +137,10 @@ export class AABB {
         return this;
     }
 
-    /**
-     * Clone this AABB
-     * @returns {AABB}
-     */
     clone() {
         return new AABB(this.minX, this.minY, this.minZ, this.maxX, this.maxY, this.maxZ);
     }
 
-    /**
-     * Copy bounds from another AABB
-     * @param {AABB} other
-     * @returns {AABB} this
-     */
     copy(other) {
         this.minX = other.minX;
         this.minY = other.minY;
@@ -232,13 +151,6 @@ export class AABB {
         return this;
     }
 
-    /**
-     * Offset / Translate this AABB
-     * @param {number} dx
-     * @param {number} dy
-     * @param {number} dz
-     * @returns {AABB} this
-     */
     move(dx, dy, dz) {
         this.minX += dx;
         this.minY += dy;
@@ -249,24 +161,10 @@ export class AABB {
         return this;
     }
 
-    /**
-     * Offset / Translate this AABB (alias for move)
-     * @param {number} dx
-     * @param {number} dy
-     * @param {number} dz
-     * @returns {AABB} this
-     */
     offset(dx, dy, dz) {
         return this.move(dx, dy, dz);
     }
 
-    /**
-     * Return a new AABB expanded to enclose the swept displacement (dx, dy, dz)
-     * @param {number} dx
-     * @param {number} dy
-     * @param {number} dz
-     * @returns {AABB}
-     */
     expand(dx, dy, dz) {
         let minX = this.minX;
         let minY = this.minY;
@@ -285,11 +183,6 @@ export class AABB {
         return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
-    /**
-     * Check if this AABB intersects another AABB
-     * @param {AABB} other
-     * @returns {boolean}
-     */
     intersects(other) {
         return (
             this.maxX > other.minX && this.minX < other.maxX &&
@@ -298,13 +191,6 @@ export class AABB {
         );
     }
 
-    /**
-     * Check if a 3D point is inside this AABB
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @returns {boolean}
-     */
     containsPoint(x, y, z) {
         return (
             x >= this.minX && x <= this.maxX &&
@@ -313,12 +199,6 @@ export class AABB {
         );
     }
 
-    /**
-     * Calculate allowable swept X offset before colliding with other
-     * @param {AABB} other - Moving entity AABB
-     * @param {number} dx - Requested X displacement
-     * @returns {number} Clamped X displacement
-     */
     calculateXOffset(other, dx) {
         if (other.maxY <= this.minY || other.minY >= this.maxY) return dx;
         if (other.maxZ <= this.minZ || other.minZ >= this.maxZ) return dx;
@@ -333,12 +213,6 @@ export class AABB {
         return dx;
     }
 
-    /**
-     * Calculate allowable swept Y offset before colliding with other
-     * @param {AABB} other - Moving entity AABB
-     * @param {number} dy - Requested Y displacement
-     * @returns {number} Clamped Y displacement
-     */
     calculateYOffset(other, dy) {
         if (other.maxX <= this.minX || other.minX >= this.maxX) return dy;
         if (other.maxZ <= this.minZ || other.minZ >= this.maxZ) return dy;
@@ -353,12 +227,6 @@ export class AABB {
         return dy;
     }
 
-    /**
-     * Calculate allowable swept Z offset before colliding with other
-     * @param {AABB} other - Moving entity AABB
-     * @param {number} dz - Requested Z displacement
-     * @returns {number} Clamped Z displacement
-     */
     calculateZOffset(other, dz) {
         if (other.maxX <= this.minX || other.minX >= this.maxX) return dz;
         if (other.maxY <= this.minY || other.minY >= this.maxY) return dz;
@@ -374,12 +242,6 @@ export class AABB {
     }
 }
 
-/**
- * Find all solid voxel bounding boxes overlapping the expanded query AABB.
- * @param {Object|Function|Map} world
- * @param {AABB} expandedAABB
- * @returns {AABB[]}
- */
 export function getCollidingBoxes(world, expandedAABB) {
     if (!world) return [];
     const boxes = [];
@@ -402,17 +264,6 @@ export function getCollidingBoxes(world, expandedAABB) {
     return boxes;
 }
 
-/**
- * Check if solid ground exists underneath the horizontal footprint.
- * Used for sneaking edge-fall protection.
- * @param {Object|Function|Map} world
- * @param {number} minX
- * @param {number} maxX
- * @param {number} minY
- * @param {number} minZ
- * @param {number} maxZ
- * @returns {boolean}
- */
 export function hasBlockBelow(world, minX, maxX, minY, minZ, maxZ) {
     if (!world) return true;
     const checkY = Math.floor(minY - 0.01);
@@ -433,9 +284,6 @@ export function hasBlockBelow(world, minX, maxX, minY, minZ, maxZ) {
     return false;
 }
 
-/**
- * 3D Vector helper with basic vector arithmetic.
- */
 export class Vector3 {
     constructor(x = 0, y = 0, z = 0) {
         this.x = x;
@@ -501,17 +349,8 @@ export class Vector3 {
     }
 }
 
-/**
- * Player class for Minecraft 1.5 WebGL Engine.
- * Encapsulates position, velocity, swept AABB physics, water physics, gravity, and survival mechanics.
- */
 export class Player {
-    /**
-     * @param {number} [x=0]
-     * @param {number} [y=0]
-     * @param {number} [z=0]
-     * @param {Object} [options={}]
-     */
+    
     constructor(x = 0, y = 0, z = 0, options = {}) {
         // Position and Previous Position (feet at y)
         this.position = new Vector3(x, y, z);
@@ -587,20 +426,10 @@ export class Player {
         this.setFoodLevel(val);
     }
 
-    /**
-     * Get current food / hunger level (0 - 20)
-     * @returns {number}
-     */
     getFoodLevel() {
         return this.foodLevel;
     }
 
-    /**
-     * Set food level clamped between 0 and 20.
-     * Also clamps saturation to new food level.
-     * @param {number} level
-     * @returns {number}
-     */
     setFoodLevel(level) {
         this.foodLevel = Math.max(0, Math.min(20, Number(level) || 0));
         if (this.saturation > this.foodLevel) {
@@ -609,48 +438,25 @@ export class Player {
         return this.foodLevel;
     }
 
-    /**
-     * Get current saturation level (0 - 20)
-     * @returns {number}
-     */
     getSaturation() {
         return this.saturation;
     }
 
-    /**
-     * Set saturation level clamped between 0 and foodLevel
-     * @param {number} sat
-     * @returns {number}
-     */
     setSaturation(sat) {
         this.saturation = Math.max(0, Math.min(this.foodLevel, Math.min(20, Number(sat) || 0)));
         return this.saturation;
     }
 
-    /**
-     * Get current health (0 - 20)
-     * @returns {number}
-     */
     getHealth() {
         return this.health;
     }
 
-    /**
-     * Set health clamped between 0 and maxHealth
-     * @param {number} hp
-     * @returns {number}
-     */
     setHealth(hp) {
         this.health = Math.max(0, Math.min(this.maxHealth, Number(hp) || 0));
         this.isDead = this.health <= 0;
         return this.health;
     }
 
-    /**
-     * Heal player by a specified amount
-     * @param {number} amount
-     * @returns {number} Actual health restored
-     */
     heal(amount) {
         if (this.isDead || amount <= 0) return 0;
         const prev = this.health;
@@ -658,12 +464,6 @@ export class Player {
         return this.health - prev;
     }
 
-    /**
-     * Damage player by a specified amount
-     * @param {number} amount
-     * @param {string} [source='generic']
-     * @returns {number} Actual damage taken
-     */
     damage(amount, source = 'generic') {
         if (this.isDead || amount <= 0) return 0;
         const prev = this.health;
@@ -672,10 +472,6 @@ export class Player {
         return prev - this.health;
     }
 
-    /**
-     * Add exhaustion points. When exhaustion reaches 4.0, depletes 1 saturation (or 1 foodLevel).
-     * @param {number} amount
-     */
     addExhaustion(amount) {
         if (amount <= 0 || isNaN(amount)) return;
         this.exhaustion += amount;
@@ -689,13 +485,6 @@ export class Player {
         }
     }
 
-    /**
-     * Consume food item to restore hunger and saturation.
-     * @param {Object|number} foodItem ItemStack, item definition, or item ID
-     * @param {number} [foodPoints=null] Optional explicit food points override
-     * @param {number} [saturationPoints=null] Optional explicit saturation override
-     * @returns {{ eaten: boolean, foodRestored: number, saturationRestored: number, foodLevel: number, saturation: number }|boolean}
-     */
     eat(foodItem, foodPoints = null, saturationPoints = null) {
         let value = 0;
         let sat = 0;
@@ -748,49 +537,25 @@ export class Player {
         };
     }
 
-    /**
-     * Add experience points
-     * @param {number} amount
-     * @returns {number} Total XP
-     */
     addExperience(amount) {
         if (amount <= 0 || isNaN(amount)) return this.xp;
         this.xp += amount;
         return this.xp;
     }
 
-    /**
-     * Alias for addExperience
-     * @param {number} amount
-     * @returns {number}
-     */
     addXp(amount) {
         return this.addExperience(amount);
     }
 
-    /**
-     * Set experience points directly
-     * @param {number} amount
-     * @returns {number}
-     */
     setExperience(amount) {
         this.xp = Math.max(0, Number(amount) || 0);
         return this.xp;
     }
 
-    /**
-     * Set XP directly (alias)
-     * @param {number} amount
-     * @returns {number}
-     */
     setXp(amount) {
         return this.setExperience(amount);
     }
 
-    /**
-     * Calculate current XP Level based on standard Minecraft 1.5 formula
-     * @returns {number} Integer level (0, 1, 2, ...)
-     */
     getXpLevel() {
         let level = 0;
         let remaining = this.xp;
@@ -806,10 +571,6 @@ export class Player {
         return level;
     }
 
-    /**
-     * Calculate progress towards next level [0.0 - 1.0)
-     * @returns {number} Float in range [0, 1)
-     */
     getXpProgress() {
         let level = 0;
         let remaining = this.xp;
@@ -824,11 +585,6 @@ export class Player {
         }
     }
 
-    /**
-     * XP required to transition from level to level + 1 (Minecraft 1.5)
-     * @param {number} level
-     * @returns {number}
-     */
     getXpRequiredForLevel(level) {
         if (level < 16) return 17;
         if (level < 30) return 3 * level - 28;
@@ -839,9 +595,6 @@ export class Player {
     // HITBOX & ORIENTATION
     // ==========================================
 
-    /**
-     * Update the player's AABB based on current position and dimensions.
-     */
     updateHitbox() {
         this.aabb.setFromCenterAndSize(
             this.position.x,
@@ -852,20 +605,10 @@ export class Player {
         );
     }
 
-    /**
-     * Get the current player bounding box
-     * @returns {AABB}
-     */
     getAABB() {
         return this.aabb;
     }
 
-    /**
-     * Check if the player is currently submerged or intersecting WATER or WATER_FLOWING blocks.
-     * Checks multiple key sample points (feet, waist, center, chest, eyes) and full AABB voxel intersections.
-     * @param {Object|Function|Map} world
-     * @returns {boolean}
-     */
     checkInWater(world) {
         if (!world) return false;
 
@@ -913,11 +656,6 @@ export class Player {
         return false;
     }
 
-    /**
-     * Check if player is currently in water (with optional world recheck)
-     * @param {Object|Function|Map} [world=null]
-     * @returns {boolean}
-     */
     isInWater(world = null) {
         if (world) {
             this.inWater = this.checkInWater(world);
@@ -925,12 +663,6 @@ export class Player {
         return this.inWater;
     }
 
-    /**
-     * Set the player's world position directly
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     */
     setPosition(x, y, z) {
         this.prevPosition.set(this.position.x, this.position.y, this.position.z);
         this.position.set(x, y, z);
@@ -938,31 +670,16 @@ export class Player {
         this.syncCamera();
     }
 
-    /**
-     * Teleport the player and reset velocity
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     */
     teleport(x, y, z) {
         this.velocity.set(0, 0, 0);
         this.setPosition(x, y, z);
     }
 
-    /**
-     * Set player orientation
-     * @param {number} yaw
-     * @param {number} [pitch=0]
-     */
     setRotation(yaw, pitch = 0) {
         this.rotation.yaw = yaw;
         this.rotation.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
     }
 
-    /**
-     * Get eye level position in world coordinates
-     * @returns {{x: number, y: number, z: number}}
-     */
     getEyePosition() {
         return {
             x: this.position.x,
@@ -971,10 +688,6 @@ export class Player {
         };
     }
 
-    /**
-     * Get 3D forward unit vector from orientation (yaw, pitch)
-     * @returns {{x: number, y: number, z: number}}
-     */
     getDirection() {
         const yaw = this.rotation.yaw;
         const pitch = this.rotation.pitch;
@@ -985,18 +698,11 @@ export class Player {
         };
     }
 
-    /**
-     * Attach a Three.js Camera to sync position and orientation
-     * @param {Object} camera
-     */
     attachCamera(camera) {
         this.camera = camera;
         this.syncCamera();
     }
 
-    /**
-     * Sync attached camera position with eye position
-     */
     syncCamera() {
         if (this.camera && this.camera.position) {
             this.camera.position.set(
@@ -1007,10 +713,6 @@ export class Player {
         }
     }
 
-    /**
-     * Perform jump if player is on ground or in water
-     * @returns {boolean} True if jump succeeded
-     */
     jump() {
         if (this.onGround || this.flying || this.inWater) {
             this.velocity.y = this.inWater ? this.waterUpwardSpeed : this.jumpSpeed;
@@ -1022,17 +724,6 @@ export class Player {
         return false;
     }
 
-    /**
-     * Perform AABB swept movement along (dx, dy, dz) against world voxels.
-     * Implements Minecraft 1.5 multi-axis resolution, step-up, and ground detection.
-     *
-     * @param {number} dx - Desired X movement
-     * @param {number} dy - Desired Y movement
-     * @param {number} dz - Desired Z movement
-     * @param {Object|Function|Map} world - World voxel provider
-     * @param {boolean} [isSneaking=false] - Whether sneak edge protection is active
-     * @returns {{x: number, y: number, z: number}} Actually allowed displacement
-     */
     moveWithCollision(dx, dy, dz, world, isSneaking = false) {
         if (!world) {
             this.position.x += dx;
@@ -1187,13 +878,6 @@ export class Player {
         return { x: finalDx, y: finalDy, z: finalDz };
     }
 
-    /**
-     * Update player physics, controls, gravity, swept AABB collisions, and survival stats.
-     *
-     * @param {number} delta - Delta time in seconds
-     * @param {Object|Function|Map} [world=null] - World voxel provider
-     * @param {Object} [moveState={}] - Movement input flags (forward, backward, left, right, up, down, jump, sneak, sprint, yaw, pitch)
-     */
     update(delta, world = null, moveState = {}) {
         if (!delta || delta <= 0 || isNaN(delta)) {
             delta = 1 / 60;
@@ -1213,10 +897,6 @@ export class Player {
         this.updateStep(delta, world, moveState);
     }
 
-    /**
-     * Single internal physics and survival simulation step
-     * @private
-     */
     updateStep(dt, world, moveState = {}) {
         this.prevPosition.set(this.position.x, this.position.y, this.position.z);
 

@@ -1,38 +1,7 @@
-/**
- * 8-Bit Audio System for Minecraft 1.5 WebGL Engine
- *
- * Features:
- * - Web Audio API procedural sound synthesis (100% asset-free)
- * - Authentic retro 8-bit chiptune synthesis with bitcrushing & frequency modulation
- * - THREE.PositionalAudio integration for realistic 3D world-space audio
- * - Procedural sounds:
- *    * 'pop'    : Snappy upward pitch chirp for item pickup, placing, or hotbar selection
- *    * 'crunch' : Gritty bitcrushed noise burst with low resonant thud for breaking stone/blocks
- *    * 'step'   : Crisp footstep tap & muffled impact with pitch variations
- *    * 'hiss'   : 1.5s sizzling combustion noise with sparks for Creeper / TNT fuse
- *    * 'explode': Heavy sub-bass rumble + distorted bitcrushed blast
- *    * 'click'  : Crisp UI / button toggle click
- *    * 'hurt'   : Classic 8-bit damage grunt / tone
- *    * 'splash' : Water splash & fluid turbulence
- * - AudioBuffer pre-caching with procedural variations
- * - Master & SFX volume control, mute toggles, and automatic user gesture unlock
- */
+
 
 import * as THREE from 'three';
 
-/**
- * Procedural Sound Buffer Generators
- */
-
-/**
- * 8-Bit Pop Sound (Item pickup, block place)
- * Upward frequency glide with square/sine blend and snappy exponential decay.
- * @param {AudioContext} context
- * @param {number} [baseFreq=420]
- * @param {number} [endFreq=960]
- * @param {number} [duration=0.09]
- * @returns {AudioBuffer}
- */
 export function createPopBuffer(context, baseFreq = 420, endFreq = 960, duration = 0.09) {
     const sampleRate = context.sampleRate || 44100;
     const numSamples = Math.max(1, Math.floor(sampleRate * duration));
@@ -70,14 +39,6 @@ export function createPopBuffer(context, baseFreq = 420, endFreq = 960, duration
     return buffer;
 }
 
-/**
- * 8-Bit Stone Crunch Sound (Digging, stone mining impact)
- * Low resonant thud + multi-stage bitcrushed crackle noise.
- * @param {AudioContext} context
- * @param {number} [duration=0.20]
- * @param {number} [pitchScale=1.0]
- * @returns {AudioBuffer}
- */
 export function createCrunchBuffer(context, duration = 0.20, pitchScale = 1.0) {
     const sampleRate = context.sampleRate || 44100;
     const numSamples = Math.max(1, Math.floor(sampleRate * duration));
@@ -117,14 +78,6 @@ export function createCrunchBuffer(context, duration = 0.20, pitchScale = 1.0) {
     return buffer;
 }
 
-/**
- * 8-Bit Footstep Sound
- * Short crisp low-frequency thud + noise tap.
- * @param {AudioContext} context
- * @param {number} [duration=0.075]
- * @param {number} [pitch=1.0]
- * @returns {AudioBuffer}
- */
 export function createStepBuffer(context, duration = 0.075, pitch = 1.0) {
     const sampleRate = context.sampleRate || 44100;
     const numSamples = Math.max(1, Math.floor(sampleRate * duration));
@@ -159,13 +112,6 @@ export function createStepBuffer(context, duration = 0.075, pitch = 1.0) {
     return buffer;
 }
 
-/**
- * 8-Bit Creeper / TNT Fuse Hiss Sound
- * 1.5 second sizzling combustion noise with amplitude flutter and micro-sparks.
- * @param {AudioContext} context
- * @param {number} [duration=1.5]
- * @returns {AudioBuffer}
- */
 export function createHissBuffer(context, duration = 1.5) {
     const sampleRate = context.sampleRate || 44100;
     const numSamples = Math.max(1, Math.floor(sampleRate * duration));
@@ -203,13 +149,6 @@ export function createHissBuffer(context, duration = 1.5) {
     return buffer;
 }
 
-/**
- * 8-Bit Explosion Sound (Detonation, TNT, Creeper)
- * Deep sub-bass punch + distorted blast noise decay.
- * @param {AudioContext} context
- * @param {number} [duration=1.2]
- * @returns {AudioBuffer}
- */
 export function createExplosionBuffer(context, duration = 1.2) {
     const sampleRate = context.sampleRate || 44100;
     const numSamples = Math.max(1, Math.floor(sampleRate * duration));
@@ -245,12 +184,6 @@ export function createExplosionBuffer(context, duration = 1.2) {
     return buffer;
 }
 
-/**
- * 8-Bit UI Click Sound
- * @param {AudioContext} context
- * @param {number} [duration=0.02]
- * @returns {AudioBuffer}
- */
 export function createClickBuffer(context, duration = 0.02) {
     const sampleRate = context.sampleRate || 44100;
     const numSamples = Math.max(1, Math.floor(sampleRate * duration));
@@ -271,13 +204,6 @@ export function createClickBuffer(context, duration = 0.02) {
     return buffer;
 }
 
-/**
- * 8-Bit Damage / Hurt Sound
- * Descending retro tone.
- * @param {AudioContext} context
- * @param {number} [duration=0.18]
- * @returns {AudioBuffer}
- */
 export function createHurtBuffer(context, duration = 0.18) {
     const sampleRate = context.sampleRate || 44100;
     const numSamples = Math.max(1, Math.floor(sampleRate * duration));
@@ -300,22 +226,8 @@ export function createHurtBuffer(context, duration = 0.18) {
     return buffer;
 }
 
-/**
- * SoundManager Class
- * Manages Web Audio API context, audio listener, procedural sound cache,
- * and 3D spatial playback via THREE.PositionalAudio.
- */
 export class SoundManager {
-    /**
-     * @param {THREE.Camera} [camera=null] - Camera to attach AudioListener to
-     * @param {Object} [options={}] - Configuration options
-     * @param {THREE.Scene} [options.scene=null] - Scene for hosting temporary positional audio containers
-     * @param {number} [options.masterVolume=1.0] - Master volume (0.0 to 1.0)
-     * @param {number} [options.sfxVolume=1.0] - Sound effects volume (0.0 to 1.0)
-     * @param {number} [options.refDistance=1.5] - Positional audio reference distance (blocks)
-     * @param {number} [options.maxDistance=32.0] - Positional audio max audible distance (blocks)
-     * @param {number} [options.rolloffFactor=1.0] - Distance attenuation rolloff factor
-     */
+    
     constructor(camera = null, options = {}) {
         this.camera = null;
         this.scene = options.scene || null;
@@ -348,10 +260,6 @@ export class SoundManager {
         this._setupAutoUnlock();
     }
 
-    /**
-     * Set or switch the active camera with the AudioListener
-     * @param {THREE.Camera} camera
-     */
     setCamera(camera) {
         if (!camera) return;
         if (this.camera && this.listener.parent === this.camera) {
@@ -361,17 +269,10 @@ export class SoundManager {
         this.camera.add(this.listener);
     }
 
-    /**
-     * Set the active Three.js Scene for positional audio placement
-     * @param {THREE.Scene} scene
-     */
     setScene(scene) {
         this.scene = scene;
     }
 
-    /**
-     * Populate procedural AudioBuffer cache with sound variations
-     */
     generateSoundCache() {
         if (!this.context) return;
 
@@ -419,12 +320,6 @@ export class SoundManager {
         ]);
     }
 
-    /**
-     * Retrieve an AudioBuffer by name and optional variation index
-     * @param {string} soundName
-     * @param {number} [variation=null] - Specific index, or null for random variation
-     * @returns {AudioBuffer|null}
-     */
     getBuffer(soundName, variation = null) {
         const buffers = this.bufferCache.get(soundName);
         if (!buffers || buffers.length === 0) {
@@ -440,9 +335,6 @@ export class SoundManager {
         return buffers[index];
     }
 
-    /**
-     * Unlock AudioContext on first user interaction (browser autoplay policy requirement)
-     */
     _setupAutoUnlock() {
         const unlock = () => {
             this.unlockAudio();
@@ -458,35 +350,17 @@ export class SoundManager {
         }
     }
 
-    /**
-     * Explicitly resume AudioContext if suspended
-     */
     unlockAudio() {
         if (this.context && this.context.state === 'suspended') {
             this.context.resume().catch(() => {});
         }
     }
 
-    /**
-     * Calculate final effective volume considering master, sfx, and mute state
-     * @param {number} [localVolume=1.0]
-     * @returns {number}
-     */
     getEffectiveVolume(localVolume = 1.0) {
         if (this.isMutedState) return 0;
         return Math.max(0, Math.min(1, localVolume * this.masterVolume * this.sfxVolume));
     }
 
-    /**
-     * Play a global / 2D non-positional sound
-     * @param {string} soundName - Name of sound ('pop', 'crunch', 'step', 'hiss', etc.)
-     * @param {Object} [options={}]
-     * @param {number} [options.volume=1.0] - Relative volume
-     * @param {number} [options.pitch=1.0] - Playback rate / pitch
-     * @param {boolean} [options.loop=false] - Loop sound
-     * @param {number} [options.variation=null] - Specific buffer index
-     * @returns {THREE.Audio|null}
-     */
     play(soundName, options = {}) {
         this.unlockAudio();
         const buffer = this.getBuffer(soundName, options.variation);
@@ -515,23 +389,6 @@ export class SoundManager {
         return sound;
     }
 
-    /**
-     * Play a 3D Positional Sound using THREE.PositionalAudio
-     *
-     * @param {string} soundName - 'pop', 'crunch', 'step', 'hiss', etc.
-     * @param {THREE.Vector3|Object|THREE.Object3D} target - 3D position {x, y, z} or Object3D mesh
-     * @param {Object} [options={}]
-     * @param {number} [options.volume=1.0]
-     * @param {number} [options.pitch=1.0]
-     * @param {number} [options.refDistance]
-     * @param {number} [options.maxDistance]
-     * @param {number} [options.rolloffFactor]
-     * @param {string} [options.distanceModel='linear']
-     * @param {boolean} [options.loop=false]
-     * @param {number} [options.variation=null]
-     * @param {THREE.Scene} [options.scene=null]
-     * @returns {THREE.PositionalAudio|null}
-     */
     playPositional(soundName, target, options = {}) {
         this.unlockAudio();
         const buffer = this.getBuffer(soundName, options.variation);
@@ -609,13 +466,6 @@ export class SoundManager {
         return sound;
     }
 
-    /**
-     * Play sound at coordinate or 2D (convenience unified method)
-     * @param {string} soundName
-     * @param {THREE.Vector3|Object|THREE.Object3D|null} [positionOrTarget=null]
-     * @param {Object} [options={}]
-     * @returns {THREE.Audio|THREE.PositionalAudio|null}
-     */
     playSound(soundName, positionOrTarget = null, options = {}) {
         if (positionOrTarget) {
             return this.playPositional(soundName, positionOrTarget, options);
@@ -627,67 +477,33 @@ export class SoundManager {
     // Specific Synthesized Sound Helper Methods
     // ==========================================
 
-    /**
-     * Play Pop (item pickup / place block)
-     * @param {THREE.Vector3|Object|null} [position=null]
-     * @param {Object} [options={}]
-     */
     pop(position = null, options = {}) {
         const pitch = options.pitch || (0.95 + Math.random() * 0.1);
         return this.playSound('pop', position, { pitch, ...options });
     }
 
-    /**
-     * Play Crunch (stone breaking / block dig)
-     * @param {THREE.Vector3|Object|null} [position=null]
-     * @param {Object} [options={}]
-     */
     crunch(position = null, options = {}) {
         const pitch = options.pitch || (0.92 + Math.random() * 0.16);
         return this.playSound('crunch', position, { pitch, ...options });
     }
 
-    /**
-     * Play Step (footstep)
-     * @param {THREE.Vector3|Object|null} [position=null]
-     * @param {Object} [options={}]
-     */
     step(position = null, options = {}) {
         const pitch = options.pitch || (0.90 + Math.random() * 0.20);
         return this.playSound('step', position, { volume: 0.8, pitch, ...options });
     }
 
-    /**
-     * Play Hiss (Creeper / TNT fuse)
-     * @param {THREE.Vector3|Object|null} [position=null]
-     * @param {Object} [options={}]
-     */
     hiss(position = null, options = {}) {
         return this.playSound('hiss', position, { volume: 1.0, refDistance: 3, maxDistance: 24, ...options });
     }
 
-    /**
-     * Play Explosion (detonation)
-     * @param {THREE.Vector3|Object|null} [position=null]
-     * @param {Object} [options={}]
-     */
     explode(position = null, options = {}) {
         return this.playSound('explode', position, { volume: 1.0, refDistance: 5, maxDistance: 48, ...options });
     }
 
-    /**
-     * Play Click (UI toggle / button)
-     * @param {Object} [options={}]
-     */
     click(options = {}) {
         return this.play('click', { volume: 0.7, ...options });
     }
 
-    /**
-     * Play Hurt (damage grunt)
-     * @param {THREE.Vector3|Object|null} [position=null]
-     * @param {Object} [options={}]
-     */
     hurt(position = null, options = {}) {
         return this.playSound('hurt', position, { volume: 0.9, ...options });
     }
@@ -696,10 +512,6 @@ export class SoundManager {
     // Volume & State Controls
     // ==========================================
 
-    /**
-     * Set master volume (0.0 to 1.0)
-     * @param {number} volume
-     */
     setMasterVolume(volume) {
         this.masterVolume = Math.max(0, Math.min(1, volume));
         if (this.listener && this.listener.setMasterVolume) {
@@ -707,17 +519,10 @@ export class SoundManager {
         }
     }
 
-    /**
-     * Set SFX volume (0.0 to 1.0)
-     * @param {number} volume
-     */
     setSfxVolume(volume) {
         this.sfxVolume = Math.max(0, Math.min(1, volume));
     }
 
-    /**
-     * Mute all audio
-     */
     mute() {
         this.isMutedState = true;
         if (this.listener && this.listener.setMasterVolume) {
@@ -725,9 +530,6 @@ export class SoundManager {
         }
     }
 
-    /**
-     * Unmute audio
-     */
     unmute() {
         this.isMutedState = false;
         if (this.listener && this.listener.setMasterVolume) {
@@ -735,10 +537,6 @@ export class SoundManager {
         }
     }
 
-    /**
-     * Toggle mute state
-     * @returns {boolean} New mute state
-     */
     toggleMute() {
         if (this.isMutedState) {
             this.unmute();
@@ -748,17 +546,10 @@ export class SoundManager {
         return this.isMutedState;
     }
 
-    /**
-     * Check if audio is currently muted
-     * @returns {boolean}
-     */
     isMuted() {
         return this.isMutedState;
     }
 
-    /**
-     * Dispose audio manager and release all audio nodes
-     */
     dispose() {
         this.activePositionalSounds.forEach(sound => {
             if (sound._stopAndCleanup) {

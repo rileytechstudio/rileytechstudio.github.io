@@ -1,28 +1,7 @@
-/**
- * Pause Menu & Options UI for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - Authentic Minecraft 1.5 Pause Screen ("Game menu")
- * - Sub-view for Options Screen ("Options")
- * - Interactive Minecraft-styled Sliders:
- *   * FOV (Field of View: 30° to 110° / Normal to Quake Pro)
- *   * Render Distance (2 to 16 chunks with Tiny/Short/Normal/Far presets)
- *   * Mouse Sensitivity (20% to 200% / Slow to Hyperspeed)
- *   * Music & Sound Volume (0% to 100% / OFF to Loud)
- * - Toggle Buttons for Difficulty (Peaceful/Easy/Normal/Hard) & Invert Mouse
- * - Automatic persistence to localStorage ('minecraft_options')
- * - Full callbacks dispatch to engine subsystems
- */
+
 
 export class PauseMenu {
-    /**
-     * @param {Function} [onResume] Callback when returning to game
-     * @param {Function} [onAchievements] Callback for achievements
-     * @param {Function} [onStatistics] Callback for statistics
-     * @param {Function} [onOptions] Optional custom callback when Options is clicked
-     * @param {Function} [onQuit] Callback when quitting to title
-     * @param {Object} [config={}] Configuration & event handlers
-     */
+    
     constructor(onResume, onAchievements, onStatistics, onOptions, onQuit, config = {}) {
         this.onResume = onResume || (() => {});
         this.onAchievements = onAchievements || (() => {});
@@ -117,9 +96,6 @@ export class PauseMenu {
         return btn;
     }
 
-    /**
-     * Create custom pixel-art Minecraft Range Slider
-     */
     createSlider({ labelPrefix = '', min = 0, max = 100, step = 1, value = 50, isSmall = true, format = (v) => `${labelPrefix}: ${v}`, onChange = () => {} }) {
         const container = document.createElement('div');
         container.className = 'mc-slider';

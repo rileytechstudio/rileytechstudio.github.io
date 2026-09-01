@@ -1,14 +1,4 @@
-/**
- * Procedural Terrain Generator for Minecraft 1.5 WebGL Engine
- * Features:
- * - Multi-octave 2D Heightmaps with Continental & Biome Blending
- * - 3D Noise Caves & Overhangs
- * - Biome-specific Stratigraphy (Plains, Forest, Desert, Extreme Hills, Tundra, Ocean, Swamp)
- * - Ore Vein Generation (Coal, Iron, Gold, Redstone, Diamond, Lapis, Gravel, Dirt)
- * - Procedural Foliage & Trees (Oak trees, Cacti, Flowers, Tall Grass, Snow layers)
- * - Chunk-based population compatible with src/core/chunk.js
- * - Full Dimension Support: Overworld & Nether 3D solid cavern generation
- */
+
 
 import { Chunk, BLOCKS, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z } from '../core/chunk.js';
 import { NoiseGenerator, Random, ImprovedNoise, PerlinNoise } from './noise.js';
@@ -134,13 +124,7 @@ export const BIOMES = Object.freeze({
 });
 
 export class TerrainGenerator {
-    /**
-     * @param {number|string} [seed=1337]
-     * @param {Object} [config={}]
-     * @param {string} [config.dimension='overworld'] - 'overworld' | 'nether'
-     * @param {number} [config.netherHeight=128] - Nether cavern ceiling height
-     * @param {number} [config.netherLavaLevel=32] - Nether lava lake/ocean level
-     */
+    
     constructor(seed = 1337, config = {}) {
         this.seed = seed;
         this.dimension = (config.dimension || 'overworld').toLowerCase();
@@ -161,10 +145,6 @@ export class TerrainGenerator {
         this.initNoiseGenerators(seed);
     }
 
-    /**
-     * Initialize separate noise samplers for various terrain channels
-     * @param {number|string} seed
-     */
     initNoiseGenerators(seed) {
         const baseRng = new Random(seed);
 
@@ -188,12 +168,6 @@ export class TerrainGenerator {
         this.netherLavaNoise = new NoiseGenerator(baseRng.nextInt(1, 1000000), 'simplex');
     }
 
-    /**
-     * Sample climate temperature at world coordinates
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {number} Value in range [-1, 1]
-     */
     getTemperature(worldX, worldZ) {
         if (this.temperatureNoise && typeof this.temperatureNoise.fbm2D === 'function') {
             return this.temperatureNoise.fbm2D(worldX * 0.0012, worldZ * 0.0012, {
@@ -204,12 +178,6 @@ export class TerrainGenerator {
         return 0;
     }
 
-    /**
-     * Sample climate moisture/humidity at world coordinates
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {number} Value in range [-1, 1]
-     */
     getMoisture(worldX, worldZ) {
         const sampler = this.moistureNoise || this.humidityNoise;
         if (sampler && typeof sampler.fbm2D === 'function') {
@@ -221,28 +189,10 @@ export class TerrainGenerator {
         return 0;
     }
 
-    /**
-     * Alias for getMoisture
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {number}
-     */
     getHumidity(worldX, worldZ) {
         return this.getMoisture(worldX, worldZ);
     }
 
-    /**
-     * Determine Biome at world coordinate (worldX, worldZ)
-     * Maps terrain to biomes based on Temperature and Moisture:
-     * - Desert (Sand / Cactus)
-     * - Snow / Taiga (Snow layers, Ice)
-     * - Forest (Oak Trees)
-     * - Plains (Grass, Flowers, Tall Grass)
-     *
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {typeof BIOMES[keyof typeof BIOMES]}
-     */
     getBiome(worldX, worldZ) {
         if (this.dimension === 'nether' || this.config.dimension === 'nether') {
             return BIOMES.NETHER;
@@ -292,12 +242,6 @@ export class TerrainGenerator {
         }
     }
 
-    /**
-     * Compute raw continuous surface height at world coordinates
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {number}
-     */
     getHeight(worldX, worldZ) {
         if (this.dimension === 'nether' || this.config.dimension === 'nether') {
             return this.config.netherHeight || 128;
@@ -338,12 +282,6 @@ export class TerrainGenerator {
         return Math.max(2, Math.min(CHUNK_SIZE_Y - 8, Math.round(height)));
     }
 
-    /**
-     * Generate 16x16 heightmap for a chunk
-     * @param {number} chunkX 
-     * @param {number} chunkZ 
-     * @returns {Int16Array} 256 height values (index = z * 16 + x)
-     */
     getHeightmap(chunkX, chunkZ) {
         const heightmap = new Int16Array(CHUNK_SIZE_X * CHUNK_SIZE_Z);
         const startX = chunkX * CHUNK_SIZE_X;
@@ -360,14 +298,6 @@ export class TerrainGenerator {
         return heightmap;
     }
 
-    /**
-     * Check if a 3D coordinate is inside a subterranean cave system (Overworld)
-     * @param {number} wx 
-     * @param {number} wy 
-     * @param {number} wz 
-     * @param {number} surfaceHeight 
-     * @returns {boolean} True if voxel is hollow cave air
-     */
     isCave(wx, wy, wz, surfaceHeight) {
         if (!this.config.enableCaves) return false;
         // Don't carve bedrock or punch straight through the ocean floor into water
@@ -391,13 +321,6 @@ export class TerrainGenerator {
         return caveValue < 0.038;
     }
 
-    /**
-     * Determine underground Ore Block at (wx, wy, wz) (Overworld)
-     * @param {number} wx 
-     * @param {number} wy 
-     * @param {number} wz 
-     * @returns {number} Block ID (defaults to BLOCKS.STONE)
-     */
     getOreBlock(wx, wy, wz) {
         if (!this.config.enableOres) return BLOCKS.STONE;
 
@@ -447,13 +370,6 @@ export class TerrainGenerator {
         return BLOCKS.STONE;
     }
 
-    /**
-     * Populate a Chunk with terrain voxels, stratigraphy, ores, and flora (or Nether cavern)
-     * @param {number} chunkX 
-     * @param {number} chunkZ 
-     * @param {Chunk} [targetChunk=null]
-     * @returns {Chunk} Populated chunk instance
-     */
     generateChunk(chunkX, chunkZ, targetChunk = null, world = null) {
         if (this.dimension === 'nether' || this.config.dimension === 'nether') {
             return this.generateNetherChunk(chunkX, chunkZ, targetChunk);
@@ -563,17 +479,6 @@ export class TerrainGenerator {
         return chunk;
     }
 
-    /**
-     * Generate Nether Chunk:
-     * - Solid cavern bounded by bedrock ceiling at y=128 and floor at y=0
-     * - Hollowed out by multi-scale 3D noise
-     * - Made entirely of Netherrack and Lava lakes
-     *
-     * @param {number} chunkX 
-     * @param {number} chunkZ 
-     * @param {Chunk} [targetChunk=null]
-     * @returns {Chunk} Populated chunk instance
-     */
     generateNetherChunk(chunkX, chunkZ, targetChunk = null, world = null) {
         const chunk = targetChunk || new Chunk(chunkX, chunkZ, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
         const startX = chunkX * CHUNK_SIZE_X;
@@ -681,13 +586,6 @@ export class TerrainGenerator {
         return chunk;
     }
 
-    /**
-     * Determine if coordinate contains Nether Quartz Ore in Nether caverns
-     * @param {number} wx 
-     * @param {number} wy 
-     * @param {number} wz 
-     * @returns {boolean}
-     */
     isQuartzOre(wx, wy, wz) {
         if (!this.config.enableOres) return false;
         const netherHeight = this.config.netherHeight !== undefined ? this.config.netherHeight : 128;
@@ -697,18 +595,6 @@ export class TerrainGenerator {
         return sample > 0.66;
     }
 
-    /**
-     * Decorate Chunk surface with trees, flowers, cacti, grass, and snow (Overworld)
-     * Features:
-     * - Desert: Cacti & Dead Bushes
-     * - Snow / Taiga: Taiga/Pine trees with snow layers, ice on water, surface snow layers
-     * - Forest: Dense Oak Trees, flowers, tall grass
-     * - Plains: Occasional Oak Trees, abundant flowers, tall grass
-     *
-     * @param {Chunk} chunk 
-     * @param {Int16Array} heightmap 
-     * @param {Array} biomeMap 
-     */
     decorateChunk(chunk, heightmap, biomeMap, world = null) {
         const decoRng = new Random(((chunk.x * 49287) ^ (chunk.z * 93821)) + 54321);
 
@@ -780,14 +666,6 @@ export class TerrainGenerator {
         }
     }
 
-    /**
-     * Generate standard Minecraft 1.5 Oak Tree
-     * @param {Chunk} chunk 
-     * @param {number} x Local X (0-15)
-     * @param {number} startY Surface Y
-     * @param {number} z Local Z (0-15)
-     * @param {Random} rng Seeded random
-     */
     generateOakTree(chunk, x, startY, z, rng, world = null) {
         const setBlock = (tx, ty, tz, block) => {
             if (world) {
@@ -848,9 +726,6 @@ export class TerrainGenerator {
         setBlock(x, startY - 1, z, BLOCKS.DIRT);
     }
 
-    /**
-     * Generate Large Oak Tree with branches
-     */
     generateLargeOakTree(chunk, x, startY, z, rng, world = null) {
         const setBlock = (tx, ty, tz, block) => {
             if (world) {
@@ -905,9 +780,6 @@ export class TerrainGenerator {
         this.generateLeafCluster(chunk, x, trunkTopY, z, rng, world);
     }
 
-    /**
-     * Generate a cluster of leaves around a branch node
-     */
     generateLeafCluster(chunk, bx, by, bz, rng, world = null) {
         const setBlock = (tx, ty, tz, block) => {
             if (world) {
@@ -939,14 +811,6 @@ export class TerrainGenerator {
         }
     }
 
-    /**
-     * Generate standard Minecraft Taiga / Pine Tree with snow layers on canopy
-     * @param {Chunk} chunk 
-     * @param {number} x Local X (0-15)
-     * @param {number} startY Surface Y
-     * @param {number} z Local Z (0-15)
-     * @param {Random} rng Seeded random
-     */
     generateTaigaTree(chunk, x, startY, z, rng, world = null) {
         const setBlock = (tx, ty, tz, block) => {
             if (world) {

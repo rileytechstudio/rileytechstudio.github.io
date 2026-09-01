@@ -2,20 +2,9 @@ import * as THREE from 'three';
 import { generateTextureAtlas, GENERATORS, createThreeCanvasTexture } from '../assets/textureGen.js';
 import { BLOCKS } from './chunk.js';
 
-/**
- * Texture Manager for Minecraft 1.5 WebGL Engine
- * 
- * Manages the procedural texture atlas and exports materials and UV lookups
- * for voxel chunk meshing.
- */
-
 let cachedAtlas = null;
 let cachedMaterial = null;
 
-/**
- * Block ID to atlas texture name mapping.
- * Specifies textures for specific faces ('top', 'bottom', 'side', or direction names 'north', 'south', 'east', 'west').
- */
 export const BLOCK_TEXTURE_MAP = Object.freeze({
     [BLOCKS.RAIL]: { all: "rail_normal" },
     [BLOCKS.POWERED_RAIL]: { all: "rail_golden" },
@@ -96,13 +85,6 @@ export const BLOCK_TEXTURE_MAP = Object.freeze({
     330: { all: 'iron_door' }
 });
 
-/**
- * Returns the texture name for a given block ID and face type.
- * @param {number} blockId
- * @param {'top'|'bottom'|'side'} [faceType='side']
- * @param {string} [faceName='']
- * @returns {string} Texture key name in atlas
- */
 export function getBlockFaceTexture(blockId, faceType = 'side', faceName = '') {
     if (faceName && typeof faceName === 'string' && faceName.startsWith('destroy_stage_')) {
         return faceName;
@@ -124,12 +106,6 @@ export function getBlockFaceTexture(blockId, faceType = 'side', faceName = '') {
     return entry.side || 'stone';
 }
 
-/**
- * Get or create the singleton procedural texture atlas.
- * @param {string[]} [blockList]
- * @param {number} [seed]
- * @returns {{canvas: HTMLCanvasElement, texture: THREE.CanvasTexture, uvs: Object, atlasWidth: number, atlasHeight: number, dataURI: string}}
- */
 export function getTextureAtlas(blockList, seed) {
     if (!cachedAtlas || blockList || seed !== undefined) {
         const atlas = generateTextureAtlas(blockList || Object.keys(GENERATORS), seed);
@@ -141,14 +117,6 @@ export function getTextureAtlas(blockList, seed) {
     return cachedAtlas;
 }
 
-/**
- * Get UV coordinates for a block ID and face from the texture atlas.
- * @param {number} blockId
- * @param {'top'|'bottom'|'side'} [faceType='side']
- * @param {string} [faceName='']
- * @param {Object} [atlas=null]
- * @returns {{uMin: number, vMin: number, uMax: number, vMax: number}}
- */
 export function getBlockFaceUV(blockId, faceType = 'side', faceName = '', atlas = null) {
     const activeAtlas = atlas || getTextureAtlas();
     const texName = getBlockFaceTexture(blockId, faceType, faceName);
@@ -160,18 +128,10 @@ export function getBlockFaceUV(blockId, faceType = 'side', faceName = '', atlas 
     return uv;
 }
 
-/**
- * Get the Three.js CanvasTexture of the texture atlas.
- * @param {number} [seed]
- * @returns {THREE.CanvasTexture}
- */
 export function getAtlasTexture(seed) {
     return getTextureAtlas(undefined, seed).texture;
 }
 
-/**
- * Builds a THREE.MeshBasicMaterial using the canvas texture atlas, with custom Minecraft-style lighting.
- */
 export function getAtlasMaterial(options = {}) {
     const atlas = getTextureAtlas();
     
@@ -232,9 +192,6 @@ export function getAtlasMaterial(options = {}) {
     return mat;
 }
 
-/**
- * Reset / clear cached atlas and materials (useful for tests or seed reload).
- */
 export function resetTextureManager() {
     cachedAtlas = null;
     cachedMaterial = null;

@@ -4,9 +4,6 @@ import { getAtlasMaterial, getTextureAtlas, getBlockFaceUV, getBlockFaceTexture,
 
 export { getAtlasMaterial, getTextureAtlas, getBlockFaceUV, getBlockFaceTexture, BLOCK_TEXTURE_MAP };
 
-/**
- * Standard Minecraft 1.5 block color mappings (RGB 0.0 - 1.0) retained for fallback/legacy reference.
- */
 export const SPRITE_BLOCKS = new Set([6, 31, 32, 37, 38, 39, 40, 50, 51, 59, 83]); // Plants, torches, fire, etc.
 export const BLOCK_COLORS = {
     // 0: Air (not rendered)
@@ -44,30 +41,14 @@ export const BLOCK_COLORS = {
 
 const DEFAULT_BLOCK_COLOR = [0.70, 0.70, 0.70];
 
-/**
- * Retrieve RGB color for a given block ID and face type.
- * @param {number} blockId
- * @param {'top'|'bottom'|'side'} faceType
- * @returns {number[]} [r, g, b]
- */
 export function getBlockColor(blockId, faceType) {
     const config = BLOCK_COLORS[blockId];
     if (!config) return DEFAULT_BLOCK_COLOR;
     return config[faceType] || config.side || DEFAULT_BLOCK_COLOR;
 }
 
-/**
- * Standard Minecraft 1.5 Ambient Occlusion brightness curve mapping AO score (0, 1, 2, 3) to light multiplier.
- * 0: fully occluded (inner corner between 2 solid side blocks) -> 0.50
- * 1: 2 occluding blocks -> 0.70
- * 2: 1 occluding block -> 0.85
- * 3: unoccluded -> 1.00
- */
 export const DEFAULT_AO_CURVE = Object.freeze([0.5, 0.7, 0.85, 1.0]);
 
-/**
- * 6 Cube faces definitions with unit offsets, normals, and local UVs.
- */
 export const FACES = [
     {
         name: 'top',
@@ -179,11 +160,6 @@ export const FACES = [
     }
 ];
 
-/**
- * Check if a block ID is transparent / passable (doesn't cull neighbor faces).
- * @param {number} blockId
- * @returns {boolean}
- */
 export function isBlockTransparent(blockId) {
     if (!blockId || blockId === 0) return true;
     return blockId === 20 || blockId === 8 || blockId === 9 || blockId === 10 || blockId === 11 ||
@@ -192,25 +168,11 @@ export function isBlockTransparent(blockId) {
            blockId === 78 || blockId === 83;
 }
 
-/**
- * Check if a block ID is solid/occluding for ambient occlusion calculation.
- * @param {number} blockId
- * @returns {boolean}
- */
 export function isBlockOccluding(blockId) {
     if (!blockId || blockId === 0 || blockId === -1) return false;
     return !isBlockTransparent(blockId);
 }
 
-/**
- * Computes the Ambient Occlusion level (0 to 3) for a vertex based on two side neighbors and one diagonal corner neighbor.
- * If both side neighbors are solid, the corner is considered fully occluded (AO = 0).
- *
- * @param {boolean|number} side1 - Solid state of first adjacent side block
- * @param {boolean|number} side2 - Solid state of second adjacent side block
- * @param {boolean|number} corner - Solid state of diagonal corner block
- * @returns {number} AO level [0, 3] (0 = fully occluded/dark, 3 = unoccluded/bright)
- */
 export function calculateAO(side1, side2, corner) {
     const s1 = Boolean(side1);
     const s2 = Boolean(side2);
@@ -224,20 +186,6 @@ export function calculateAO(side1, side2, corner) {
 
 export const calculateVertexAO = calculateAO;
 
-/**
- * Meshes a chunk into a Three.js BufferGeometry with texture atlas UV coordinates and Vertex Ambient Occlusion colors.
- * Culls internal faces against adjacent solid blocks and calculates smooth per-vertex AO lighting.
- *
- * @param {Chunk|Uint8Array} chunk - Chunk instance or block array
- * @param {Object} [options]
- * @param {Object|World} [options.world] - World instance for seamless cross-chunk neighbor voxel lookups
- * @param {function(number, number, number): number} [options.getWorldBlock] - Optional world voxel lookup function
- * @param {boolean} [options.enableAO=true] - Whether to calculate vertex ambient occlusion
- * @param {number[]} [options.aoCurve=DEFAULT_AO_CURVE] - 4-element array defining brightness factors for AO levels [0..3]
- * @param {boolean} [options.strictAirOnly=false] - If true, only treat ID 0 as transparent for culling
- * @param {Object} [options.atlas] - Optional custom texture atlas instance
- * @returns {THREE.BufferGeometry}
- */
 export function generateChunkGeometry(chunk, options = {}) {
     const isChunkInstance = chunk && typeof chunk.getBlock === 'function';
     const sizeX = isChunkInstance ? chunk.sizeX || CHUNK_SIZE_X : CHUNK_SIZE_X;
@@ -279,13 +227,6 @@ export function generateChunkGeometry(chunk, options = {}) {
     const chunkOriginX = (chunk.x !== undefined ? chunk.x : chunk.cx || 0) * sizeX;
     const chunkOriginZ = (chunk.z !== undefined ? chunk.z : chunk.cz || 0) * sizeZ;
 
-    /**
-     * Look up a block voxel at local (bx, by, bz), querying world if outside chunk boundaries.
-     * @param {number} bx
-     * @param {number} by
-     * @param {number} bz
-     * @returns {number}
-     */
     const getVoxel = (bx, by, bz) => {
         if (by < 0 || by >= sizeY) return 0;
         if (bx >= 0 && bx < sizeX && bz >= 0 && bz < sizeZ) {
@@ -614,14 +555,6 @@ export function generateChunkGeometry(chunk, options = {}) {
     return geometry;
 }
 
-/**
- * Creates a Three.js Mesh from a Chunk instance with Vertex Ambient Occlusion and Texture Atlas materials.
- *
- * @param {Chunk} chunk - Chunk instance to mesh
- * @param {World|THREE.Material} [worldOrMaterial=null] - World instance for cross-chunk neighbor lookups, or custom material
- * @param {THREE.Material} [customMaterial=null] - Optional custom material override
- * @returns {THREE.Mesh}
- */
 export function createChunkMesh(chunk, worldOrMaterial = null, customMaterial = null) {
     let world = null;
     let material = null;

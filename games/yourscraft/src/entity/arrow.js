@@ -1,14 +1,4 @@
-/**
- * Arrow Entity & Projectile Physics for Minecraft 1.5 WebGL Engine
- *
- * Features:
- * - Parabolic ballistic flight trajectory with gravity acceleration and aerodynamic drag
- * - Swept ray / voxel collision detection for exact terrain block impacts & ground sticking
- * - Entity & Mob hitbox intersection with velocity-proportional damage & critical strike calculation
- * - Knockback impulse applied to target mob upon impact
- * - Low-poly 3D Arrow Three.js Mesh (wooden shaft, flint arrowhead, feathered fletching)
- * - Automatic despawn and scene cleanup
- */
+
 
 import * as THREE from 'three';
 import { Entity, AABB } from './mob.js';
@@ -17,10 +7,6 @@ import { BLOCKS } from '../core/chunk.js';
 export const ARROW_GRAVITY = 20.0; // Ballistic gravity acceleration (m/s^2)
 export const ARROW_DRAG = 0.99;    // Air resistance retention factor per tick
 
-/**
- * Construct a low-poly 3D Three.js Arrow Mesh
- * @returns {THREE.Group}
- */
 export function createArrowMesh() {
     const group = new THREE.Group();
 
@@ -62,25 +48,8 @@ export function createArrowMesh() {
     return group;
 }
 
-/**
- * Arrow Entity class representing shot projectiles in flight or stuck in blocks.
- */
 export class Arrow extends Entity {
-    /**
-     * @param {Object} [options={}]
-     * @param {number} [options.x=0]
-     * @param {number} [options.y=0]
-     * @param {number} [options.z=0]
-     * @param {THREE.Vector3|{x:number, y:number, z:number}} [options.direction]
-     * @param {number} [options.speed=26.0]
-     * @param {number} [options.damage=4.0]
-     * @param {boolean} [options.isCritical=false]
-     * @param {Entity|Player|null} [options.shooter=null]
-     * @param {THREE.Scene|null} [options.scene=null]
-     * @param {World|null} [options.world=null]
-     * @param {number} [options.gravity=ARROW_GRAVITY]
-     * @param {number} [options.knockbackStrength=0.6]
-     */
+    
     constructor(options = {}) {
         const x = options.x || 0;
         const y = options.y || 0;
@@ -130,9 +99,6 @@ export class Arrow extends Entity {
         this.updateHitbox();
     }
 
-    /**
-     * Orient rotation angles and mesh quaternion based on current 3D velocity vector
-     */
     updateRotationFromVelocity() {
         const vx = this.velocity.x;
         const vy = this.velocity.y;
@@ -151,12 +117,6 @@ export class Arrow extends Entity {
         }
     }
 
-    /**
-     * Shoot arrow with explicit direction vector, velocity speed, and optional spread inaccuracy
-     * @param {THREE.Vector3|{x:number, y:number, z:number}} direction 
-     * @param {number} speed 
-     * @param {number} [inaccuracy=0]
-     */
     shoot(direction, speed, inaccuracy = 0) {
         let dx = direction.x;
         let dy = direction.y;
@@ -178,11 +138,6 @@ export class Arrow extends Entity {
         this.updateRotationFromVelocity();
     }
 
-    /**
-     * Update arrow physics for delta time dt (gravity, drag, raycast block & mob collisions)
-     * @param {number} dt Delta time in seconds
-     * @param {World} [world=null]
-     */
     update(dt = 0.05, world = null) {
         if (this.removed || this.isDead) return;
 
@@ -365,10 +320,6 @@ export class Arrow extends Entity {
         }
     }
 
-    /**
-     * Remove entity from world and scene
-     * @param {World} [world=null]
-     */
     remove(world = null) {
         this.removed = true;
         this.isDead = true;

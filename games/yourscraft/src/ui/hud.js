@@ -1,17 +1,4 @@
-/**
- * HUD (Heads-Up Display) Overlay for Minecraft 1.5 WebGL Engine
- * 
- * Renders:
- * - Central pixel-art crosshair with difference blend-mode
- * - Health hearts (20 HP = 10 hearts: full, half, empty, damage shake/flash)
- * - Hunger bar (20 hunger = 10 drumsticks: full, half, empty, jitter on low hunger)
- * - Armor bar (10 armor icons)
- * - Air bubbles (10 underwater oxygen bubbles)
- * - Experience bar & level counter
- * - 9-Slot Hotbar with item textures, count badges, durability bars, and active slot selector
- * - Animated item name tooltip on slot switch
- * - Keybinds (1-9) & mouse wheel hotbar navigation
- */
+
 
 import { BLOCKS } from '../core/chunk.js';
 import { renderBlockIcon, is3DBlock } from '../assets/iconRenderer.js';
@@ -131,12 +118,6 @@ export const HUD_ICONS = {
 
 const ICON_CACHE = new Map();
 
-/**
- * Generate a 32x32 crisp pixel-art preview canvas / data URI for any block or item.
- * Uses 3D isometric WebGL rendering for blocks and 2D pixel-art sprites for items.
- * @param {number|string} blockOrItemId
- * @returns {string} Data URI
- */
 export function getItemIconDataUri(blockOrItemId) {
     const id = Number(blockOrItemId);
     if (!id || id <= 0) return '';
@@ -738,11 +719,6 @@ function escapeHtml(s) {
         .replace(/'/g, '&#039;');
 }
 
-/**
- * Format Minecraft color and style codes (§0-§f, §l, §o, §n, §m, §r) into HTML spans.
- * @param {string} text 
- * @returns {string} HTML string
- */
 export function formatMinecraftText(text) {
     if (!text) return '';
     const str = String(text);
@@ -805,12 +781,7 @@ export function formatMinecraftText(text) {
 // ==========================================
 
 export class HUD {
-    /**
-     * @param {Object} [options]
-     * @param {HTMLElement} [options.container] Parent container (defaults to #ui-layer or document.body)
-     * @param {function(number): void} [options.onSelectSlot] Callback when hotbar slot changes
-     * @param {Object} [options.scoreboard] Attached ScoreboardManager instance
-     */
+    
     constructor(options = {}) {
         this.container = options.container || document.getElementById('ui-layer') || document.body;
         this.onSelectSlot = options.onSelectSlot || null;
@@ -848,9 +819,6 @@ export class HUD {
         this.render();
     }
 
-    /**
-     * Mount HUD DOM structure and inject styles
-     */
     initDOM() {
         // Inject HUD CSS
         if (!document.getElementById('minecraft-hud-styles')) {
@@ -982,9 +950,6 @@ export class HUD {
         };
     }
 
-    /**
-     * Attach global keyboard and wheel input handlers for slot navigation
-     */
     attachEventListeners() {
         this._onKeyDown = (e) => {
             // Number keys 1-9 (keyCodes 49-57)
@@ -1007,11 +972,6 @@ export class HUD {
         window.addEventListener('wheel', this._onWheel, { passive: true });
     }
 
-    /**
-     * Update health display and trigger damage flash if decreased
-     * @param {number} health Current health (0 - 20)
-     * @param {number} [maxHealth=20] Max health
-     */
     setHealth(health, maxHealth = 20) {
         const prev = this.health;
         this.health = Math.max(0, Math.min(maxHealth, health));
@@ -1032,42 +992,23 @@ export class HUD {
         }
     }
 
-    /**
-     * Update hunger display
-     * @param {number} hunger Current hunger (0 - 20)
-     * @param {number} [maxHunger=20]
-     */
     setHunger(hunger, maxHunger = 20) {
         this.hunger = Math.max(0, Math.min(maxHunger, hunger));
         this.maxHunger = maxHunger;
         this.renderHunger();
     }
 
-    /**
-     * Update armor level (0 - 20)
-     * @param {number} armor 
-     */
     setArmor(armor) {
         this.armor = Math.max(0, Math.min(20, armor));
         this.renderArmor();
     }
 
-    /**
-     * Update underwater air level (0 - 20)
-     * @param {number} air 
-     * @param {number} [maxAir=20]
-     */
     setAir(air, maxAir = 20) {
         this.air = Math.max(0, Math.min(maxAir, air));
         this.maxAir = maxAir;
         this.renderAir();
     }
 
-    /**
-     * Update Experience Bar and Level
-     * @param {number} progress Float in range [0, 1]
-     * @param {number} level Integer
-     */
     setExp(progress, level) {
         this.exp = Math.max(0, Math.min(1, progress));
         this.level = Math.max(0, Math.floor(level));
@@ -1079,10 +1020,6 @@ export class HUD {
         }
     }
 
-    /**
-     * Change selected hotbar slot index (0 - 8)
-     * @param {number} index 
-     */
     setSelectedSlot(index) {
         const clamped = Math.max(0, Math.min(8, Math.floor(index)));
         if (this.selectedSlot === clamped) return;
@@ -1109,21 +1046,12 @@ export class HUD {
         }
     }
 
-    /**
-     * Set specific hotbar slot item
-     * @param {number} index (0 - 8)
-     * @param {Object|null} item { id, count, name, durability, maxDurability }
-     */
     setHotbarSlot(index, item) {
         if (index < 0 || index >= 9) return;
         this.hotbar[index] = item ? { ...item } : null;
         this.renderSlot(index);
     }
 
-    /**
-     * Replace all 9 hotbar slots at once
-     * @param {Array<Object|null>} items Array of length 9
-     */
     updateHotbar(items) {
         if (!Array.isArray(items)) return;
         for (let i = 0; i < 9; i++) {
@@ -1132,10 +1060,6 @@ export class HUD {
         }
     }
 
-    /**
-     * Show animated tooltip for an item
-     * @param {string} text 
-     */
     showTooltip(text) {
         if (!this.domElements.tooltip) return;
         this.domElements.tooltip.textContent = text;
@@ -1153,20 +1077,12 @@ export class HUD {
         }
     }
 
-    /**
-     * Toggle visibility of central crosshair
-     * @param {boolean} visible 
-     */
     setCrosshairVisible(visible) {
         if (this.domElements.crosshair) {
             this.domElements.crosshair.style.display = visible ? 'block' : 'none';
         }
     }
 
-    /**
-     * Toggle entire HUD overlay visibility
-     * @param {boolean} visible 
-     */
     setVisible(visible) {
         this.isVisible = visible;
         if (this.domElements.root) {
@@ -1177,10 +1093,6 @@ export class HUD {
         }
     }
 
-    /**
-     * Bind or unbind a ScoreboardManager instance to this HUD
-     * @param {Object|null} scoreboard 
-     */
     setScoreboard(scoreboard) {
         if (this._scoreboardUnsub) {
             this._scoreboardUnsub();
@@ -1201,26 +1113,15 @@ export class HUD {
         this.renderScoreboard();
     }
 
-    /**
-     * Get attached scoreboard instance
-     * @returns {Object|null}
-     */
     getScoreboard() {
         return this.scoreboard;
     }
 
-    /**
-     * Toggle visibility of scoreboard sidebar
-     * @param {boolean} visible 
-     */
     setScoreboardVisible(visible) {
         this.scoreboardSidebarVisible = Boolean(visible);
         this.renderScoreboard();
     }
 
-    /**
-     * Render Scoreboard Sidebar if active objective is assigned to 'sidebar'
-     */
     renderScoreboard() {
         const sidebarEl = this.domElements.scoreboardSidebar;
         const titleEl = this.domElements.scoreboardTitle;
@@ -1393,9 +1294,6 @@ export class HUD {
         this.renderScoreboard();
     }
 
-    /**
-     * Clean up HUD DOM and listeners
-     */
     destroy() {
         if (this._onKeyDown) window.removeEventListener('keydown', this._onKeyDown);
         if (this._onWheel) window.removeEventListener('wheel', this._onWheel);

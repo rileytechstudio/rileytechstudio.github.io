@@ -1,15 +1,4 @@
-/**
- * Minecraft 1.5 Redstone & Logic Simulator
- * 
- * Features:
- * - Block update system with scheduled tick queue (Redstone Ticks / Game Ticks)
- * - Redstone Wire power propagation (0-15 signal strength) with 3D step traversal
- * - Redstone Torch logic (inversion, attached block detection, burnout mechanics)
- * - Redstone Repeater logic (1-4 tick delays, 15-strength output, diode, locking mechanism)
- * - Redstone Comparator logic (Compare Mode, Subtraction Mode, Container fullness reading, reading through solid blocks)
- * - Strong vs Weak solid block powering rules
- * - Levers, Buttons, Pressure Plates, Redstone Blocks, Redstone Lamps, Daylight Detectors
- */
+
 
 import { BLOCKS } from '../core/chunk.js';
 
@@ -104,29 +93,14 @@ export const FACING_TO_DIR = Object.freeze([
     DIRECTIONS.EAST   // 3: +X
 ]);
 
-/**
- * Convert 2-bit facing index (0: South, 1: West, 2: North, 3: East) to Direction object.
- * @param {number} facing 
- * @returns {typeof DIRECTIONS.SOUTH}
- */
 export function getDirectionFromFacing(facing) {
     return FACING_TO_DIR[facing & 3] || DIRECTIONS.SOUTH;
 }
 
-/**
- * Get opposite direction of a Direction object.
- * @param {Object} dir 
- * @returns {Object}
- */
 export function getOppositeDirection(dir) {
     return ALL_DIRECTIONS[dir.opposite];
 }
 
-/**
- * Get Left perpendicular horizontal direction relative to a forward direction.
- * @param {Object} dir 
- * @returns {Object}
- */
 export function getLeftDirection(dir) {
     // Left when facing South (+Z) is East (+X)
     // Left when facing West (-X) is South (+Z)
@@ -139,21 +113,10 @@ export function getLeftDirection(dir) {
     return DIRECTIONS.EAST;
 }
 
-/**
- * Get Right perpendicular horizontal direction relative to a forward direction.
- * @param {Object} dir 
- * @returns {Object}
- */
 export function getRightDirection(dir) {
     return getOppositeDirection(getLeftDirection(dir));
 }
 
-/**
- * Convert any facing representation (Direction object, number 0-5, 2-bit horizontal, or string) to a Direction object.
- * @param {Object|number|string} facing 
- * @param {Object} [defaultDir=DIRECTIONS.SOUTH]
- * @returns {Object} Direction object from DIRECTIONS
- */
 export function parseDirection(facing, defaultDir = DIRECTIONS.SOUTH) {
     if (!facing && facing !== 0) return defaultDir;
     if (typeof facing === 'object' && facing.dx !== undefined && facing.dy !== undefined && facing.dz !== undefined) {
@@ -174,11 +137,6 @@ export function parseDirection(facing, defaultDir = DIRECTIONS.SOUTH) {
 
 // --- BLOCK CLASSIFICATION HELPERS ---
 
-/**
- * Check if a block ID is a solid opaque cube that conducts redstone power.
- * @param {number} blockId 
- * @returns {boolean}
- */
 export function isSolidOpaqueBlock(blockId) {
     if (blockId === 0) return false;
     // Transparent / non-conductive blocks
@@ -275,24 +233,13 @@ export function isDaylightSensor(blockId) {
 // --- SCHEDULED TICK QUEUE ---
 export class TickQueue {
     constructor() {
-        /** @type {Map<number, Array<{x: number, y: number, z: number, blockId: number, priority: number, id: number}>>} */
+        
         this.buckets = new Map();
-        /** @type {Set<string>} Deduplication key: `${x},${y},${z},${blockId},${targetTick}` */
+        
         this.scheduledKeys = new Set();
         this.nextEntryId = 1;
     }
 
-    /**
-     * Schedule a block update at `currentTick + delayTicks`.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {number} blockId
-     * @param {number} delayTicks
-     * @param {number} [priority=0] Higher executes first
-     * @param {number} [currentTick=0]
-     * @returns {boolean} True if successfully scheduled
-     */
     schedule(x, y, z, blockId, delayTicks, priority = 0, currentTick = 0) {
         const targetTick = currentTick + Math.max(1, delayTicks);
         const key = `${x},${y},${z},${blockId},${targetTick}`;
@@ -320,11 +267,6 @@ export class TickQueue {
         return true;
     }
 
-    /**
-     * Retrieve and remove all scheduled updates for target tick, sorted by priority.
-     * @param {number} tickNumber 
-     * @returns {Array<{x: number, y: number, z: number, blockId: number, priority: number}>}
-     */
     pop(tickNumber) {
         const entries = this.buckets.get(tickNumber);
         if (!entries || entries.length === 0) {
@@ -342,12 +284,6 @@ export class TickQueue {
         return entries;
     }
 
-    /**
-     * Cancel pending scheduled ticks at specific coordinate.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     cancel(x, y, z) {
         for (const [tick, list] of this.buckets.entries()) {
             const filtered = [];
@@ -366,13 +302,6 @@ export class TickQueue {
         }
     }
 
-    /**
-     * Check if a block has pending scheduled ticks.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean}
-     */
     hasPending(x, y, z) {
         for (const list of this.buckets.values()) {
             for (const item of list) {
@@ -392,13 +321,6 @@ export class TickQueue {
 
 // --- CONTAINER SIGNAL CALCULATOR ---
 
-/**
- * Calculates comparator signal strength (0-15) based on inventory contents.
- * Exact Minecraft 1.5 formula: signal = floor(1 + (sum(count/maxStack) / numSlots) * 14) when sum > 0
- * @param {Array<{count: number, maxStack?: number}>|Object} inventory
- * @param {number} [totalSlots=27]
- * @returns {number} Signal strength 0-15
- */
 export function calculateContainerSignal(inventory, totalSlots = 27) {
     if (!inventory) return 0;
 
@@ -428,10 +350,7 @@ export function calculateContainerSignal(inventory, totalSlots = 27) {
 // --- REDSTONE SIMULATOR ---
 
 export class RedstoneSimulator {
-    /**
-     * @param {Object} [world=null] Optional Chunk, World, or voxel accessor
-     * @param {Object} [options={}]
-     */
+    
     constructor(world = null, options = {}) {
         this.world = world;
         this.options = Object.assign({
@@ -446,16 +365,12 @@ export class RedstoneSimulator {
         this.tickAccumulator = 0;
         this.tickQueue = new TickQueue();
 
-        /** @type {Map<string, Object>} Block metadata store keyed by `${x},${y},${z}` */
         this.metadataStore = new Map();
 
-        /** @type {Map<string, Object>} Container inventories keyed by `${x},${y},${z}` */
         this.containerStore = new Map();
 
-        /** @type {Map<string, number>} Fallback standalone block storage if world is null */
         this.fallbackBlocks = new Map();
 
-        /** @type {Array<function(string, number, number, number, any): void>} Event listeners */
         this.listeners = [];
 
         this._isUpdating = false;
@@ -485,13 +400,6 @@ export class RedstoneSimulator {
 
     // --- WORLD BLOCK & METADATA GETTERS / SETTERS ---
 
-    /**
-     * Get Block ID at (x, y, z).
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @returns {number} Block ID
-     */
     getBlock(x, y, z) {
         if (this.world) {
             if (typeof this.world.getBlock === 'function') {
@@ -504,14 +412,6 @@ export class RedstoneSimulator {
         return this.fallbackBlocks.get(this.key(x, y, z)) || REDSTONE_BLOCKS.AIR;
     }
 
-    /**
-     * Set Block ID at (x, y, z).
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {number} blockId
-     * @param {boolean} [triggerUpdate=true]
-     */
     setBlock(x, y, z, blockId, triggerUpdate = true) {
         const oldBlock = this.getBlock(x, y, z);
         if (oldBlock === blockId && !triggerUpdate) return;
@@ -537,13 +437,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Get metadata object for block at (x, y, z).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {Object}
-     */
     getData(x, y, z) {
         const k = this.key(x, y, z);
         let data = this.metadataStore.get(k);
@@ -554,13 +447,6 @@ export class RedstoneSimulator {
         return data;
     }
 
-    /**
-     * Set/merge metadata for block at (x, y, z).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {Object} data 
-     */
     setData(x, y, z, data) {
         const k = this.key(x, y, z);
         const current = this.getData(x, y, z);
@@ -568,25 +454,12 @@ export class RedstoneSimulator {
         this.emit('dataChange', x, y, z, current);
     }
 
-    /**
-     * Remove metadata when block is broken/replaced.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     clearData(x, y, z) {
         this.metadataStore.delete(this.key(x, y, z));
         this.containerStore.delete(this.key(x, y, z));
         this.tickQueue.cancel(x, y, z);
     }
 
-    /**
-     * Register container inventory for comparators.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {Array|Object} inventory 
-     */
     setContainer(x, y, z, inventory) {
         this.containerStore.set(this.key(x, y, z), inventory);
         this.notifyNeighbors(x, y, z);
@@ -608,9 +481,6 @@ export class RedstoneSimulator {
 
     // --- TIME & TICKING LOOP ---
 
-    /**
-     * Advance simulation by 1 Redstone Tick.
-     */
     tick() {
         this.currentTick++;
 
@@ -639,10 +509,6 @@ export class RedstoneSimulator {
         this.emit('tick', 0, 0, 0, { tick: this.currentTick });
     }
 
-    /**
-     * Step simulation by delta time (in seconds), running ticks as needed.
-     * @param {number} dt Delta time in seconds
-     */
     step(dt) {
         const tickInterval = 1.0 / this.options.redstoneTickRate;
         this.tickAccumulator += dt;
@@ -655,9 +521,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Execute a scheduled block update.
-     */
     executeScheduledUpdate(x, y, z, blockId) {
         if (isTorch(blockId)) {
             this.processTorchTick(x, y, z);
@@ -680,12 +543,6 @@ export class RedstoneSimulator {
 
     // --- NEIGHBOR UPDATES & NOTIFICATION CASCADE ---
 
-    /**
-     * Notify all 6 direct neighbors of a block change.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     notifyNeighbors(x, y, z) {
         for (let i = 0; i < ALL_DIRECTIONS.length; i++) {
             const dir = ALL_DIRECTIONS[i];
@@ -718,20 +575,11 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Notify neighbors when a solid block's power state changes.
-     */
     notifyBlockAndNeighbors(x, y, z) {
         this.updateBlock(x, y, z);
         this.notifyNeighbors(x, y, z);
     }
 
-    /**
-     * Dispatch block-specific redstone update handler.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     updateBlock(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (blockId === REDSTONE_BLOCKS.AIR) return;
@@ -759,9 +607,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Handler when a block is placed, removed, or changed.
-     */
     onBlockChanged(x, y, z, oldBlock, newBlock) {
         if (oldBlock !== newBlock) {
             this.clearData(x, y, z);
@@ -818,19 +663,6 @@ export class RedstoneSimulator {
 
     // --- SOLID BLOCK POWERING (STRONG VS WEAK) ---
 
-    /**
-     * Calculates strong redstone power emitted TO (x, y, z) FROM neighbor in direction `fromDir`.
-     * Strong power is emitted by:
-     * - Powered repeater or comparator facing into (x, y, z)
-     * - Redstone torch directly beneath (x, y, z) (at y-1 pointing UP)
-     * - Active lever / button attached to (x, y, z)
-     * - Active pressure plate on top of (x, y, z) (at y+1)
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {Object} fromDir Direction from (x, y, z) towards neighbor
-     * @returns {number} Power 0-15
-     */
     getStrongPowerFrom(x, y, z, fromDir) {
         const nx = x + fromDir.dx;
         const ny = y + fromDir.dy;
@@ -917,19 +749,6 @@ export class RedstoneSimulator {
         return 0;
     }
 
-    /**
-     * Calculates weak (or strong) redstone power emitted TO (x, y, z) FROM neighbor in direction `fromDir`.
-     * Includes all strong power sources PLUS:
-     * - Redstone Block (power 15 in all 6 directions)
-     * - Redstone Wire pointing into or on top of this block
-     * - Redstone Torch ON (power 15 to adjacent blocks except attached base)
-     * - Daylight Detector, Lever, etc.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {Object} fromDir
-     * @returns {number} Power 0-15
-     */
     getWeakPowerFrom(x, y, z, fromDir) {
         // Strong power is also weak power
         const strong = this.getStrongPowerFrom(x, y, z, fromDir);
@@ -1003,13 +822,6 @@ export class RedstoneSimulator {
         return strong;
     }
 
-    /**
-     * Get maximum strong power received by block at (x, y, z) from all 6 directions.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} Power 0-15
-     */
     getMaxStrongPower(x, y, z) {
         let maxPower = 0;
         for (let i = 0; i < ALL_DIRECTIONS.length; i++) {
@@ -1020,13 +832,6 @@ export class RedstoneSimulator {
         return maxPower;
     }
 
-    /**
-     * Get maximum weak or strong power received by block at (x, y, z) from all 6 directions.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} Power 0-15
-     */
     getMaxWeakPower(x, y, z) {
         let maxPower = 0;
         for (let i = 0; i < ALL_DIRECTIONS.length; i++) {
@@ -1037,38 +842,17 @@ export class RedstoneSimulator {
         return maxPower;
     }
 
-    /**
-     * Check if a block at (x, y, z) is powered (strongly or weakly).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean}
-     */
     isBlockPowered(x, y, z) {
         return this.getMaxWeakPower(x, y, z) > 0;
     }
 
     // --- REDSTONE WIRE PROPAGATION ENGINE ---
 
-    /**
-     * Get stored power level of redstone wire at (x, y, z).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} 0-15
-     */
     getWirePower(x, y, z) {
         const data = this.metadataStore.get(this.key(x, y, z));
         return (data && data.power !== undefined) ? data.power : 0;
     }
 
-    /**
-     * Set wire power level.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} power 
-     */
     setWirePower(x, y, z, power) {
         const clamped = Math.max(0, Math.min(15, power));
         const current = this.getWirePower(x, y, z);
@@ -1079,9 +863,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Queue a wire coordinate for network update.
-     */
     queueWireUpdate(x, y, z) {
         this._pendingWireUpdates.add(this.key(x, y, z));
         if (!this._isUpdating) {
@@ -1089,9 +870,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Flush and solve all queued wire networks.
-     */
     flushPendingWireUpdates() {
         if (this._isUpdating) return;
         this._isUpdating = true;
@@ -1109,14 +887,6 @@ export class RedstoneSimulator {
         this._isUpdating = false;
     }
 
-    /**
-     * Calculate direct external power (from adjacent blocks, repeaters, redstone blocks, torches, etc.)
-     * powering wire at (x, y, z).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} Direct power 0-15
-     */
     getDirectWirePower(x, y, z) {
         let maxDirect = 0;
 
@@ -1186,13 +956,6 @@ export class RedstoneSimulator {
         return maxDirect;
     }
 
-    /**
-     * Get all connected wire neighbors in 3D (horizontal, step up, step down).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {Array<{x: number, y: number, z: number}>}
-     */
     getConnectedWireNeighbors(x, y, z) {
         const neighbors = [];
         const isBlockAboveSolid = isSolidOpaqueBlock(this.getBlock(x, y + 1, z));
@@ -1231,14 +994,6 @@ export class RedstoneSimulator {
         return neighbors;
     }
 
-    /**
-     * Full Redstone Wire Network Solver:
-     * Discovers the contiguous wire component, gathers all direct power inputs,
-     * and calculates exact equilibrium signal strengths using multi-source BFS propagation.
-     * @param {number} startX 
-     * @param {number} startY 
-     * @param {number} startZ 
-     */
     updateWireNetwork(startX, startY, startZ) {
         // Step 1: Discover all interconnected wires in this network component
         const network = new Map(); // key -> {x, y, z, directPower, calculatedPower}
@@ -1262,7 +1017,7 @@ export class RedstoneSimulator {
         }
 
         // Step 2: Calculate direct external power for each wire node in the network
-        /** @type {Array<{node: Object, power: number}>} BFS propagation queue */
+        
         const propagationQueue = [];
 
         for (const node of network.values()) {
@@ -1310,13 +1065,6 @@ export class RedstoneSimulator {
 
     // --- REDSTONE TORCH (INVERSION & BURNOUT) ---
 
-    /**
-     * Get the coordinates of the solid block a redstone torch is attached to.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {{x: number, y: number, z: number}}
-     */
     getTorchAttachedBlockPos(x, y, z) {
         const data = this.getData(x, y, z);
         // Facing / attachment: 0 or DOWN = attached to floor (y-1)
@@ -1332,9 +1080,6 @@ export class RedstoneSimulator {
         };
     }
 
-    /**
-     * Evaluate torch state condition and schedule 1-tick delay update.
-     */
     updateTorch(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isTorch(blockId)) return;
@@ -1356,9 +1101,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Execute scheduled torch update.
-     */
     processTorchTick(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isTorch(blockId)) return;
@@ -1393,9 +1135,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Record torch toggle timestamp and check burnout threshold.
-     */
     recordTorchToggle(x, y, z, data) {
         if (!data.burnoutToggles) data.burnoutToggles = [];
         const windowStart = this.currentTick - this.options.torchBurnoutWindow;
@@ -1417,9 +1156,6 @@ export class RedstoneSimulator {
 
     // --- REDSTONE REPEATER (DELAY & LOCKING) ---
 
-    /**
-     * Get back (input), front (output), left, and right relative positions for a repeater.
-     */
     getRepeaterPositions(x, y, z) {
         const data = this.getData(x, y, z);
         const facing = data.facing !== undefined ? data.facing : 0;
@@ -1440,13 +1176,6 @@ export class RedstoneSimulator {
         };
     }
 
-    /**
-     * Check if a repeater is locked by a powered repeater or comparator pointing into its side.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean}
-     */
     isRepeaterLocked(x, y, z) {
         const { leftPos, rightPos, left, right } = this.getRepeaterPositions(x, y, z);
 
@@ -1474,13 +1203,6 @@ export class RedstoneSimulator {
         return false;
     }
 
-    /**
-     * Check if input behind repeater is receiving power.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean}
-     */
     isRepeaterInputPowered(x, y, z) {
         const { backPos, back } = this.getRepeaterPositions(x, y, z);
         const backId = this.getBlock(backPos.x, backPos.y, backPos.z);
@@ -1512,9 +1234,6 @@ export class RedstoneSimulator {
         return false;
     }
 
-    /**
-     * Update repeater state & schedule tick.
-     */
     updateRepeater(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isRepeater(blockId)) return;
@@ -1544,9 +1263,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Execute scheduled repeater update.
-     */
     processRepeaterTick(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isRepeater(blockId)) return;
@@ -1572,9 +1288,6 @@ export class RedstoneSimulator {
 
     // --- REDSTONE COMPARATOR (COMPARE / SUBTRACTION MODE) ---
 
-    /**
-     * Get comparator positions (front, back, left, right).
-     */
     getComparatorPositions(x, y, z) {
         const data = this.getData(x, y, z);
         const facing = data.facing !== undefined ? data.facing : 0;
@@ -1595,15 +1308,6 @@ export class RedstoneSimulator {
         };
     }
 
-    /**
-     * Calculate rear input signal strength (0-15) for comparator at (x, y, z).
-     * Supports direct wire strength, repeaters, comparators, solid blocks, containers,
-     * and reading container inventory through 1 solid block!
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} Signal strength 0-15
-     */
     getComparatorInputSignal(x, y, z) {
         const { backPos, back } = this.getComparatorPositions(x, y, z);
         const backId = this.getBlock(backPos.x, backPos.y, backPos.z);
@@ -1656,13 +1360,6 @@ export class RedstoneSimulator {
         return 0;
     }
 
-    /**
-     * Calculate maximum side signal strength (from left or right side) for comparator.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} Signal strength 0-15
-     */
     getComparatorSideSignal(x, y, z) {
         const { leftPos, rightPos, left, right } = this.getComparatorPositions(x, y, z);
         let maxSide = 0;
@@ -1704,15 +1401,6 @@ export class RedstoneSimulator {
         return Math.max(leftSig, rightSig);
     }
 
-    /**
-     * Calculate target output signal for comparator given its mode and inputs.
-     * Mode 0: Comparison Mode (Output = I if I >= S, else 0)
-     * Mode 1: Subtraction Mode (Output = max(0, I - S))
-     * @param {number} inputSignal 
-     * @param {number} sideSignal 
-     * @param {number} mode 
-     * @returns {number} Target output signal 0-15
-     */
     calculateComparatorOutput(inputSignal, sideSignal, mode = 0) {
         if (mode === 1) {
             // Subtraction Mode
@@ -1723,9 +1411,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Update comparator state & schedule 1-tick delay update.
-     */
     updateComparator(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isComparator(blockId)) return;
@@ -1743,9 +1428,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Execute scheduled comparator update.
-     */
     processComparatorTick(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isComparator(blockId)) return;
@@ -1771,13 +1453,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Toggle comparator mode (0: Comparison <-> 1: Subtraction).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} New mode (0 or 1)
-     */
     toggleComparatorMode(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isComparator(blockId)) return 0;
@@ -1820,13 +1495,6 @@ export class RedstoneSimulator {
 
     // --- LEVER, BUTTON & PRESSURE PLATE INTERACTIONS ---
 
-    /**
-     * Toggle a lever state (ON <-> OFF).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean} New powered state
-     */
     toggleLever(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (blockId !== REDSTONE_BLOCKS.LEVER) return false;
@@ -1842,12 +1510,6 @@ export class RedstoneSimulator {
         return data.powered;
     }
 
-    /**
-     * Press a button (Stone or Wood), activating power and scheduling automatic release.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     pressButton(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (blockId !== REDSTONE_BLOCKS.STONE_BUTTON && blockId !== REDSTONE_BLOCKS.WOODEN_BUTTON) return;
@@ -1880,14 +1542,6 @@ export class RedstoneSimulator {
         this.notifyNeighbors(x, y, z);
     }
 
-    /**
-     * Set pressure plate active state.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {boolean} pressed 
-     * @param {number} [entityCount=1] Used for weighted pressure plates
-     */
     setPressurePlate(x, y, z, pressed, entityCount = 1) {
         const blockId = this.getBlock(x, y, z);
         const data = this.getData(x, y, z);
@@ -1914,36 +1568,16 @@ export class RedstoneSimulator {
 
     // --- PISTONS (NORMAL & STICKY) ---
 
-    /**
-     * Get piston facing direction.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {Object} Direction object
-     */
     getPistonFacing(x, y, z) {
         const data = this.getData(x, y, z);
         return parseDirection(data.facing, DIRECTIONS.NORTH);
     }
 
-    /**
-     * Check if piston at (x, y, z) is extended.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean}
-     */
     isPistonExtended(x, y, z) {
         const data = this.getData(x, y, z);
         return Boolean(data.extended);
     }
 
-    /**
-     * Update piston state and schedule tick update if powered state changed.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     updatePiston(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isPiston(blockId)) return;
@@ -1958,18 +1592,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Process piston tick:
-     * 1. Calculate up to 12 blocks to push in the facing direction.
-     * 2. If blocked by bedrock, obsidian, or limit exceeded, fail.
-     * 3. Otherwise, shift block IDs, metadata, and container inventories.
-     * 4. If sticky piston retracting, pull 1 adjacent block back.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {'extend'|'retract'|null} [forceAction=null] Optional forced action
-     * @returns {boolean} True if state changed / action succeeded
-     */
     processPistonTick(x, y, z, forceAction = null) {
         const blockId = this.getBlock(x, y, z);
         if (!isPiston(blockId)) return false;
@@ -2120,13 +1742,6 @@ export class RedstoneSimulator {
 
     // --- HOPPERS ---
 
-    /**
-     * Get hopper facing direction (DOWN, NORTH, SOUTH, WEST, EAST).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {Object} Direction object
-     */
     getHopperFacing(x, y, z) {
         const data = this.getData(x, y, z);
         let dir = parseDirection(data.facing, DIRECTIONS.DOWN);
@@ -2134,13 +1749,6 @@ export class RedstoneSimulator {
         return dir;
     }
 
-    /**
-     * Get or create hopper's 5-slot container inventory.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {Object} Inventory object
-     */
     getHopperInventory(x, y, z) {
         let container = this.containerStore.get(this.key(x, y, z));
         if (!container) {
@@ -2153,12 +1761,6 @@ export class RedstoneSimulator {
         return container;
     }
 
-    /**
-     * Update hopper state (check redstone locking and schedule tick).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     updateHopper(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isHopper(blockId)) return;
@@ -2172,16 +1774,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Process hopper tick:
-     * 1. Pull items from inventory directly above (y+1) into hopper's inventory
-     * 2. Push items from hopper's inventory to inventory in facing direction
-     * Disabled if powered by redstone.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean} True if any item was pulled or pushed
-     */
     processHopperTick(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isHopper(blockId)) return false;
@@ -2324,25 +1916,11 @@ export class RedstoneSimulator {
 
     // --- DROPPERS ---
 
-    /**
-     * Get dropper facing direction (DOWN, UP, NORTH, SOUTH, WEST, EAST).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {Object} Direction object
-     */
     getDropperFacing(x, y, z) {
         const data = this.getData(x, y, z);
         return parseDirection(data.facing, DIRECTIONS.NORTH);
     }
 
-    /**
-     * Get or create dropper's 9-slot container inventory.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {Object} Inventory object
-     */
     getDropperInventory(x, y, z) {
         let container = this.containerStore.get(this.key(x, y, z));
         if (!container) {
@@ -2355,12 +1933,6 @@ export class RedstoneSimulator {
         return container;
     }
 
-    /**
-     * Update dropper state (check redstone rising edge and schedule tick).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     */
     updateDropper(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isDropper(blockId)) return;
@@ -2377,15 +1949,6 @@ export class RedstoneSimulator {
         }
     }
 
-    /**
-     * Process dropper tick:
-     * If powered, eject a random item from inventory into the block in front
-     * (or insert into facing inventory like a hopper).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {boolean} True if an item was ejected or inserted
-     */
     processDropperTick(x, y, z) {
         const blockId = this.getBlock(x, y, z);
         if (!isDropper(blockId)) return false;
@@ -2496,15 +2059,6 @@ export class RedstoneSimulator {
 
     // --- TRAPPED CHESTS ---
 
-    /**
-     * Set trapped chest open state and update emitted redstone power.
-     * When container is open, emits signal strength equal to players looking in it (defaults to 1).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {boolean} isOpen 
-     * @param {number} [numPlayers=1] Number of players looking in the chest
-     */
     setChestOpen(x, y, z, isOpen, numPlayers = 1) {
         const blockId = this.getBlock(x, y, z);
         const data = this.getData(x, y, z);
@@ -2525,14 +2079,6 @@ export class RedstoneSimulator {
 
     // --- DAYLIGHT SENSORS ---
 
-    /**
-     * Calculate daylight light level (0-15) based on timeOfDay (0-24000 ticks) and emit strong power.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [timeOfDay=6000] Current time in ticks (0-24000)
-     * @returns {number} Emitted power level 0-15
-     */
     updateDaylightSensor(x, y, z, timeOfDay = 6000) {
         const blockId = this.getBlock(x, y, z);
         if (!isDaylightSensor(blockId)) return 0;
@@ -2560,10 +2106,6 @@ export class RedstoneSimulator {
         return power;
     }
 
-    /**
-     * Set world time of day and refresh all daylight sensors.
-     * @param {number} timeOfDay Time in ticks (0-24000)
-     */
     setTimeOfDay(timeOfDay) {
         this.timeOfDay = timeOfDay;
         for (const [key] of this.metadataStore.entries()) {

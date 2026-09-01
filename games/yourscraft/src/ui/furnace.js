@@ -1,19 +1,4 @@
-/**
- * Furnace UI & Smelting System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - Authentic Minecraft 1.5 Furnace HTML GUI with 3D stone bevels
- * - Input slot (top), Fuel slot (bottom), Large Output slot (right)
- * - Dynamic animated pixel-art Fire indicator (drains top-to-bottom as fuel burns) with flicker glow
- * - Dynamic animated pixel-art Arrow indicator (fills left-to-right as cooking progresses)
- * - Complete Minecraft 1.5 Fuel Registry (Coal, Charcoal, Logs, Planks, Sticks, Wooden Tools, etc.)
- * - Complete Minecraft 1.5 Smelting Recipes (Ores -> Ingots, Sand -> Glass, Cobblestone -> Stone, Raw Food -> Cooked, Logs -> Charcoal)
- * - Multi-furnace TileEntity world support (persists per-coordinate furnace state, continues smelting in background)
- * - Experience (XP) reward calculation & collection upon taking output
- * - Full mouse interaction: left-click pickup/place/swap/stack, right-click single drop / half stack split, shift-click quick transfer
- * - Real-time tick logic (cook time progress, fuel consumption, item generation, burn decay)
- * - Audio & Particle integration (pop sounds on item interactions/XP, burning particles at furnace world position)
- */
+
 
 import { BLOCKS } from '../core/chunk.js';
 import { getItemDef, createItemStack, ITEM_TYPES } from './inventory.js';
@@ -24,9 +9,6 @@ import { ITEM_IDS, SMELTING_RECIPES as CORE_SMELTING_RECIPES } from '../core/cra
 // 1. FUEL & SMELTING REGISTRIES (Minecraft 1.5)
 // ==========================================
 
-/**
- * Fuel burn durations in seconds (1 item cook time = 10 seconds / 200 ticks)
- */
 export const FURNACE_FUELS = Object.freeze({
     // Standard Coal & Charcoal (80s = 8 items)
     [ITEM_IDS.COAL || 263]: 80.0,
@@ -53,9 +35,6 @@ export const FURNACE_FUELS = Object.freeze({
     [ITEM_IDS.BOW || 261]: 15.0
 });
 
-/**
- * Smelting recipes mapping input item ID -> { resultId, count, xp, name }
- */
 export const FURNACE_SMELTING_RECIPES = Object.freeze({
     [ITEM_IDS.RAW_PORKCHOP || 319]: { resultId: ITEM_IDS.COOKED_PORKCHOP || 320, count: 1, xp: 0.35, name: "Cooked Porkchop" },
     [ITEM_IDS.RAW_BEEF || 363]: { resultId: ITEM_IDS.COOKED_BEEF || 364, count: 1, xp: 0.35, name: "Steak" },
@@ -71,41 +50,21 @@ export const FURNACE_SMELTING_RECIPES = Object.freeze({
     [BLOCKS.QUARTZ_ORE || 153]: { resultId: ITEM_IDS.QUARTZ || 406, count: 1, xp: 0.2, name: "Nether Quartz" }
 });
 
-/**
- * Check if an item is a valid furnace fuel
- * @param {number|string} itemId 
- * @returns {boolean}
- */
 export function isFuel(itemId) {
     const id = Number(itemId);
     return Boolean(FURNACE_FUELS[id]);
 }
 
-/**
- * Get fuel burn duration in seconds
- * @param {number|string} itemId 
- * @returns {number}
- */
 export function getFuelBurnDuration(itemId) {
     const id = Number(itemId);
     return FURNACE_FUELS[id] || 0;
 }
 
-/**
- * Check if an item can be smelted in a furnace
- * @param {number|string} itemId 
- * @returns {boolean}
- */
 export function isSmeltable(itemId) {
     const id = Number(itemId);
     return Boolean(FURNACE_SMELTING_RECIPES[id]);
 }
 
-/**
- * Retrieve smelting recipe for an input item
- * @param {number|string} itemId 
- * @returns {{ resultId: number, count: number, xp: number, name: string }|null}
- */
 export function getSmeltingRecipe(itemId) {
     const id = Number(itemId);
     return FURNACE_SMELTING_RECIPES[id] || null;
@@ -436,11 +395,7 @@ const FURNACE_CSS = `
 // ==========================================
 
 export class FurnaceTileEntity {
-    /**
-     * @param {number} [x=0]
-     * @param {number} [y=0]
-     * @param {number} [z=0]
-     */
+    
     constructor(x = 0, y = 0, z = 0) {
         this.x = x;
         this.y = y;
@@ -461,18 +416,10 @@ export class FurnaceTileEntity {
         this.isDirty = false;
     }
 
-    /**
-     * Whether furnace is currently actively burning fuel
-     * @returns {boolean}
-     */
     isBurning() {
         return this.burnTime > 0.0;
     }
 
-    /**
-     * Check if the current input item can be smelted
-     * @returns {boolean}
-     */
     canSmelt() {
         if (!this.inputItem || this.inputItem.count <= 0) return false;
         const recipe = getSmeltingRecipe(this.inputItem.id);
@@ -485,11 +432,6 @@ export class FurnaceTileEntity {
         return (this.outputItem.count + recipe.count) <= maxStack;
     }
 
-    /**
-     * Advance furnace state by delta seconds
-     * @param {number} delta 
-     * @returns {boolean} whether visual/slot state changed
-     */
     tick(delta) {
         let changed = false;
         const wasBurning = this.isBurning();
@@ -543,9 +485,6 @@ export class FurnaceTileEntity {
         return changed;
     }
 
-    /**
-     * Finalize smelting 1 item
-     */
     smeltItem() {
         if (!this.inputItem) return;
         const recipe = getSmeltingRecipe(this.inputItem.id);
@@ -574,15 +513,7 @@ export class FurnaceTileEntity {
 // ==========================================
 
 export class FurnaceUI {
-    /**
-     * @param {Object} [options]
-     * @param {InventoryManager} [options.inventory]
-     * @param {HUD} [options.hud]
-     * @param {SoundManager} [options.audio]
-     * @param {ParticleSystem} [options.particles]
-     * @param {World} [options.world]
-     * @param {Player} [options.player]
-     */
+    
     constructor(options = {}) {
         this.inventory = options.inventory || null;
         this.hud = options.hud || (options.inventory ? options.inventory.hud : null);
@@ -594,7 +525,6 @@ export class FurnaceUI {
         // Multi-furnace tile entities Map: "x,y,z" -> FurnaceTileEntity
         this.furnaces = new Map();
 
-        /** @type {FurnaceTileEntity|null} */
         this.activeFurnace = null;
 
         // Held cursor item stack
@@ -782,12 +712,6 @@ export class FurnaceUI {
     // 6. OPEN / CLOSE & TILE ENTITY RETRIEVAL
     // ==========================================
 
-    /**
-     * Open the furnace UI for a specific coordinate or default
-     * @param {number|Object} [x] 
-     * @param {number} [y] 
-     * @param {number} [z] 
-     */
     open(x, y, z) {
         let posX = 0, posY = 0, posZ = 0;
         if (typeof x === "object" && x !== null) {
@@ -854,10 +778,6 @@ export class FurnaceUI {
     // 7. TICK SIMULATION & REAL-TIME UPDATE
     // ==========================================
 
-    /**
-     * Tick simulation for all furnaces in world and update UI if open
-     * @param {number} delta 
-     */
     update(delta) {
         // 1. Tick all registered furnaces
         for (const [key, furnace] of this.furnaces.entries()) {

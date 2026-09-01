@@ -1,34 +1,7 @@
-/**
- * Weather & Atmospheric Precipitation System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - Global Weather State Machine: CLEAR, RAIN, THUNDER (STORM)
- * - Automatic weather cycle transitions with configurable Minecraft-authentic durations
- * - Smooth transition weighting (rainStrength, thunderStrength)
- * - Dynamic GPU Precipitation Particle System using THREE.Points:
- *    * Rain: High-speed falling streaks with wind drift, ground splashes, and translucent styling
- *    * Snow: Gentle fluttering snowflakes with organic sinusoidal drift and soft chunky styling
- * - Biome-Aware Precipitation:
- *    * Snow in cold biomes (Snow, Taiga, Tundra, high Extreme Hills)
- *    * Rain in temperate biomes (Plains, Forest, Ocean, Swamp, etc.)
- *    * Dry/Clear in arid biomes (Desert, Nether) with overcast atmosphere
- * - Dynamic Atmospheric Sky & Fog Manipulation:
- *    * Smooth overcast sky and fog darkening based on rain/storm intensity
- *    * Volumetric fog density scaling (Exp2 fog increases from 0.015 up to 0.052)
- *    * Sunlight and Moonbeam attenuation during heavy precipitation
- * - Procedural Lightning & Thunder System:
- *    * Fractal 3D branching lightning bolts in world space
- *    * Instantaneous multi-pulse sky/fog flash illumination
- *    * Procedural Web Audio thunder acoustics with sharp crack and rolling low-frequency reverberation
- * - Procedural Ambient Rain Audio Loop with indoor/outdoor shelter volume muffling
- * - Complete external API controls (setWeather, toggleWeather, setClear, setRain, setThunder, etc.)
- */
+
 
 import * as THREE from "three";
 
-/**
- * Weather State Constants
- */
 export const WEATHER_TYPES = Object.freeze({
     CLEAR: "clear",
     RAIN: "rain",
@@ -36,19 +9,12 @@ export const WEATHER_TYPES = Object.freeze({
     STORM: "thunder" // Alias for THUNDER
 });
 
-/**
- * Precipitation Type Constants
- */
 export const PRECIPITATION_TYPES = Object.freeze({
     NONE: "none",
     RAIN: "rain",
     SNOW: "snow"
 });
 
-/**
- * Procedural Rain Droplet Streak Canvas Texture
- * @returns {THREE.CanvasTexture}
- */
 export function createRainTexture() {
     const canvas = document.createElement("canvas");
     canvas.width = 16;
@@ -84,10 +50,6 @@ export function createRainTexture() {
     return texture;
 }
 
-/**
- * Procedural 8-Bit Snowflake Canvas Texture
- * @returns {THREE.CanvasTexture}
- */
 export function createSnowTexture() {
     const canvas = document.createElement("canvas");
     canvas.width = 32;
@@ -125,24 +87,8 @@ export function createSnowTexture() {
     return texture;
 }
 
-/**
- * WeatherSystem Class
- */
 export class WeatherSystem {
-    /**
-     * @param {THREE.Scene} scene 
-     * @param {THREE.Camera} camera 
-     * @param {Object} world - World instance for block/biome queries
-     * @param {Object} [options={}]
-     * @param {Object} [options.dayNightCycle] - DayNightCycle instance
-     * @param {Object} [options.audio] - SoundManager instance
-     * @param {number} [options.rainParticleCount=3000] - Total rain point particles
-     * @param {number} [options.snowParticleCount=2400] - Total snow point particles
-     * @param {string} [options.initialWeather="clear"] - Initial weather state
-     * @param {boolean} [options.enableAutoWeather=true] - Auto transition weather over time
-     * @param {number} [options.particleRadius=32] - Radius of precipitation volume around camera
-     * @param {number} [options.particleHeight=30] - Height of precipitation volume
-     */
+    
     constructor(scene, camera, world, options = {}) {
         this.scene = scene;
         this.camera = camera;
@@ -229,10 +175,6 @@ export class WeatherSystem {
     // 1. PARTICLE SYSTEM INITIALIZATION
     // ==========================================
 
-    /**
-     * Build the Rain Points particle system
-     * @private
-     */
     _initRainParticles() {
         const count = this.rainParticleCount;
         const geometry = new THREE.BufferGeometry();
@@ -277,10 +219,6 @@ export class WeatherSystem {
         }
     }
 
-    /**
-     * Build the Snow Points particle system
-     * @private
-     */
     _initSnowParticles() {
         const count = this.snowParticleCount;
         const geometry = new THREE.BufferGeometry();
@@ -329,10 +267,6 @@ export class WeatherSystem {
     // 2. PROCEDURAL AMBIENT RAIN & THUNDER AUDIO
     // ==========================================
 
-    /**
-     * Initialize Web Audio procedural ambient rain generator
-     * @private
-     */
     _initAmbientAudio() {
         try {
             if (typeof window === "undefined") return;
@@ -400,10 +334,6 @@ export class WeatherSystem {
         }
     }
 
-    /**
-     * Start the looping rain ambient audio
-     * @private
-     */
     _startRainAudioLoop() {
         if (this._rainAudioStarted || !this.audioCtx || !this.rainAudioBuffer) return;
         try {
@@ -418,10 +348,6 @@ export class WeatherSystem {
         }
     }
 
-    /**
-     * Play authentic procedural thunder boom & crack sound
-     * @param {number} [distance=25] - Distance in blocks from player
-     */
     playThunderSound(distance = 25) {
         if (!this.audioCtx) return;
         try {
@@ -510,12 +436,6 @@ export class WeatherSystem {
     // 3. WEATHER LOGIC & TRANSITIONS
     // ==========================================
 
-    /**
-     * Get a randomized duration for a weather state
-     * @param {string} weather 
-     * @returns {number} Duration in seconds
-     * @private
-     */
     _getRandomDurationForWeather(weather) {
         if (weather === WEATHER_TYPES.CLEAR) {
             return 300 + Math.random() * 600; // 5 to 15 minutes
@@ -526,20 +446,10 @@ export class WeatherSystem {
         }
     }
 
-    /**
-     * Get randomized interval between lightning strikes in storms
-     * @returns {number}
-     * @private
-     */
     _getRandomLightningInterval() {
         return 6.0 + Math.random() * 12.0; // 6 to 18 seconds
     }
 
-    /**
-     * Manually set the global weather state
-     * @param {string} type - "clear", "rain", "thunder" / "storm"
-     * @param {number} [duration] - Optional duration in seconds
-     */
     setWeather(type, duration = null) {
         const normalized = (type === "storm") ? WEATHER_TYPES.THUNDER : type.toLowerCase();
         if (!Object.values(WEATHER_TYPES).includes(normalized)) {
@@ -560,18 +470,11 @@ export class WeatherSystem {
         }
     }
 
-    /**
-     * Convenience helpers
-     */
     setClear(duration = null) { this.setWeather(WEATHER_TYPES.CLEAR, duration); }
     setRain(duration = null) { this.setWeather(WEATHER_TYPES.RAIN, duration); }
     setThunder(duration = null) { this.setWeather(WEATHER_TYPES.THUNDER, duration); }
     setStorm(duration = null) { this.setWeather(WEATHER_TYPES.THUNDER, duration); }
 
-    /**
-     * Toggle weather in sequence: Clear -> Rain -> Thunder -> Clear
-     * @returns {string} New weather state
-     */
     toggleWeather() {
         if (this.currentWeather === WEATHER_TYPES.CLEAR) {
             this.setRain();
@@ -583,9 +486,6 @@ export class WeatherSystem {
         return this.currentWeather;
     }
 
-    /**
-     * Current weather queries
-     */
     getWeather() { return this.currentWeather; }
     getWeatherType() { return this.currentWeather; }
     getRainStrength() { return this.rainStrength; }
@@ -594,13 +494,6 @@ export class WeatherSystem {
     isThundering() { return this.thunderStrength > 0.05; }
     isStorming() { return this.thunderStrength > 0.05; }
 
-    /**
-     * Determine current biome and precipitation type at world position
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {{ biome: Object|null, precipitation: string }}
-     */
     getBiomePrecipitation(x, y, z) {
         if (!this.world) {
             return { biome: null, precipitation: PRECIPITATION_TYPES.RAIN };
@@ -650,10 +543,6 @@ export class WeatherSystem {
     // 4. PROCEDURAL 3D LIGHTNING BOLTS
     // ==========================================
 
-    /**
-     * Spawn a procedural branching 3D lightning bolt in world space
-     * @param {THREE.Vector3} [strikePos] - Target ground position
-     */
     createLightningStrike(strikePos = null) {
         if (!this.scene) return;
 
@@ -746,12 +635,6 @@ export class WeatherSystem {
     // 5. MAIN SIMULATION UPDATE LOOP
     // ==========================================
 
-    /**
-     * Update simulation per frame
-     * @param {number} delta - Frame delta in seconds
-     * @param {Object} [player] - Player entity instance
-     * @param {THREE.Camera} [camera] - Three.js Camera instance
-     */
     update(delta = 0.016, player = null, camera = null) {
         const cam = camera || this.camera;
         if (!cam) return;
@@ -893,10 +776,6 @@ export class WeatherSystem {
         this.applyAtmosphericEffects(camPos);
     }
 
-    /**
-     * Update Rain Point positions and wrap around camera
-     * @private
-     */
     _updateRainParticles(delta, camPos) {
         const pos = this.rainPoints.geometry.attributes.position.array;
         const vel = this.rainPoints.geometry.attributes.velocity.array;
@@ -945,10 +824,6 @@ export class WeatherSystem {
         this.rainPoints.geometry.attributes.position.needsUpdate = true;
     }
 
-    /**
-     * Update Snow Point positions with gentle fluttering
-     * @private
-     */
     _updateSnowParticles(delta, camPos) {
         const pos = this.snowPoints.geometry.attributes.position.array;
         const phases = this.snowPoints.geometry.attributes.phase.array;
@@ -1008,10 +883,6 @@ export class WeatherSystem {
     // 6. ATMOSPHERIC SKY & FOG INTEGRATION
     // ==========================================
 
-    /**
-     * Apply weather modulation to Scene background color, Fog color, Fog density, and light brightness
-     * @param {THREE.Vector3} camPos
-     */
     applyAtmosphericEffects(camPos) {
         if (!this.scene) return;
 
@@ -1111,9 +982,6 @@ export class WeatherSystem {
     // 7. CLEANUP & DISPOSAL
     // ==========================================
 
-    /**
-     * Dispose weather system meshes, textures, and audio resources
-     */
     dispose() {
         if (this.scene) {
             if (this.rainPoints) {

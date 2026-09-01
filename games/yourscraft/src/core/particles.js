@@ -1,15 +1,4 @@
-/**
- * Particle System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - High-performance GPU-accelerated rendering using THREE.InstancedMesh
- * - Zero-allocation physics & life cycle simulation loop using flat TypedArrays
- * - emitBlockDebris: spawns authentic tumbling voxel cubes with gravity, drag, and fade-out
- * - emitExplosion: multi-layered explosions (blast core, volumetric expanding smoke, embers/sparks, debris)
- * - Extensive helper emitters: emitSmoke, emitFlame, emitSparks, emitCrit, emitSplash, emitRedstone, emitHeart
- * - Authentic block color palettes with procedural tint variation for all Minecraft blocks
- * - Optional voxel terrain collision & ground bounce physics
- */
+
 
 import * as THREE from "three";
 import { BLOCKS } from "./chunk.js";
@@ -85,9 +74,6 @@ export const BLOCK_COLOR_PALETTES = Object.freeze({
 
 const DEFAULT_BLOCK_PALETTE = [0x828282, 0x6e6e6e, 0x969696];
 
-/**
- * Scale animation curve types.
- */
 export const SCALE_CURVE = Object.freeze({
     DEBRIS_SHRINK: 0, // Stays normal size for 65% of life, then shrinks smoothly to 0
     LINEAR_SHRINK: 1, // Linear lerp from scaleStart to scaleEnd
@@ -101,16 +87,7 @@ export const SCALE_CURVE = Object.freeze({
 // ==========================================
 
 export class ParticleSystem {
-    /**
-     * @param {THREE.Scene} [scene=null] - Optional Three.js scene to attach the mesh to
-     * @param {Object} [options={}] - Configuration options
-     * @param {number} [options.maxParticles=4096] - Maximum number of concurrent particles
-     * @param {THREE.BufferGeometry} [options.geometry=null] - Custom particle geometry (default: 1x1x1 box)
-     * @param {THREE.Material} [options.material=null] - Custom material for instanced mesh
-     * @param {Object} [options.world=null] - Reference to World instance for voxel collision
-     * @param {number} [options.defaultGravity=18.0] - Default gravity acceleration (m/s^2)
-     * @param {number} [options.defaultDrag=0.98] - Default air resistance coefficient
-     */
+    
     constructor(scene = null, options = {}) {
         this.maxParticles = options.maxParticles || 4096;
         this.world = options.world || null;
@@ -191,10 +168,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Attach the particle mesh to a Three.js scene.
-     * @param {THREE.Scene} scene 
-     */
     addToScene(scene) {
         if (scene && !scene.children.includes(this.mesh)) {
             scene.add(this.mesh);
@@ -202,10 +175,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Remove the particle mesh from a Three.js scene.
-     * @param {THREE.Scene} [scene] 
-     */
     removeFromScene(scene = null) {
         const targetScene = scene || this.scene;
         if (targetScene && targetScene.children.includes(this.mesh)) {
@@ -213,20 +182,10 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Set world reference for terrain collision checks.
-     * @param {Object} world 
-     */
     setWorld(world) {
         this.world = world;
     }
 
-    /**
-     * Pick a representative color for a block ID.
-     * @param {number} blockId 
-     * @param {number} [jitter=0.08] - Random brightness variation (0 to 1)
-     * @returns {THREE.Color}
-     */
     getBlockColor(blockId, jitter = 0.08) {
         const palette = BLOCK_COLOR_PALETTES[blockId] || DEFAULT_BLOCK_PALETTE;
         const hex = palette[Math.floor(Math.random() * palette.length)];
@@ -241,11 +200,6 @@ export class ParticleSystem {
         return this._tempColor;
     }
 
-    /**
-     * Low-level emitter to spawn a single particle with full control over attributes.
-     * @param {Object} params 
-     * @returns {number} Index of the spawned particle or -1 if buffer full
-     */
     emitParticle(params = {}) {
         if (this.aliveCount >= this.maxParticles) {
             return -1;
@@ -319,16 +273,6 @@ export class ParticleSystem {
     // 3. MAIN EMITTERS
     // ==========================================
 
-    /**
-     * Spawns colored voxel debris cubes when a block is broken or damaged.
-     * 
-     * @param {number} x - Block world X coordinate (or center X)
-     * @param {number} y - Block world Y coordinate (or center Y)
-     * @param {number} z - Block world Z coordinate (or center Z)
-     * @param {number} [blockId=BLOCKS.STONE] - Block ID to extract colors from
-     * @param {number} [count=24] - Number of debris cubes to spawn
-     * @param {Object} [options={}] - Custom options for speed, spread, scale, lifetime
-     */
     emitBlockDebris(x, y, z, blockId = BLOCKS.STONE, count = 24, options = {}) {
         if (blockId === BLOCKS.AIR) return;
 
@@ -395,24 +339,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Spawns an authentic multi-layered Minecraft explosion:
-     * 1. Fiery high-speed blast core particles (white -> yellow -> orange -> red)
-     * 2. Volumetric rising & expanding smoke puffs (charcoal -> gray -> ash)
-     * 3. High-velocity flying spark embers
-     * 4. Ejected terrain debris chunks
-     * 
-     * @param {number} x - Center X of explosion
-     * @param {number} y - Center Y of explosion
-     * @param {number} z - Center Z of explosion
-     * @param {Object} [options={}] - Custom explosion parameters
-     * @param {number} [options.power=3.0] - Explosion power / radius
-     * @param {number} [options.fireCount=80] - Number of blast flame particles
-     * @param {number} [options.smokeCount=60] - Number of smoke cloud particles
-     * @param {number} [options.sparkCount=40] - Number of flying ember sparks
-     * @param {number} [options.debrisCount=30] - Number of rock/dirt debris chunks
-     * @param {number} [options.debrisBlockId=BLOCKS.DIRT] - Block ID for debris chunks
-     */
     emitExplosion(x, y, z, options = {}) {
         const power = options.power !== undefined ? options.power : 3.0;
         const powerRatio = power / 3.0;
@@ -538,14 +464,6 @@ export class ParticleSystem {
     // 4. EXTENSIVE GAMEPLAY EMITTERS
     // ==========================================
 
-    /**
-     * Spawns rising smoke puffs (for torches, furnaces, campfires, TNT fuse).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [count=6] 
-     * @param {Object} [options={}] 
-     */
     emitSmoke(x, y, z, count = 6, options = {}) {
         const scale = options.scale !== undefined ? options.scale : 0.12;
         const lifetime = options.lifetime !== undefined ? options.lifetime : 1.0;
@@ -573,14 +491,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Spawns flame particles (for torches, fire, furnace active state).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [count=6] 
-     * @param {Object} [options={}] 
-     */
     emitFlame(x, y, z, count = 6, options = {}) {
         const scale = options.scale !== undefined ? options.scale : 0.09;
         const flameColors = [0xffd700, 0xff7700, 0xff3300, 0xfff088];
@@ -609,14 +519,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Spawns high-velocity sparks / embers (for metal clashes, anvil, flint & steel).
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [count=16] 
-     * @param {Object} [options={}] 
-     */
     emitSparks(x, y, z, count = 16, options = {}) {
         const speed = options.speed !== undefined ? options.speed : 5.0;
         const gravity = options.gravity !== undefined ? options.gravity : 20.0;
@@ -654,14 +556,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Spawns Minecraft critical hit spark particles.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [count=16] 
-     * @param {Object} [options={}] 
-     */
     emitCrit(x, y, z, count = 16, options = {}) {
         for (let i = 0; i < count; i++) {
             if (this.aliveCount >= this.maxParticles) break;
@@ -688,14 +582,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Spawns water splash droplets.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [count=12] 
-     * @param {Object} [options={}] 
-     */
     emitSplash(x, y, z, count = 12, options = {}) {
         for (let i = 0; i < count; i++) {
             if (this.aliveCount >= this.maxParticles) break;
@@ -723,14 +609,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Spawns redstone dust sparkle particles.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [count=8] 
-     * @param {Object} [options={}] 
-     */
     emitRedstone(x, y, z, count = 8, options = {}) {
         for (let i = 0; i < count; i++) {
             if (this.aliveCount >= this.maxParticles) break;
@@ -754,14 +632,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Spawns love/breeding hearts.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [count=4] 
-     * @param {Object} [options={}] 
-     */
     emitHeart(x, y, z, count = 4, options = {}) {
         for (let i = 0; i < count; i++) {
             if (this.aliveCount >= this.maxParticles) break;
@@ -789,13 +659,6 @@ export class ParticleSystem {
     // 5. SIMULATION & RENDERING LOOP
     // ==========================================
 
-    /**
-     * Updates physics, lifetimes, scale curves, color lerping, and instanced mesh matrices.
-     * Must be called inside the main animation loop.
-     * 
-     * @param {number} delta - Frame delta time in seconds
-     * @param {Object} [worldOverride=null] - Optional world override for collision
-     */
     update(delta, worldOverride = null) {
         if (this.aliveCount === 0) {
             if (this.mesh.count !== 0) {
@@ -966,9 +829,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Clear all active particles immediately.
-     */
     clear() {
         this.aliveCount = 0;
         this.mesh.count = 0;
@@ -978,9 +838,6 @@ export class ParticleSystem {
         }
     }
 
-    /**
-     * Dispose of geometry, materials, and detach from scene.
-     */
     dispose() {
         this.clear();
         this.removeFromScene();

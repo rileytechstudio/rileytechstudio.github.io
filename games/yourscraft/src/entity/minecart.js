@@ -1,22 +1,8 @@
-/**
- * Minecart System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - Base Minecart entity with rail physics, momentum, passenger mounting, and track navigation
- * - Support for standard rails, Powered Rails, Detector Rails, and Activator Rails
- * - MinecartTNT: TNT Minecart with fuse countdown, impact detonation, and Activator Rail detonation
- * - MinecartHopper: Hopper Minecart with 5-slot inventory, pulling items from container blocks and item entities above, and Activator Rail locking
- * - Factory helper and Minecart Registry
- */
+
 
 import { BLOCKS } from '../core/chunk.js';
 import { Entity, AABB } from './mob.js';
 
-/**
- * Check if a block ID is any type of rail
- * @param {number} blockId 
- * @returns {boolean}
- */
 export function isRailBlock(blockId) {
     return blockId === BLOCKS.RAIL ||
            blockId === BLOCKS.POWERED_RAIL ||
@@ -24,28 +10,12 @@ export function isRailBlock(blockId) {
            blockId === BLOCKS.ACTIVATOR_RAIL;
 }
 
-/**
- * Check if a block ID is an Activator Rail
- * @param {number} blockId 
- * @returns {boolean}
- */
 export function isActivatorRail(blockId) {
     return blockId === BLOCKS.ACTIVATOR_RAIL;
 }
 
-/**
- * Base Minecart Entity (Minecraft 1.5)
- * - Dimensions: 0.98 Width x 0.7 Height
- * - Max Speed: 0.4 blocks/tick (8.0 blocks/sec)
- * - Mountable by player and mobs
- */
 export class Minecart extends Entity {
-    /**
-     * @param {string} [type='minecart']
-     * @param {number} [x=0]
-     * @param {number} [y=0]
-     * @param {number} [z=0]
-     */
+    
     constructor(type = 'minecart', x = 0, y = 0, z = 0) {
         super(type, x, y, z);
 
@@ -76,11 +46,6 @@ export class Minecart extends Entity {
         this.updateHitbox();
     }
 
-    /**
-     * Mount an entity (player or mob) inside this minecart
-     * @param {Entity} entity 
-     * @returns {boolean} True if successfully mounted
-     */
     mount(entity) {
         if (!entity || this.passenger || this.isDead) return false;
         this.passenger = entity;
@@ -91,10 +56,6 @@ export class Minecart extends Entity {
         return true;
     }
 
-    /**
-     * Dismount current passenger
-     * @returns {Entity|null} The dismounted entity
-     */
     dismount() {
         const p = this.passenger;
         if (p) {
@@ -106,17 +67,10 @@ export class Minecart extends Entity {
         return p;
     }
 
-    /**
-     * Check if cart has a passenger
-     * @returns {boolean}
-     */
     hasPassenger() {
         return Boolean(this.passenger);
     }
 
-    /**
-     * Update passenger position relative to cart
-     */
     updatePassengerPosition() {
         if (!this.passenger) return;
         const passengerY = this.position.y + 0.35;
@@ -129,11 +83,6 @@ export class Minecart extends Entity {
         }
     }
 
-    /**
-     * Detect rail block at or directly below the minecart
-     * @param {Object} [world=null]
-     * @returns {{x: number, y: number, z: number, blockId: number}|null}
-     */
     getCurrentRail(world = null) {
         if (!world || typeof world.getBlock !== 'function') return null;
 
@@ -159,15 +108,6 @@ export class Minecart extends Entity {
         return null;
     }
 
-    /**
-     * Check if a rail block at (railX, railY, railZ) is receiving redstone power
-     * @param {number} railX 
-     * @param {number} railY 
-     * @param {number} railZ 
-     * @param {Object} [world=null] 
-     * @param {Object} [simulator=null] 
-     * @returns {boolean}
-     */
     isRailPowered(railX, railY, railZ, world = null, simulator = null) {
         // 1. Check simulator power if available
         if (simulator) {
@@ -202,7 +142,7 @@ export class Minecart extends Entity {
                 ];
                 for (const off of offsets) {
                     const adjId = world.getBlock(railX + off.dx, railY + off.dy, railZ + off.dz);
-                    if (adjId === BLOCKS.REDSTONE_BLOCK || adjId === 76 /* REDSTONE_TORCH_ON */) {
+                    if (adjId === BLOCKS.REDSTONE_BLOCK || adjId === 76 ) {
                         return true;
                     }
                 }
@@ -212,12 +152,6 @@ export class Minecart extends Entity {
         return false;
     }
 
-    /**
-     * Apply damage to the minecart
-     * @param {number} amount 
-     * @param {Entity|string|null} [source=null] 
-     * @returns {boolean}
-     */
     takeDamage(amount, source = null) {
         if (this.isDead) return false;
         this.health = Math.max(0, this.health - amount);
@@ -229,22 +163,12 @@ export class Minecart extends Entity {
         return true;
     }
 
-    /**
-     * Destroy minecart and dismount passenger
-     * @param {Entity|string|null} [source=null] 
-     */
     destroy(source = null) {
         this.isDead = true;
         this.removed = true;
         this.dismount();
     }
 
-    /**
-     * Push the minecart with a directional impulse
-     * @param {number} dx 
-     * @param {number} dz 
-     * @param {number} [force=1.0] 
-     */
     push(dx, dz, force = 1.0) {
         const len = Math.hypot(dx, dz);
         if (len > 0.001) {
@@ -253,12 +177,6 @@ export class Minecart extends Entity {
         }
     }
 
-    /**
-     * Update minecart motion and physics
-     * @param {number} dt 
-     * @param {Object} [world=null] 
-     * @param {Object} [simulator=null] 
-     */
     updatePhysics(dt = 0.05, world = null, simulator = null) {
         this.currentRail = this.getCurrentRail(world);
         this.onRail = Boolean(this.currentRail);
@@ -329,12 +247,6 @@ export class Minecart extends Entity {
         this.updatePassengerPosition();
     }
 
-    /**
-     * Main update tick
-     * @param {number} dt 
-     * @param {Object} [world=null] 
-     * @param {Object} [simulator=null] 
-     */
     update(dt = 0.05, world = null, simulator = null) {
         this.ticksLived++;
         this.prevPosition.x = this.position.x;
@@ -346,18 +258,8 @@ export class Minecart extends Entity {
     }
 }
 
-/**
- * MinecartTNT: Explosive Minecart (Minecraft 1.5)
- * - Explodes when fuse reaches 0
- * - Explodes immediately when passing over a powered Activator Rail
- * - Explodes on high-speed derailment / collision
- */
 export class MinecartTNT extends Minecart {
-    /**
-     * @param {number} [x=0]
-     * @param {number} [y=0]
-     * @param {number} [z=0]
-     */
+    
     constructor(x = 0, y = 0, z = 0) {
         super('minecart_tnt', x, y, z);
 
@@ -374,27 +276,15 @@ export class MinecartTNT extends Minecart {
         this.updateHitbox();
     }
 
-    /**
-     * Prime / ignite the TNT fuse
-     * @param {number} [fuseTicks=80] 
-     */
     prime(fuseTicks = 80) {
         this.isPrimed = true;
         this.fuse = fuseTicks;
     }
 
-    /**
-     * Alias for prime()
-     * @param {number} [fuseTicks=80] 
-     */
     ignite(fuseTicks = 80) {
         this.prime(fuseTicks);
     }
 
-    /**
-     * Trigger detonation
-     * @param {Object} [world=null] 
-     */
     explode(world = null) {
         if (this.hasExploded || this.isDead) return;
 
@@ -422,12 +312,6 @@ export class MinecartTNT extends Minecart {
         }
     }
 
-    /**
-     * Update TNT Minecart: check powered Activator Rail and fuse countdown
-     * @param {number} dt 
-     * @param {Object} [world=null] 
-     * @param {Object} [simulator=null] 
-     */
     update(dt = 0.05, world = null, simulator = null) {
         super.update(dt, world, simulator);
 
@@ -459,19 +343,8 @@ export class MinecartTNT extends Minecart {
     }
 }
 
-/**
- * MinecartHopper: Hopper Minecart (Minecraft 1.5)
- * - Has 5-slot container inventory
- * - Pulls items from container blocks directly above it (x, y + 1, z)
- * - Collects floating item entities directly above or inside it
- * - Locked / disabled when passing over a powered Activator Rail
- */
 export class MinecartHopper extends Minecart {
-    /**
-     * @param {number} [x=0]
-     * @param {number} [y=0]
-     * @param {number} [z=0]
-     */
+    
     constructor(x = 0, y = 0, z = 0) {
         super('minecart_hopper', x, y, z);
 
@@ -495,48 +368,25 @@ export class MinecartHopper extends Minecart {
         this.updateHitbox();
     }
 
-    /**
-     * Get hopper inventory object
-     * @returns {{numSlots: number, slots: Array<Object|null>}}
-     */
     getInventory() {
         return this.inventory;
     }
 
-    /**
-     * Get hopper inventory slots
-     * @returns {Array<Object|null>}
-     */
     getSlots() {
         return this.inventory.slots;
     }
 
-    /**
-     * Get item in specific slot
-     * @param {number} index 
-     * @returns {Object|null}
-     */
     getSlot(index) {
         if (index < 0 || index >= this.inventory.numSlots) return null;
         return this.inventory.slots[index];
     }
 
-    /**
-     * Set item in specific slot
-     * @param {number} index 
-     * @param {Object|null} item 
-     */
     setSlot(index, item) {
         if (index >= 0 && index < this.inventory.numSlots) {
             this.inventory.slots[index] = item;
         }
     }
 
-    /**
-     * Insert item into hopper slots (merging matching stacks first, then empty slots)
-     * @param {{id: number, count: number, maxStack?: number, isBlock?: boolean}} item 
-     * @returns {number} Remaining count of item that could not fit (0 if completely inserted)
-     */
     addItem(item) {
         if (!item || item.count <= 0) return 0;
         const maxStack = item.maxStack || 64;
@@ -573,10 +423,6 @@ export class MinecartHopper extends Minecart {
         return remaining;
     }
 
-    /**
-     * Check if all hopper slots are full
-     * @returns {boolean}
-     */
     isFull() {
         for (let i = 0; i < this.inventory.numSlots; i++) {
             const slot = this.inventory.slots[i];
@@ -587,10 +433,6 @@ export class MinecartHopper extends Minecart {
         return true;
     }
 
-    /**
-     * Check if hopper inventory is completely empty
-     * @returns {boolean}
-     */
     isEmpty() {
         for (let i = 0; i < this.inventory.numSlots; i++) {
             const slot = this.inventory.slots[i];
@@ -601,21 +443,12 @@ export class MinecartHopper extends Minecart {
         return true;
     }
 
-    /**
-     * Clear all slots
-     */
     clearInventory() {
         for (let i = 0; i < this.inventory.numSlots; i++) {
             this.inventory.slots[i] = null;
         }
     }
 
-    /**
-     * Pull items from container block or item entities directly above this minecart
-     * @param {Object} [world=null] 
-     * @param {Object} [simulator=null] 
-     * @returns {boolean} True if an item was pulled
-     */
     pullItemsFromAbove(world = null, simulator = null) {
         if (this.locked || !this.enabled || this.isFull()) return false;
 
@@ -732,12 +565,6 @@ export class MinecartHopper extends Minecart {
         return false;
     }
 
-    /**
-     * Update Hopper Minecart: activator rail locking and item pulling
-     * @param {number} dt 
-     * @param {Object} [world=null] 
-     * @param {Object} [simulator=null] 
-     */
     update(dt = 0.05, world = null, simulator = null) {
         super.update(dt, world, simulator);
 
@@ -771,9 +598,6 @@ export class MinecartHopper extends Minecart {
     }
 }
 
-/**
- * Minecart Registry mapping type names to classes
- */
 export const MINECART_REGISTRY = Object.freeze({
     minecart: Minecart,
     minecart_tnt: MinecartTNT,
@@ -782,14 +606,6 @@ export const MINECART_REGISTRY = Object.freeze({
     hopper: MinecartHopper
 });
 
-/**
- * Factory helper to instantiate minecarts by type string
- * @param {'minecart'|'minecart_tnt'|'tnt'|'minecart_hopper'|'hopper'} type 
- * @param {number} [x=0] 
- * @param {number} [y=0] 
- * @param {number} [z=0] 
- * @returns {Minecart}
- */
 export function createMinecart(type, x = 0, y = 0, z = 0) {
     const CartClass = MINECART_REGISTRY[type.toLowerCase()];
     if (!CartClass) {

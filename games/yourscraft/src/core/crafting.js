@@ -1,11 +1,4 @@
-/**
- * Minecraft 1.5 Crafting System Engine
- * 
- * Provides:
- * - Comprehensive Minecraft 1.5 Recipe Dictionary (shaped & shapeless)
- * - craft(grid): Matches 2x2 or 3x3 array of block/item IDs to recipe result
- * - Bounding-box trimming and horizontal mirror symmetry for shaped recipes
- */
+
 
 import { BLOCKS } from './chunk.js';
 
@@ -118,9 +111,6 @@ export const QUARTZ_BLOCK = BLOCKS.QUARTZ_BLOCK;
 export const QUARTZ_PILLAR = BLOCKS.QUARTZ_PILLAR;
 export const QUARTZ_CHISELED = BLOCKS.QUARTZ_CHISELED;
 
-/**
- * Minecraft 1.5 Food and Nutrition Properties Dictionary
- */
 export const FOOD_PROPERTIES = Object.freeze({
     [ITEM_IDS.APPLE]: { id: ITEM_IDS.APPLE, name: 'Apple', foodValue: 4, saturation: 2.4 },
     [ITEM_IDS.BREAD]: { id: ITEM_IDS.BREAD, name: 'Bread', foodValue: 5, saturation: 6.0 },
@@ -133,21 +123,11 @@ export const FOOD_PROPERTIES = Object.freeze({
 
 export const FOOD_ITEMS = FOOD_PROPERTIES;
 
-/**
- * Get food properties for a given item ID
- * @param {number|string} itemId
- * @returns {{ id: number, name: string, foodValue: number, saturation: number, canAlwaysEat?: boolean }|null}
- */
 export function getFoodProperties(itemId) {
     const id = Number(itemId);
     return FOOD_PROPERTIES[id] || null;
 }
 
-/**
- * Check if an item ID is edible food
- * @param {number|string} itemId
- * @returns {boolean}
- */
 export function isFoodItem(itemId) {
     const id = Number(itemId);
     return Boolean(FOOD_PROPERTIES[id]);
@@ -742,9 +722,6 @@ export const RECIPES = Object.freeze({
 
 export const CRAFTING_RECIPES = Object.values(RECIPES);
 
-/**
- * Smelting & Cooking Recipes Dictionary (Furnace)
- */
 export const SMELTING_RECIPES = Object.freeze({
     RAW_PORKCHOP: {
         id: 'smelt_porkchop',
@@ -802,19 +779,6 @@ function extractId(cell) {
     return Number(cell) || 0;
 }
 
-/**
- * Crafts an item from a 2x2 or 3x3 grid of block / item IDs.
- * 
- * Supports:
- * - 1D array of 4 items (2x2) or 9 items (3x3)
- * - 2D array of 2x2 or 3x3 items
- * - Array of objects with .id property
- * - Shapeless recipes (matches any ingredient permutation)
- * - Shaped recipes with automatic bounding box trimming and horizontal mirroring
- * 
- * @param {Array<number|Object|null>|Array<Array<number|Object|null>>} grid 
- * @returns {{ id: number, count: number }|null} Crafted result or null if no recipe matches
- */
 export function craft(grid) {
     if (!grid || !Array.isArray(grid)) {
         return null;

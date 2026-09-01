@@ -1,25 +1,10 @@
-/**
- * Environment & Day/Night Cycle System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - 24,000 tick Minecraft time cycle (20 real-time minutes = 20 ticks/sec)
- * - X-axis celestial rotation for Sun and Moon DirectionalLights
- * - Smooth color interpolation for Scene Background, Fog, Ambient, Sun, Moon, and Fill lights
- * - Multi-stop color keyframes across Day, Sunset, Night, Pre-dawn, and Sunrise
- * - Procedural Celestial Meshes (Sun quad, Moon quad) and Dynamic Night Starfield
- * - Real-time Shadow optimization (auto-toggles shadows when below horizon)
- * - Target-following capabilities (centers sky/lighting around player position)
- * - Complete time controls (setTime, setDay, setNight, setSunrise, setSunset, pause/resume)
- */
+
 
 import * as THREE from "three";
 
 export const TICKS_PER_DAY = 24000;
 export const TICKS_PER_SECOND = 20; // 24000 ticks / 1200 seconds (20 mins)
 
-/**
- * Keyframe Definitions for Sky Background Color
- */
 export const SKY_KEYFRAMES = Object.freeze([
     { time: 0,     color: new THREE.Color(0xFFA066) }, // 06:00 Sunrise Peak (Golden Orange)
     { time: 1500,  color: new THREE.Color(0x87CEEB) }, // 07:30 Morning (Sky Blue)
@@ -33,9 +18,6 @@ export const SKY_KEYFRAMES = Object.freeze([
     { time: 24000, color: new THREE.Color(0xFFA066) }  // 06:00 Sunrise Wrap
 ]);
 
-/**
- * Keyframe Definitions for Fog Color
- */
 export const FOG_KEYFRAMES = Object.freeze([
     { time: 0,     color: new THREE.Color(0xEE8044) }, // Sunrise Fog (Warm Orange)
     { time: 1500,  color: new THREE.Color(0x87CEEB) }, // Morning Fog (Sky Blue)
@@ -49,9 +31,6 @@ export const FOG_KEYFRAMES = Object.freeze([
     { time: 24000, color: new THREE.Color(0xEE8044) }  // Sunrise Fog Wrap
 ]);
 
-/**
- * Keyframe Definitions for Sun Light (Color & Intensity)
- */
 export const SUN_LIGHT_KEYFRAMES = Object.freeze([
     { time: 0,     color: new THREE.Color(0xFFAA66), intensity: 0.60 }, // Sunrise
     { time: 1500,  color: new THREE.Color(0xFFFBE8), intensity: 0.95 }, // Morning
@@ -65,9 +44,6 @@ export const SUN_LIGHT_KEYFRAMES = Object.freeze([
     { time: 24000, color: new THREE.Color(0xFFAA66), intensity: 0.60 }  // Sunrise Wrap
 ]);
 
-/**
- * Keyframe Definitions for Moon Light (Color & Intensity)
- */
 export const MOON_LIGHT_KEYFRAMES = Object.freeze([
     { time: 0,     color: new THREE.Color(0x7799CC), intensity: 0.00 }, // Sunrise (Moon Below Horizon)
     { time: 12000, color: new THREE.Color(0x7799CC), intensity: 0.00 }, // Sunset (Moon Rising)
@@ -79,9 +55,6 @@ export const MOON_LIGHT_KEYFRAMES = Object.freeze([
     { time: 24000, color: new THREE.Color(0x7799CC), intensity: 0.00 }  // Sunrise Wrap
 ]);
 
-/**
- * Keyframe Definitions for Ambient Light (Color & Intensity)
- */
 export const AMBIENT_LIGHT_KEYFRAMES = Object.freeze([
     { time: 0,     color: new THREE.Color(0xFFB077), intensity: 0.45 }, // Sunrise
     { time: 1500,  color: new THREE.Color(0xE8F0FF), intensity: 0.55 }, // Morning
@@ -95,9 +68,6 @@ export const AMBIENT_LIGHT_KEYFRAMES = Object.freeze([
     { time: 24000, color: new THREE.Color(0xFFB077), intensity: 0.45 }  // Sunrise Wrap
 ]);
 
-/**
- * Keyframe Definitions for Fill Light (Color & Intensity)
- */
 export const FILL_LIGHT_KEYFRAMES = Object.freeze([
     { time: 0,     color: new THREE.Color(0xE09060), intensity: 0.25 }, // Sunrise
     { time: 1500,  color: new THREE.Color(0x90B0E0), intensity: 0.35 }, // Morning
@@ -111,14 +81,6 @@ export const FILL_LIGHT_KEYFRAMES = Object.freeze([
     { time: 24000, color: new THREE.Color(0xE09060), intensity: 0.25 }  // Sunrise Wrap
 ]);
 
-/**
- * Interpolates color between keyframes based on current cycle time.
- * 
- * @param {number} time - Current time in ticks [0, 24000)
- * @param {Array<{time: number, color: THREE.Color}>} keyframes 
- * @param {THREE.Color} [targetColor] - Optional color to store result
- * @returns {THREE.Color}
- */
 export function interpolateColorKeyframes(time, keyframes, targetColor = new THREE.Color()) {
     const t = ((time % TICKS_PER_DAY) + TICKS_PER_DAY) % TICKS_PER_DAY;
     const len = keyframes.length;
@@ -138,13 +100,6 @@ export function interpolateColorKeyframes(time, keyframes, targetColor = new THR
     return targetColor;
 }
 
-/**
- * Interpolates scalar value between keyframes based on current cycle time.
- * 
- * @param {number} time - Current time in ticks [0, 24000)
- * @param {Array<{time: number, intensity: number}>} keyframes 
- * @returns {number}
- */
 export function interpolateScalarKeyframes(time, keyframes) {
     const t = ((time % TICKS_PER_DAY) + TICKS_PER_DAY) % TICKS_PER_DAY;
     const len = keyframes.length;
@@ -162,25 +117,8 @@ export function interpolateScalarKeyframes(time, keyframes) {
     return keyframes[0].intensity;
 }
 
-/**
- * DayNightCycle manages celestial rotation, light sources, fog, sky colors,
- * and environment updates for the voxel world.
- */
 export class DayNightCycle {
-    /**
-     * @param {THREE.Scene|Object} scene - Three.js Scene or options configuration object
-     * @param {THREE.AmbientLight} [ambientLight] - Scene ambient light
-     * @param {THREE.DirectionalLight} [sunLight] - Scene sun directional light
-     * @param {THREE.Light} [fillLight] - Scene secondary fill light
-     * @param {Object} [options={}] - Additional settings
-     * @param {number} [options.initialTime=6000] - Starting time in ticks (default 6000 = midday)
-     * @param {number} [options.ticksPerSecond=TICKS_PER_SECOND] - Simulation speed
-     * @param {number} [options.orbitRadius=200] - Celestial rotation radius in blocks
-     * @param {boolean} [options.enableMoonLight=true] - Whether to create and manage moon light
-     * @param {boolean} [options.enableStars=true] - Whether to generate night starfield
-     * @param {boolean} [options.enableCelestialMeshes=true] - Whether to render 3D Sun and Moon
-     * @param {THREE.Vector3} [options.center] - World anchor point for sun/moon rotation
-     */
+    
     constructor(scene, ambientLight, sunLight, fillLight, options = {}) {
         // Support either positional arguments or options object as first argument
         if (scene && typeof scene === "object" && !scene.isScene && (scene.scene || scene.sunLight)) {
@@ -281,10 +219,6 @@ export class DayNightCycle {
     // 1. CELESTIAL MESHES & STARFIELD
     // ==========================================
 
-    /**
-     * Create stylized Minecraft-like Sun and Moon billboard meshes.
-     * @private
-     */
     _createCelestialMeshes() {
         const sunDistance = this.orbitRadius * 0.95;
         const moonDistance = this.orbitRadius * 0.95;
@@ -316,11 +250,6 @@ export class DayNightCycle {
         this.celestialGroup.add(this.moonMesh);
     }
 
-    /**
-     * Create procedural starry night sky points.
-     * @param {number} count 
-     * @private
-     */
     _createStarfield(count = 1000) {
         const starGeo = new THREE.BufferGeometry();
         const positions = new Float32Array(count * 3);
@@ -357,12 +286,6 @@ export class DayNightCycle {
     // 2. SIMULATION UPDATE LOOP
     // ==========================================
 
-    /**
-     * Main update method called each frame to advance time and update environment.
-     * 
-     * @param {number} delta - Frame delta time in seconds
-     * @param {THREE.Vector3} [centerPosition] - Optional player/camera position to center lights & stars on
-     */
     update(delta = 0, centerPosition = null) {
         // Update anchor position if provided
         if (centerPosition) {
@@ -541,71 +464,35 @@ export class DayNightCycle {
     // 3. TIME QUERIES & CONTROL METHODS
     // ==========================================
 
-    /**
-     * Get current time of day in Minecraft ticks [0, 24000).
-     * @returns {number}
-     */
     getTime() {
         return this.time;
     }
 
-    /**
-     * Set current time of day in Minecraft ticks [0, 24000).
-     * @param {number} ticks 
-     */
     setTime(ticks) {
         this.time = ((ticks % TICKS_PER_DAY) + TICKS_PER_DAY) % TICKS_PER_DAY;
         this.update(0);
     }
 
-    /**
-     * Get normalized cycle progress [0.0, 1.0).
-     * @returns {number}
-     */
     getNormalizedTime() {
         return this.time / TICKS_PER_DAY;
     }
 
-    /**
-     * Set normalized cycle progress [0.0, 1.0).
-     * @param {number} progress 
-     */
     setNormalizedTime(progress) {
         this.setTime(progress * TICKS_PER_DAY);
     }
 
-    /**
-     * Return current sun angle in radians [0, 2*PI).
-     * @returns {number}
-     */
-    /**
-     * Get current computed sky color.
-     * @returns {THREE.Color}
-     */
     getCurrentSkyColor() {
         return this._currentSkyColor;
     }
 
-    /**
-     * Get current computed fog color.
-     * @returns {THREE.Color}
-     */
     getCurrentFogColor() {
         return this._currentFogColor;
     }
 
-    /**
-     * Get current computed sun color.
-     * @returns {THREE.Color}
-     */
     getCurrentSunColor() {
         return this._currentSunColor;
     }
 
-    /**
-     * Get current computed ambient light color.
-     * @returns {THREE.Color}
-     */
     getCurrentAmbientColor() {
         return this._currentAmbientColor;
     }
@@ -614,26 +501,14 @@ export class DayNightCycle {
         return (this.time / TICKS_PER_DAY) * Math.PI * 2;
     }
 
-    /**
-     * Returns true if it is currently daytime (sun above horizon).
-     * @returns {boolean}
-     */
     isDay() {
         return this.time >= 0 && this.time < 12000;
     }
 
-    /**
-     * Returns true if it is currently nighttime (sun below horizon).
-     * @returns {boolean}
-     */
     isNight() {
         return this.time >= 13500 && this.time < 22500;
     }
 
-    /**
-     * Get current phase name: "sunrise", "day", "sunset", or "night".
-     * @returns {"sunrise"|"day"|"sunset"|"night"}
-     */
     getPhase() {
         if (this.time >= 22500 || this.time < 1500) {
             return "sunrise";
@@ -646,11 +521,6 @@ export class DayNightCycle {
         }
     }
 
-    /**
-     * Formats the current time as a 24-hour Minecraft clock (HH:MM).
-     * Tick 0 = 06:00, Tick 6000 = 12:00, Tick 12000 = 18:00, Tick 18000 = 00:00.
-     * @returns {string}
-     */
     getFormattedTime() {
         const hours = (Math.floor(this.time / 1000) + 6) % 24;
         const minutes = Math.floor((this.time % 1000) * 0.06);
@@ -659,60 +529,35 @@ export class DayNightCycle {
         return `${hh}:${mm}`;
     }
 
-    /**
-     * Set time to Sunrise (tick 0 / 06:00).
-     */
     setSunrise() {
         this.setTime(0);
     }
 
-    /**
-     * Set time to Midday / Day (tick 6000 / 12:00).
-     */
     setDay() {
         this.setTime(6000);
     }
 
-    /**
-     * Set time to Sunset (tick 12000 / 18:00).
-     */
     setSunset() {
         this.setTime(12000);
     }
 
-    /**
-     * Set time to Midnight / Night (tick 18000 / 00:00).
-     */
     setNight() {
         this.setTime(18000);
     }
 
-    /**
-     * Pause the day/night cycle progression.
-     */
     pause() {
         this.paused = true;
     }
 
-    /**
-     * Resume the day/night cycle progression.
-     */
     resume() {
         this.paused = false;
     }
 
-    /**
-     * Toggle pause state.
-     * @returns {boolean} New paused state
-     */
     togglePause() {
         this.paused = !this.paused;
         return this.paused;
     }
 
-    /**
-     * Dispose celestial resources and clean up scene objects.
-     */
     dispose() {
         if (this.scene) {
             if (this.moonLight) {

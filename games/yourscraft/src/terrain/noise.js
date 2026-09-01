@@ -1,24 +1,11 @@
-/**
- * Procedural Noise Library for Minecraft 1.5 WebGL Terrain Generation
- * Provides seeded 2D & 3D Perlin Noise, Simplex Noise, Fractal Brownian Motion (FBM),
- * Ridged Multifractals, Turbulence, and Seeded PRNGs.
- */
 
-/**
- * Fast seeded pseudo-random number generator (Mulberry32 + Murmur3 string hash)
- */
+
 export class Random {
-    /**
-     * @param {number|string} [seed=Date.now()]
-     */
+    
     constructor(seed = 1337) {
         this.setSeed(seed);
     }
 
-    /**
-     * Set/reset seed (supports number or string)
-     * @param {number|string} seed
-     */
     setSeed(seed) {
         if (typeof seed === 'string') {
             let hash = 1779033703 ^ seed.length;
@@ -32,10 +19,6 @@ export class Random {
         }
     }
 
-    /**
-     * Returns a float in [0, 1)
-     * @returns {number}
-     */
     next() {
         let t = (this.state += 0x6D2B79F5);
         t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -43,44 +26,23 @@ export class Random {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     }
 
-    /**
-     * Returns an integer in [min, max]
-     * @param {number} min 
-     * @param {number} max 
-     * @returns {number}
-     */
     nextInt(min, max) {
         return Math.floor(this.next() * (max - min + 1)) + min;
     }
 
-    /**
-     * Returns a float in [min, max)
-     * @param {number} min 
-     * @param {number} max 
-     * @returns {number}
-     */
     nextFloat(min = 0, max = 1) {
         return min + this.next() * (max - min);
     }
 }
 
-/**
- * 2D/3D Improved Perlin Noise Generator (Ken Perlin, 2002)
- */
 export class PerlinNoise {
-    /**
-     * @param {number|string} [seed=1337]
-     */
+    
     constructor(seed = 1337) {
         this.perm = new Uint8Array(512);
         this.permMod12 = new Uint8Array(512);
         this.reseed(seed);
     }
 
-    /**
-     * Rebuild permutation table with new seed
-     * @param {number|string} seed 
-     */
     reseed(seed) {
         const rng = new Random(seed);
         const p = new Uint8Array(256);
@@ -100,12 +62,6 @@ export class PerlinNoise {
         }
     }
 
-    /**
-     * 2D Perlin Noise
-     * @param {number} x 
-     * @param {number} y 
-     * @returns {number} Value in range [-1, 1]
-     */
     noise2D(x, y) {
         const X = Math.floor(x) & 255;
         const Y = Math.floor(y) & 255;
@@ -132,13 +88,6 @@ export class PerlinNoise {
         return lerp(x1, x2, v);
     }
 
-    /**
-     * 3D Perlin Noise
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} Value in range [-1, 1]
-     */
     noise3D(x, y, z) {
         const X = Math.floor(x) & 255;
         const Y = Math.floor(y) & 255;
@@ -179,26 +128,13 @@ export class PerlinNoise {
         return lerp(y1, y2, w);
     }
 
-    /**
-     * Standard noise evaluation (z defaults to 0)
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} [z=0] 
-     * @returns {number} Value in range [-1, 1]
-     */
     noise(x, y, z = 0) {
         return this.noise3D(x, y, z);
     }
 }
 
-/**
- * 2D/3D Improved Noise Generator (Ken Perlin, 2002)
- * Compatible with Three.js ImprovedNoise standard
- */
 export class ImprovedNoise {
-    /**
-     * @param {number|string} [seed=1337]
-     */
+    
     constructor(seed = 1337) {
         this.perlin = new PerlinNoise(seed);
     }
@@ -207,13 +143,6 @@ export class ImprovedNoise {
         this.perlin.reseed(seed);
     }
 
-    /**
-     * Sample noise at 3D point (x, y, z) in [-1, 1]
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} [z=0] 
-     * @returns {number}
-     */
     noise(x, y, z = 0) {
         return this.perlin.noise3D(x, y, z);
     }
@@ -226,13 +155,6 @@ export class ImprovedNoise {
         return this.perlin.noise3D(x, y, z);
     }
 
-    /**
-     * Multi-octave Fractal Brownian Motion 2D
-     * @param {number} x 
-     * @param {number} y 
-     * @param {Object} [options]
-     * @returns {number}
-     */
     fbm2D(x, y, options = {}) {
         const octaves = options.octaves || 4;
         const persistence = options.persistence !== undefined ? options.persistence : 0.5;
@@ -253,14 +175,6 @@ export class ImprovedNoise {
         return maxAmp > 0 ? (total / maxAmp) * (options.amplitude || 1.0) : 0;
     }
 
-    /**
-     * Multi-octave Fractal Brownian Motion 3D
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {Object} [options]
-     * @returns {number}
-     */
     fbm3D(x, y, z, options = {}) {
         const octaves = options.octaves || 4;
         const persistence = options.persistence !== undefined ? options.persistence : 0.5;
@@ -282,10 +196,6 @@ export class ImprovedNoise {
     }
 }
 
-/**
- * 2D/3D Simplex Noise Generator
- * Faster evaluation and fewer directional artifacts than classic Perlin noise
- */
 const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
 const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
 const F3 = 1.0 / 3.0;
@@ -298,9 +208,7 @@ const GRAD3 = [
 ];
 
 export class SimplexNoise {
-    /**
-     * @param {number|string} [seed=1337]
-     */
+    
     constructor(seed = 1337) {
         this.perm = new Uint8Array(512);
         this.permMod12 = new Uint8Array(512);
@@ -323,12 +231,6 @@ export class SimplexNoise {
         }
     }
 
-    /**
-     * 2D Simplex Noise
-     * @param {number} xin 
-     * @param {number} yin 
-     * @returns {number} Value in range [-1, 1]
-     */
     noise2D(xin, yin) {
         let n0 = 0, n1 = 0, n2 = 0;
 
@@ -386,13 +288,6 @@ export class SimplexNoise {
         return 70.0 * (n0 + n1 + n2);
     }
 
-    /**
-     * 3D Simplex Noise
-     * @param {number} xin 
-     * @param {number} yin 
-     * @param {number} zin 
-     * @returns {number} Value in range [-1, 1]
-     */
     noise3D(xin, yin, zin) {
         let n0 = 0, n1 = 0, n2 = 0, n3 = 0;
 
@@ -477,70 +372,28 @@ export class SimplexNoise {
     }
 }
 
-/**
- * Multi-octave Fractal Noise / Terrain Synthesis
- */
 export class NoiseGenerator {
-    /**
-     * @param {number|string} [seed=1337] 
-     * @param {'simplex'|'perlin'|'improved'} [type='simplex']
-     */
+    
     constructor(seed = 1337, type = 'simplex') {
         this.noise = (type === 'perlin' || type === 'improved') ? new PerlinNoise(seed) : new SimplexNoise(seed);
     }
 
-    /**
-     * Reseed underlying noise generator
-     * @param {number|string} seed 
-     */
     reseed(seed) {
         this.noise.reseed(seed);
     }
 
-    /**
-     * Standard sample (z defaults to 0)
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} [z=0] 
-     * @returns {number} [-1, 1]
-     */
     noise(x, y, z = 0) {
         return this.noise.noise ? this.noise.noise(x, y, z) : this.noise.noise3D(x, y, z);
     }
 
-    /**
-     * Single sample 2D
-     * @param {number} x 
-     * @param {number} y 
-     * @returns {number} [-1, 1]
-     */
     get2D(x, y) {
         return this.noise.noise2D(x, y);
     }
 
-    /**
-     * Single sample 3D
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @returns {number} [-1, 1]
-     */
     get3D(x, y, z) {
         return this.noise.noise3D(x, y, z);
     }
 
-    /**
-     * Fractal Brownian Motion (FBM) 2D
-     * @param {number} x 
-     * @param {number} y 
-     * @param {Object} [options]
-     * @param {number} [options.octaves=4]
-     * @param {number} [options.persistence=0.5]
-     * @param {number} [options.lacunarity=2.0]
-     * @param {number} [options.frequency=1.0]
-     * @param {number} [options.amplitude=1.0]
-     * @returns {number} Result in approx range [-amplitude, amplitude]
-     */
     fbm2D(x, y, options = {}) {
         const octaves = options.octaves || 4;
         const persistence = options.persistence !== undefined ? options.persistence : 0.5;
@@ -561,14 +414,6 @@ export class NoiseGenerator {
         return maxAmp > 0 ? (total / maxAmp) * (options.amplitude || 1.0) : 0;
     }
 
-    /**
-     * Fractal Brownian Motion (FBM) 3D
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {Object} [options]
-     * @returns {number}
-     */
     fbm3D(x, y, z, options = {}) {
         const octaves = options.octaves || 4;
         const persistence = options.persistence !== undefined ? options.persistence : 0.5;
@@ -589,13 +434,6 @@ export class NoiseGenerator {
         return maxAmp > 0 ? (total / maxAmp) * (options.amplitude || 1.0) : 0;
     }
 
-    /**
-     * Ridged Multifractal Noise 2D - Great for sharp mountain ridges and canyons
-     * @param {number} x 
-     * @param {number} y 
-     * @param {Object} [options]
-     * @returns {number} Range [0, 1]
-     */
     ridged2D(x, y, options = {}) {
         const octaves = options.octaves || 4;
         const persistence = options.persistence !== undefined ? options.persistence : 0.5;
@@ -619,14 +457,6 @@ export class NoiseGenerator {
         return total;
     }
 
-    /**
-     * Ridged Multifractal Noise 3D
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {Object} [options]
-     * @returns {number}
-     */
     ridged3D(x, y, z, options = {}) {
         const octaves = options.octaves || 4;
         const persistence = options.persistence !== undefined ? options.persistence : 0.5;
@@ -650,13 +480,6 @@ export class NoiseGenerator {
         return total;
     }
 
-    /**
-     * Turbulence Noise 2D (absolute value of noise) - Great for marble, billowing clouds, dunes
-     * @param {number} x 
-     * @param {number} y 
-     * @param {Object} [options]
-     * @returns {number} Range [0, 1]
-     */
     turbulence2D(x, y, options = {}) {
         const octaves = options.octaves || 4;
         const persistence = options.persistence !== undefined ? options.persistence : 0.5;

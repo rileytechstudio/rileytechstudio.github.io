@@ -1,16 +1,4 @@
-/**
- * World System for Minecraft 1.5 WebGL Engine
- *
- * Features:
- * - Dimension support ('overworld' or 'nether')
- * - Chunk management with Map<string, Chunk>
- * - Dynamic chunk loading & unloading based on player position (4-chunk radius)
- * - Procedural terrain generation integration with src/terrain/generator.js
- * - World coordinate to chunk/local coordinate transformations
- * - Global block querying and modification with chunk border dirty marking
- * - Optional Three.js scene and mesh management integration
- * - Entity and event handling system
- */
+
 
 import { Chunk, BLOCKS, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z } from './chunk.js';
 import { TerrainGenerator } from '../terrain/generator.js';
@@ -20,9 +8,6 @@ import { getMobDrop, spawnDroppedItem } from '../entity/droppedItem.js';
 
 export const DEFAULT_LOAD_RADIUS = 4;
 
-/**
- * Set of block IDs that are non-solid and passable (can be walked/looked through).
- */
 export const NON_SOLID_BLOCKS = new Set([
     BLOCKS.AIR,
     BLOCKS.OAK_SAPLING,
@@ -43,23 +28,8 @@ export const NON_SOLID_BLOCKS = new Set([
     BLOCKS.SUGAR_CANE
 ]);
 
-/**
- * World class managing voxel chunks, player-centric loading, and world queries.
- */
 export class World {
-    /**
-     * @param {Object} [options={}]
-     * @param {number|string} [options.seed=1337] - World generation seed
-     * @param {string} [options.dimension='overworld'] - World dimension ('overworld' | 'nether')
-     * @param {TerrainGenerator} [options.generator=null] - Custom terrain generator
-     * @param {Object} [options.generatorConfig={}] - Configuration passed to TerrainGenerator
-     * @param {number} [options.loadRadius=DEFAULT_LOAD_RADIUS] - Chunk loading radius in chunks (default 4)
-     * @param {'circle'|'square'} [options.radiusShape='circle'] - Distance metric for load radius
-     * @param {THREE.Scene} [options.scene=null] - Optional Three.js scene for auto mesh management
-     * @param {boolean} [options.autoMesh=false] - Whether to automatically create Three.js meshes
-     * @param {THREE.Material} [options.material=null] - Custom material for chunk meshes
-     * @param {Object} [options.storage=null] - Optional WorldStorage instance for persistence
-     */
+    
     constructor(options = {}) {
         this.seed = options.seed !== undefined ? options.seed : 1337;
         this.dimension = options.dimension || (options.generator && options.generator.dimension) || (options.generatorConfig && options.generatorConfig.dimension) || 'overworld';
@@ -73,22 +43,17 @@ export class World {
         this.loadRadius = options.loadRadius !== undefined ? options.loadRadius : DEFAULT_LOAD_RADIUS;
         this.radiusShape = options.radiusShape || 'circle';
 
-        /** @type {THREE.Scene|null} */
         this.scene = options.scene || null;
         this.autoMesh = options.autoMesh !== undefined ? options.autoMesh : (this.scene !== null);
         this.material = options.material || null;
         this.storage = options.storage || null;
 
-        /** @type {Map<string, Chunk>} Map of loaded chunks keyed by "cx,cz" */
         this.chunks = new Map();
 
-        /** @type {Set<Object>} Entities residing in the world */
         this.entities = new Set();
 
-        /** @type {Map<string, Set<Function>>} Event listeners */
         this.listeners = new Map();
 
-        /** @type {Map<string, Array<{lx: number, ly: number, lz: number, blockId: number}>>} */
         this.deferredBlocks = new Map();
 
         // Track player last chunk coordinates to optimize updates
@@ -96,18 +61,10 @@ export class World {
         this.lastPlayerChunkZ = null;
     }
 
-    /**
-     * Get current world dimension
-     * @returns {string} 'overworld' | 'nether'
-     */
     getDimension() {
         return this.dimension;
     }
 
-    /**
-     * Set world dimension ('overworld' or 'nether')
-     * @param {string} dimension
-     */
     setDimension(dimension) {
         if (this.dimension === dimension) return;
         this.dimension = dimension;
@@ -124,32 +81,15 @@ export class World {
     // 1. COORDINATE TRANSFORMATIONS & HELPERS
     // ==========================================
 
-    /**
-     * Generate standard Map key for chunk grid coordinates.
-     * @param {number} cx - Chunk X index
-     * @param {number} cz - Chunk Z index
-     * @returns {string} Key in "cx,cz" format
-     */
     getChunkKey(cx, cz) {
         return `${cx},${cz}`;
     }
 
-    /**
-     * Parse chunk key string back into integer coordinates.
-     * @param {string} key - Key in "cx,cz" format
-     * @returns {{cx: number, cz: number}}
-     */
     parseChunkKey(key) {
         const parts = key.split(',');
         return { cx: Number(parts[0]), cz: Number(parts[1]) };
     }
 
-    /**
-     * Convert continuous or integer world coordinates to chunk coordinates.
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {{cx: number, cz: number}}
-     */
     worldToChunkCoords(worldX, worldZ) {
         return {
             cx: Math.floor(worldX / CHUNK_SIZE_X),
@@ -157,13 +97,6 @@ export class World {
         };
     }
 
-    /**
-     * Convert 3D world coordinates to chunk indices and local voxel offsets.
-     * @param {number} worldX 
-     * @param {number} worldY 
-     * @param {number} worldZ 
-     * @returns {{cx: number, cz: number, lx: number, ly: number, lz: number}}
-     */
     worldToLocalCoords(worldX, worldY, worldZ) {
         const cx = Math.floor(worldX / CHUNK_SIZE_X);
         const cz = Math.floor(worldZ / CHUNK_SIZE_Z);
@@ -178,12 +111,6 @@ export class World {
     // 2. CHUNK ACCESS & LIFECYCLE
     // ==========================================
 
-    /**
-     * Retrieve a loaded Chunk by chunk grid coordinates.
-     * @param {number} cx - Chunk X index
-     * @param {number} cz - Chunk Z index
-     * @returns {Chunk|null} Chunk instance or null if not loaded
-     */
     getChunk(cx, cz) {
         if (this._lastCx === cx && this._lastCz === cz && this._lastChunk !== undefined) {
             return this._lastChunk;
@@ -195,38 +122,15 @@ export class World {
         return chunk;
     }
 
-    /**
-     * Check if a Chunk is currently loaded.
-     * @param {number} cx - Chunk X index
-     * @param {number} cz - Chunk Z index
-     * @returns {boolean}
-     */
     hasChunk(cx, cz) {
         return this.chunks.has(this.getChunkKey(cx, cz));
     }
 
-    /**
-     * Retrieve a loaded Chunk containing the specified world position.
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {Chunk|null}
-     */
     getChunkAtWorldPos(worldX, worldZ) {
         const { cx, cz } = this.worldToChunkCoords(worldX, worldZ);
         return this.getChunk(cx, cz);
     }
 
-    /**
-     * Load and populate a Chunk at chunk grid coordinates (cx, cz).
-     * Uses TerrainGenerator to generate procedural terrain.
-     *
-     * @param {number} cx - Chunk X index
-     * @param {number} cz - Chunk Z index
-     * @returns {Chunk} The loaded and populated Chunk instance
-     */
-    /**
-     * Set Block ID at world coordinate, or defer if chunk is not loaded.
-     */
     setDeferredBlock(worldX, worldY, worldZ, blockId) {
         if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return false;
         
@@ -245,14 +149,6 @@ export class World {
         }
     }
 
-    /**
-     * Load and populate a Chunk at chunk grid coordinates (cx, cz).
-     * Uses TerrainGenerator to generate procedural terrain.
-     *
-     * @param {number} cx - Chunk X index
-     * @param {number} cz - Chunk Z index
-     * @returns {Chunk} The loaded and populated Chunk instance
-     */
     loadChunk(cx, cz) {
         const key = this.getChunkKey(cx, cz);
         if (this.chunks.has(key)) {
@@ -287,14 +183,6 @@ export class World {
         return chunk;
     }
 
-    /**
-     * Unload a Chunk at chunk grid coordinates (cx, cz).
-     * Cleans up Three.js meshes and removes the chunk from memory.
-     *
-     * @param {number} cx - Chunk X index
-     * @param {number} cz - Chunk Z index
-     * @returns {boolean} True if a chunk was unloaded, false if it wasn't loaded
-     */
     unloadChunk(cx, cz) {
         if (this._lastCx === cx && this._lastCz === cz) {
             this._lastChunk = undefined;
@@ -328,15 +216,6 @@ export class World {
     // 3. DYNAMIC CHUNK STREAMING (UPDATE)
     // ==========================================
 
-    /**
-     * Check if chunk (cx, cz) is within load radius of player chunk (playerChunkX, playerChunkZ).
-     * @param {number} cx 
-     * @param {number} cz 
-     * @param {number} playerChunkX 
-     * @param {number} playerChunkZ 
-     * @param {number} radius 
-     * @returns {boolean}
-     */
     isChunkInRadius(cx, cz, playerChunkX, playerChunkZ, radius) {
         const dx = cx - playerChunkX;
         const dz = cz - playerChunkZ;
@@ -349,16 +228,6 @@ export class World {
         return (dx * dx + dz * dz) <= (radius * radius);
     }
 
-    /**
-     * Update world chunks around player position.
-     * Calculates which chunks should be loaded (within loadRadius chunks, default 4)
-     * and which chunks outside the radius should be unloaded.
-     *
-     * @param {number} playerX - World X position of player
-     * @param {number} playerZ - World Z position of player
-     * @param {number} [radius=this.loadRadius] - Chunk radius (default 4)
-     * @returns {{loaded: Chunk[], unloaded: Chunk[], total: number}} Summary of changes
-     */
     update(playerX, playerZ, radius = this.loadRadius) {
         const playerChunkX = Math.floor(playerX / CHUNK_SIZE_X);
         const playerChunkZ = Math.floor(playerZ / CHUNK_SIZE_Z);
@@ -420,14 +289,6 @@ export class World {
     // 4. VOXEL & BLOCK MANIPULATION
     // ==========================================
 
-    /**
-     * Get Block ID at integer world coordinate (worldX, worldY, worldZ).
-     *
-     * @param {number} worldX 
-     * @param {number} worldY 
-     * @param {number} worldZ 
-     * @returns {number} Block ID (0 = AIR if out of bounds or chunk not loaded)
-     */
     getBlock(worldX, worldY, worldZ) {
         if (worldY < 0 || worldY >= CHUNK_SIZE_Y) {
             return BLOCKS.AIR;
@@ -443,24 +304,10 @@ export class World {
         return chunk.getBlock(lx, ly, lz);
     }
 
-    /**
-     * Alias for getBlock.
-     */
     getBlockAt(worldX, worldY, worldZ) {
         return this.getBlock(worldX, worldY, worldZ);
     }
 
-    /**
-     * Set Block ID at integer world coordinate (worldX, worldY, worldZ).
-     * Automatically marks the chunk (and adjacent boundary chunks if on a border) as dirty.
-     *
-     * @param {number} worldX 
-     * @param {number} worldY 
-     * @param {number} worldZ 
-     * @param {number} blockId - Block ID to set
-     * @param {boolean} [markDirty=true] - Whether to mark chunk(s) dirty for remeshing
-     * @returns {boolean} True if block was set successfully
-     */
     setBlock(worldX, worldY, worldZ, blockId, markDirty = true) {
         if (worldY < 0 || worldY >= CHUNK_SIZE_Y) {
             return false;
@@ -513,9 +360,6 @@ export class World {
         return true;
     }
 
-    /**
-     * Get light level at integer world coordinate.
-     */
     getLight(worldX, worldY, worldZ) {
         if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return 15 << 4;
         const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
@@ -531,9 +375,6 @@ export class World {
         return chunk.getLight(lx, ly, lz);
     }
 
-    /**
-     * Set light level at integer world coordinate.
-     */
     setLight(worldX, worldY, worldZ, lightValue) {
         if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return false;
         const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
@@ -558,32 +399,16 @@ export class World {
         return chunk.setMetadata(lx, ly, lz, meta);
     }
 
-    /**
-     * Alias for setBlock.
-     */
     setBlockAt(worldX, worldY, worldZ, blockId, markDirty = true) {
         return this.setBlock(worldX, worldY, worldZ, blockId, markDirty);
     }
 
-    /**
-     * Check if a block at world coordinate is solid (collidable & opaque).
-     * @param {number} worldX 
-     * @param {number} worldY 
-     * @param {number} worldZ 
-     * @returns {boolean}
-     */
     isSolid(worldX, worldY, worldZ) {
         const blockId = this.getBlock(worldX, worldY, worldZ);
         if (blockId === BLOCKS.AIR) return false;
         return !NON_SOLID_BLOCKS.has(blockId);
     }
 
-    /**
-     * Find the highest non-air block Y coordinate at world column (worldX, worldZ).
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {number} Y coordinate (or 0 if empty)
-     */
     getHighestBlockY(worldX, worldZ) {
         const { cx, cz, lx, lz } = this.worldToLocalCoords(worldX, 0, worldZ);
         const chunk = this.getChunk(cx, cz);
@@ -597,22 +422,10 @@ export class World {
         return 0;
     }
 
-    /**
-     * Get Biome at world coordinates from TerrainGenerator.
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {Object} Biome definition
-     */
     getBiome(worldX, worldZ) {
         return this.generator.getBiome(worldX, worldZ);
     }
 
-    /**
-     * Get procedural terrain height at world coordinates from TerrainGenerator.
-     * @param {number} worldX 
-     * @param {number} worldZ 
-     * @returns {number}
-     */
     getHeight(worldX, worldZ) {
         return this.generator.getHeight(worldX, worldZ);
     }
@@ -621,12 +434,6 @@ export class World {
     // 5. MESH & RENDERING HELPERS
     // ==========================================
 
-    /**
-     * Rebuild Three.js mesh for a specific chunk.
-     * @param {number} cx 
-     * @param {number} cz 
-     * @returns {THREE.Mesh|null}
-     */
     rebuildChunkMesh(cx, cz) {
         const chunk = this.getChunk(cx, cz);
         if (!chunk || !this.scene) return null;
@@ -643,10 +450,6 @@ export class World {
         return mesh;
     }
 
-    /**
-     * Rebuild meshes for all loaded chunks that are marked as isDirty.
-     * @returns {number} Number of remeshed chunks
-     */
     rebuildDirtyMeshes() {
         if (!this.scene) return 0;
         let count = 0;
@@ -665,36 +468,20 @@ export class World {
     // 6. ENTITY & EVENT MANAGEMENT
     // ==========================================
 
-    /**
-     * Add an entity to the world.
-     * @param {Object} entity 
-     */
     addEntity(entity) {
         this.entities.add(entity);
         this.emit('entityAdd', entity);
     }
 
-    /**
-     * Remove an entity from the world.
-     * @param {Object} entity 
-     */
     removeEntity(entity) {
         this.entities.delete(entity);
         this.emit('entityRemove', entity);
     }
 
-    /**
-     * Get all active entities in the world.
-     * @returns {Object[]}
-     */
     getEntities() {
         return Array.from(this.entities);
     }
 
-    /**
-     * Update all active entities with delta time dt.
-     * @param {number} dt Delta time in seconds
-     */
     updateEntities(dt = 0.05, player = null, inventory = null, audio = null) {
         for (const entity of this.entities) {
             if (typeof entity.update === 'function') {
@@ -730,11 +517,6 @@ export class World {
         }
     }
 
-    /**
-     * Register an event listener.
-     * @param {string} event - 'chunkLoad', 'chunkUnload', 'blockChange', 'entityAdd', 'entityRemove'
-     * @param {Function} callback 
-     */
     on(event, callback) {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, new Set());
@@ -742,22 +524,12 @@ export class World {
         this.listeners.get(event).add(callback);
     }
 
-    /**
-     * Remove an event listener.
-     * @param {string} event 
-     * @param {Function} callback 
-     */
     off(event, callback) {
         if (this.listeners.has(event)) {
             this.listeners.get(event).delete(callback);
         }
     }
 
-    /**
-     * Emit an event to all registered listeners.
-     * @param {string} event 
-     * @param {...any} args 
-     */
     emit(event, ...args) {
         const callbacks = this.listeners.get(event);
         if (callbacks) {
@@ -771,21 +543,10 @@ export class World {
         }
     }
 
-    /**
-     * Retrieve array of all currently loaded Chunk instances.
-     * @returns {Chunk[]}
-     */
     getLoadedChunks() {
         return Array.from(this.chunks.values());
     }
 
-    /**
-     * Clear and unload all chunks and entities.
-     */
-
-    /**
-     * Placeholder light level calculation
-     */
     getLight(x, y, z) {
         for (let checkY = Math.floor(y); checkY < 256; checkY++) {
             const blockId = this.getBlock(x, checkY, z);
@@ -796,9 +557,6 @@ export class World {
         return 15; // Direct sky light
     }
 
-    /**
-     * Spawns mobs around the player based on light levels
-     */
     spawnMobs(player, dt) {
         if (!this.spawnTimer) this.spawnTimer = 0;
         this.spawnTimer -= dt;

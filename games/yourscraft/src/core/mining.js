@@ -1,18 +1,4 @@
-/**
- * Mining Time & Block Breaking Logic for Minecraft 1.5 WebGL Engine
- *
- * Implements authentic Minecraft 1.5 breaking mechanics:
- * - Block hardness and required harvest tool/level definitions
- * - Tool types (Pickaxe, Shovel, Axe, Sword, Shears, Hand)
- * - Material speed multipliers (Wood: 2, Stone: 4, Iron: 6, Diamond: 8, Gold: 12)
- * - Harvestability checking (canHarvest) determining drop eligibility & break speed divisor (30 vs 100)
- * - Exact tick-based breaking time calculations:
- *     damage = speedMultiplier / blockHardness / (canHarvest ? 30 : 100)
- *     ticks = ceil(1 / damage)
- *     timeInSeconds = ticks / 20
- * - Support for Hand, Wooden Pickaxe, Stone Pickaxe, Iron, Diamond, and Gold tools
- * - Flexible toolId input (numbers, strings, ItemStack objects, or null/undefined)
- */
+
 
 import { BLOCKS } from './chunk.js';
 
@@ -38,9 +24,6 @@ export const TOOL_MATERIALS = Object.freeze({
     GOLD: { name: 'gold', multiplier: 12.0, harvestLevel: 0 }
 });
 
-/**
- * Tool item registry mapping numeric IDs and string aliases to type and material.
- */
 export const TOOL_REGISTRY = Object.freeze({
     // --- Pickaxes ---
     270: { id: 270, name: 'Wooden Pickaxe', type: TOOL_TYPES.PICKAXE, material: TOOL_MATERIALS.WOOD },
@@ -115,11 +98,6 @@ const TOOL_NAME_ALIASES = {
     'shears': TOOL_REGISTRY[359]
 };
 
-/**
- * Resolve tool definition from ID, string name, or ItemStack object.
- * @param {number|string|Object|null|undefined} tool
- * @returns {Object} Normalized tool definition
- */
 export function getToolDef(tool) {
     if (!tool || tool === 0) {
         return { id: 0, name: 'Hand', type: TOOL_TYPES.NONE, material: TOOL_MATERIALS.HAND };
@@ -155,13 +133,6 @@ export function getToolDef(tool) {
 // 2. BLOCK MINING PROPERTIES
 // ==========================================
 
-/**
- * Block mining definition:
- * - hardness: base hardness value (-1 for unbreakable like bedrock, 0 for instant break)
- * - preferredTool: preferred tool type that grants speed multiplier
- * - requiresTool: whether a suitable tool is required to harvest/drop items (and avoid 100x penalty divisor)
- * - minHarvestLevel: minimum material harvest level required (0: Wood/Gold, 1: Stone, 2: Iron, 3: Diamond)
- */
 export const BLOCK_MINING_PROPERTIES = {
     [BLOCKS.AIR]: { hardness: 0.0, preferredTool: TOOL_TYPES.NONE, requiresTool: false, minHarvestLevel: -1 },
     [BLOCKS.STONE]: { hardness: 1.5, preferredTool: TOOL_TYPES.PICKAXE, requiresTool: true, minHarvestLevel: 0 },
@@ -228,11 +199,6 @@ export const BLOCK_MINING_PROPERTIES = {
     [BLOCKS.REDSTONE_BLOCK]: { hardness: 5.0, preferredTool: TOOL_TYPES.PICKAXE, requiresTool: true, minHarvestLevel: 0 }
 };
 
-/**
- * Get the mining properties of a block.
- * @param {number} blockId
- * @returns {Object}
- */
 export function getBlockMiningProperties(blockId) {
     if (BLOCK_MINING_PROPERTIES[blockId] !== undefined) {
         return BLOCK_MINING_PROPERTIES[blockId];
@@ -246,22 +212,11 @@ export function getBlockMiningProperties(blockId) {
     };
 }
 
-/**
- * Get the hardness of a block.
- * @param {number} blockId
- * @returns {number} Hardness value (-1 for unbreakable)
- */
 export function getBlockHardness(blockId) {
     const props = getBlockMiningProperties(blockId);
     return props.hardness;
 }
 
-/**
- * Check if the tool is preferred for breaking the block (grants speed multiplier).
- * @param {number} blockId
- * @param {number|string|Object} toolId
- * @returns {boolean}
- */
 export function isPreferredTool(blockId, toolId) {
     const blockProps = getBlockMiningProperties(blockId);
     const tool = getToolDef(toolId);
@@ -273,12 +228,6 @@ export function isPreferredTool(blockId, toolId) {
     return blockProps.preferredTool === tool.type;
 }
 
-/**
- * Check if the tool is capable of harvesting/dropping the block.
- * @param {number} blockId
- * @param {number|string|Object} toolId
- * @returns {boolean}
- */
 export function canHarvest(blockId, toolId) {
     const blockProps = getBlockMiningProperties(blockId);
     if (!blockProps.requiresTool) {
@@ -293,18 +242,6 @@ export function canHarvest(blockId, toolId) {
     return tool.material.harvestLevel >= blockProps.minHarvestLevel;
 }
 
-/**
- * Calculate the effective mining speed multiplier.
- * @param {number} blockId
- * @param {number|string|Object} toolId
- * @param {Object} [options={}]
- * @param {number} [options.efficiencyLevel=0]
- * @param {number} [options.hasteLevel=0]
- * @param {number} [options.miningFatigue=0]
- * @param {boolean} [options.inWater=false]
- * @param {boolean} [options.onGround=true]
- * @returns {number} Speed multiplier
- */
 export function getMiningSpeedMultiplier(blockId, toolId, options = {}) {
     const tool = getToolDef(toolId);
     const preferred = isPreferredTool(blockId, toolId);
@@ -344,22 +281,6 @@ export function getMiningSpeedMultiplier(blockId, toolId, options = {}) {
     return speed;
 }
 
-/**
- * Calculate the time in seconds to break a block based on Minecraft 1.5 mechanics.
- *
- * Formula:
- * - If hardness < 0: block is unbreakable (returns Infinity)
- * - If hardness === 0: block is instantly broken (returns 0.0s)
- * - damagePerTick = speedMultiplier / blockHardness / (canHarvest ? 30 : 100)
- * - if damagePerTick >= 1.0 -> instant (0.0s)
- * - ticks = ceil(1.0 / damagePerTick)
- * - timeInSeconds = ticks / 20.0
- *
- * @param {number} blockId - ID of the target block
- * @param {number|string|Object|null} [toolId=null] - Tool ID, tool name, or ItemStack (default hand)
- * @param {Object} [options={}] - Additional modifiers (onGround, inWater, efficiencyLevel, hasteLevel, etc.)
- * @returns {number} Time to break in seconds (e.g. 7.5s for Stone with Hand, 1.15s with Wooden Pickaxe)
- */
 export function getMiningTime(blockId, toolId = null, options = {}) {
     const blockProps = getBlockMiningProperties(blockId);
     const hardness = blockProps.hardness;
@@ -386,22 +307,12 @@ export function getMiningTime(blockId, toolId = null, options = {}) {
     return ticks / 20.0;
 }
 
-/**
- * Calculate the number of game ticks (1/20 second) to break a block.
- * @param {number} blockId
- * @param {number|string|Object|null} [toolId=null]
- * @param {Object} [options={}]
- * @returns {number} Integer ticks (or Infinity)
- */
 export function getMiningTicks(blockId, toolId = null, options = {}) {
     const timeInSeconds = getMiningTime(blockId, toolId, options);
     if (!isFinite(timeInSeconds)) return Infinity;
     return Math.round(timeInSeconds * 20);
 }
 
-/**
- * Helper class to track incremental block breaking progress across game frames/ticks.
- */
 export class MiningTracker {
     constructor() {
         this.targetBlock = null; // { x, y, z, blockId }
@@ -409,17 +320,6 @@ export class MiningTracker {
         this.breakTime = 0.0;    // Total break time in seconds
     }
 
-    /**
-     * Start or continue mining a block.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} z
-     * @param {number} blockId
-     * @param {number|string|Object} toolId
-     * @param {number} dt - Delta time in seconds
-     * @param {Object} [options={}]
-     * @returns {{ broken: boolean, stage: number, progress: number }} Mining state
-     */
     updateMining(x, y, z, blockId, toolId, dt, options = {}) {
         // If target changed, reset progress
         if (!this.targetBlock || this.targetBlock.x !== x || this.targetBlock.y !== y || this.targetBlock.z !== z || this.targetBlock.blockId !== blockId) {
@@ -447,9 +347,6 @@ export class MiningTracker {
         return { broken: false, stage, progress: this.progress };
     }
 
-    /**
-     * Reset mining progress.
-     */
     reset() {
         this.targetBlock = null;
         this.progress = 0.0;

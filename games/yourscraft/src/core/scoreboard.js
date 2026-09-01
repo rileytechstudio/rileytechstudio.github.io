@@ -1,16 +1,5 @@
-/**
- * Scoreboard System for Minecraft 1.5 WebGL Engine
- * 
- * Provides:
- * - ScoreboardManager: central manager for objectives, display slots, and teams
- * - ScoreboardObjective: individual tracked objective (e.g. 'dummy', 'playerKillCount', 'deathCount', 'health')
- * - ScoreboardTeam: teams with prefixes, suffixes, colors, and player assignments
- * - Full event emission for reactive UI / HUD data binding
- */
 
-/**
- * Standard Minecraft Scoreboard Criteria Types
- */
+
 export const ScoreboardCriteria = Object.freeze({
     DUMMY: 'dummy',
     TRIGGER: 'trigger',
@@ -25,25 +14,14 @@ export const ScoreboardCriteria = Object.freeze({
     ARMOR: 'armor'
 });
 
-/**
- * Valid Display Slot Names
- */
 export const DisplaySlot = Object.freeze({
     SIDEBAR: 'sidebar',
     LIST: 'list',
     BELOW_NAME: 'belowName'
 });
 
-/**
- * Individual Scoreboard Objective
- */
 export class ScoreboardObjective {
-    /**
-     * @param {string} name Unique identifier for the objective
-     * @param {string} [criteria='dummy'] Criteria type (e.g. 'dummy', 'playerKillCount')
-     * @param {string} [displayName=null] Formatted display title (defaults to name)
-     * @param {ScoreboardManager} [scoreboard=null] Reference to parent scoreboard manager
-     */
+    
     constructor(name, criteria = ScoreboardCriteria.DUMMY, displayName = null, scoreboard = null) {
         if (!name || typeof name !== 'string') {
             throw new Error('ScoreboardObjective requires a valid string name.');
@@ -53,62 +31,34 @@ export class ScoreboardObjective {
         this.criteria = criteria || ScoreboardCriteria.DUMMY;
         this.displayName = displayName !== null && displayName !== undefined ? String(displayName) : name;
         this.renderType = 'integer'; // 'integer' | 'hearts'
-        
-        /** @type {Map<string, number>} Player Name -> Score */
+
         this.scores = new Map();
-        
-        /** @type {ScoreboardManager|null} */
+
         this.scoreboard = scoreboard;
     }
 
-    /**
-     * Get unique objective name
-     * @returns {string}
-     */
     getName() {
         return this.name;
     }
 
-    /**
-     * Get objective criteria
-     * @returns {string}
-     */
     getCriteria() {
         return this.criteria;
     }
 
-    /**
-     * Get objective display name
-     * @returns {string}
-     */
     getDisplayName() {
         return this.displayName;
     }
 
-    /**
-     * Set display title shown on HUD
-     * @param {string} displayName 
-     * @returns {this}
-     */
     setDisplayName(displayName) {
         this.displayName = String(displayName);
         this._notifyChange();
         return this;
     }
 
-    /**
-     * Get score render type ('integer' | 'hearts')
-     * @returns {'integer'|'hearts'}
-     */
     getRenderType() {
         return this.renderType;
     }
 
-    /**
-     * Set score render type
-     * @param {'integer'|'hearts'} renderType 
-     * @returns {this}
-     */
     setRenderType(renderType) {
         if (renderType === 'hearts' || renderType === 'integer') {
             this.renderType = renderType;
@@ -117,30 +67,14 @@ export class ScoreboardObjective {
         return this;
     }
 
-    /**
-     * Check if player has a recorded score in this objective
-     * @param {string} player 
-     * @returns {boolean}
-     */
     hasScore(player) {
         return this.scores.has(player);
     }
 
-    /**
-     * Get player's score (defaults to 0 if not set)
-     * @param {string} player 
-     * @returns {number}
-     */
     getScore(player) {
         return this.scores.get(player) ?? 0;
     }
 
-    /**
-     * Set player's score
-     * @param {string} player 
-     * @param {number} value 
-     * @returns {number} The updated score
-     */
     setScore(player, value) {
         const parsed = Math.floor(Number(value) || 0);
         const prev = this.scores.get(player);
@@ -158,22 +92,11 @@ export class ScoreboardObjective {
         return parsed;
     }
 
-    /**
-     * Add amount to player's score
-     * @param {string} player 
-     * @param {number} [amount=1] 
-     * @returns {number} The updated score
-     */
     addScore(player, amount = 1) {
         const current = this.getScore(player);
         return this.setScore(player, current + amount);
     }
 
-    /**
-     * Reset/remove player's score from this objective
-     * @param {string} player 
-     * @returns {boolean} True if score was present and removed
-     */
     resetScore(player) {
         if (this.scores.has(player)) {
             this.scores.delete(player);
@@ -186,19 +109,10 @@ export class ScoreboardObjective {
         return false;
     }
 
-    /**
-     * Remove score alias
-     * @param {string} player 
-     * @returns {boolean}
-     */
     removeScore(player) {
         return this.resetScore(player);
     }
 
-    /**
-     * Get all entries with their scores as an array of { player, score }
-     * @returns {Array<{player: string, score: number}>}
-     */
     getScores() {
         const result = [];
         for (const [player, score] of this.scores.entries()) {
@@ -207,12 +121,6 @@ export class ScoreboardObjective {
         return result;
     }
 
-    /**
-     * Get sorted list of scores for UI/sidebar rendering.
-     * Sorts descending by score value, breaking ties alphabetically by player name.
-     * @param {'desc'|'asc'} [order='desc'] 
-     * @returns {Array<{player: string, score: number}>}
-     */
     getSortedScores(order = 'desc') {
         const list = this.getScores();
         list.sort((a, b) => {
@@ -227,27 +135,15 @@ export class ScoreboardObjective {
         return list;
     }
 
-    /**
-     * Get array of all player name entries in this objective
-     * @returns {string[]}
-     */
     getEntries() {
         return Array.from(this.scores.keys());
     }
 
-    /**
-     * Clear all player scores in this objective
-     */
     clearScores() {
         this.scores.clear();
         this._notifyChange();
     }
 
-    /**
-     * Assign this objective directly to a display slot (e.g. 'sidebar')
-     * @param {string} slot 
-     * @returns {this}
-     */
     setDisplaySlot(slot) {
         if (this.scoreboard) {
             this.scoreboard.setDisplaySlot(slot, this);
@@ -255,9 +151,6 @@ export class ScoreboardObjective {
         return this;
     }
 
-    /**
-     * Internal helper to notify parent scoreboard manager of changes
-     */
     _notifyChange() {
         if (this.scoreboard) {
             this.scoreboard.emit('objectiveUpdate', this);
@@ -266,14 +159,8 @@ export class ScoreboardObjective {
     }
 }
 
-/**
- * Scoreboard Team
- */
 export class ScoreboardTeam {
-    /**
-     * @param {string} name Unique team name
-     * @param {string} [displayName=null] Formatted team title
-     */
+    
     constructor(name, displayName = null) {
         this.name = name;
         this.displayName = displayName || name;
@@ -282,9 +169,9 @@ export class ScoreboardTeam {
         this.color = 'reset';
         this.friendlyFire = true;
         this.seeFriendlyInvisibles = false;
-        /** @type {Set<string>} */
+        
         this.members = new Set();
-        /** @type {ScoreboardManager|null} */
+        
         this.scoreboard = null;
     }
 
@@ -322,11 +209,6 @@ export class ScoreboardTeam {
         return Array.from(this.members);
     }
 
-    /**
-     * Formats player name with team prefix, suffix, and color
-     * @param {string} playerName 
-     * @returns {string}
-     */
     formatPlayerName(playerName) {
         return `${this.prefix}${playerName}${this.suffix}`;
     }
@@ -339,26 +221,19 @@ export class ScoreboardTeam {
     }
 }
 
-/**
- * Scoreboard Manager
- * Holds objectives, manages display slots, and coordinates updates with UI/HUD.
- */
 export class ScoreboardManager {
     constructor() {
-        /** @type {Map<string, ScoreboardObjective>} */
+        
         this.objectives = new Map();
 
-        /** @type {Map<string, ScoreboardObjective|null>} */
         this.displaySlots = new Map([
             [DisplaySlot.SIDEBAR, null],
             [DisplaySlot.LIST, null],
             [DisplaySlot.BELOW_NAME, null]
         ]);
 
-        /** @type {Map<string, ScoreboardTeam>} */
         this.teams = new Map();
 
-        /** @type {Map<string, Set<Function>>} */
         this.listeners = new Map();
     }
 
@@ -366,12 +241,6 @@ export class ScoreboardManager {
     // 1. EVENT SYSTEM
     // ==========================================
 
-    /**
-     * Register an event listener
-     * @param {string} event 
-     * @param {Function} callback 
-     * @returns {Function} Unsubscribe function
-     */
     on(event, callback) {
         if (typeof callback !== 'function') return () => {};
         if (!this.listeners.has(event)) {
@@ -381,22 +250,12 @@ export class ScoreboardManager {
         return () => this.off(event, callback);
     }
 
-    /**
-     * Remove an event listener
-     * @param {string} event 
-     * @param {Function} callback 
-     */
     off(event, callback) {
         if (this.listeners.has(event)) {
             this.listeners.get(event).delete(callback);
         }
     }
 
-    /**
-     * Emit an event to all subscribers
-     * @param {string} event 
-     * @param {...any} args 
-     */
     emit(event, ...args) {
         if (this.listeners.has(event)) {
             for (const cb of this.listeners.get(event)) {
@@ -413,13 +272,6 @@ export class ScoreboardManager {
     // 2. OBJECTIVES MANAGEMENT
     // ==========================================
 
-    /**
-     * Add a new objective
-     * @param {string} name Unique identifier
-     * @param {string} [criteria='dummy'] Criteria type
-     * @param {string} [displayName=null] Display title
-     * @returns {ScoreboardObjective}
-     */
     addObjective(name, criteria = ScoreboardCriteria.DUMMY, displayName = null) {
         if (!name || typeof name !== 'string') {
             throw new Error('addObjective requires a valid string name.');
@@ -438,29 +290,14 @@ export class ScoreboardManager {
         return objective;
     }
 
-    /**
-     * Get objective by name
-     * @param {string} name 
-     * @returns {ScoreboardObjective|null}
-     */
     getObjective(name) {
         return this.objectives.get(name) || null;
     }
 
-    /**
-     * Check if an objective exists
-     * @param {string} name 
-     * @returns {boolean}
-     */
     hasObjective(name) {
         return this.objectives.has(name);
     }
 
-    /**
-     * Remove an objective by name or reference
-     * @param {string|ScoreboardObjective} objectiveOrName 
-     * @returns {boolean} True if removed
-     */
     removeObjective(objectiveOrName) {
         const name = typeof objectiveOrName === 'string' ? objectiveOrName : objectiveOrName?.name;
         if (!name || !this.objectives.has(name)) return false;
@@ -481,17 +318,10 @@ export class ScoreboardManager {
         return true;
     }
 
-    /**
-     * Get all registered objectives
-     * @returns {ScoreboardObjective[]}
-     */
     getObjectives() {
         return Array.from(this.objectives.values());
     }
 
-    /**
-     * Clear all objectives and reset display slots
-     */
     clearObjectives() {
         for (const objective of Array.from(this.objectives.values())) {
             this.removeObjective(objective);
@@ -502,12 +332,6 @@ export class ScoreboardManager {
     // 3. DISPLAY SLOTS MANAGEMENT
     // ==========================================
 
-    /**
-     * Assign an objective to a display slot (e.g. 'sidebar', 'list', 'belowName')
-     * @param {string} slot Target display slot name
-     * @param {string|ScoreboardObjective|null} objectiveOrName Objective to show or null to clear
-     * @returns {ScoreboardObjective|null} The assigned objective or null
-     */
     setDisplaySlot(slot, objectiveOrName) {
         const previous = this.displaySlots.get(slot) || null;
 
@@ -539,19 +363,10 @@ export class ScoreboardManager {
         return objective;
     }
 
-    /**
-     * Get active objective in a display slot
-     * @param {string} slot 
-     * @returns {ScoreboardObjective|null}
-     */
     getDisplaySlot(slot) {
         return this.displaySlots.get(slot) || null;
     }
 
-    /**
-     * Clear active objective in a display slot
-     * @param {string} slot 
-     */
     clearDisplaySlot(slot) {
         this.setDisplaySlot(slot, null);
     }
@@ -560,13 +375,6 @@ export class ScoreboardManager {
     // 4. SCORE HELPERS
     // ==========================================
 
-    /**
-     * Set score for a player in a specific objective
-     * @param {string} objectiveName 
-     * @param {string} player 
-     * @param {number} score 
-     * @returns {number}
-     */
     setScore(objectiveName, player, score) {
         const obj = this.getObjective(objectiveName);
         if (!obj) {
@@ -575,24 +383,11 @@ export class ScoreboardManager {
         return obj.setScore(player, score);
     }
 
-    /**
-     * Get score for a player in a specific objective
-     * @param {string} objectiveName 
-     * @param {string} player 
-     * @returns {number}
-     */
     getScore(objectiveName, player) {
         const obj = this.getObjective(objectiveName);
         return obj ? obj.getScore(player) : 0;
     }
 
-    /**
-     * Add score for a player in a specific objective
-     * @param {string} objectiveName 
-     * @param {string} player 
-     * @param {number} [amount=1] 
-     * @returns {number}
-     */
     addScore(objectiveName, player, amount = 1) {
         const obj = this.getObjective(objectiveName);
         if (!obj) {
@@ -601,11 +396,6 @@ export class ScoreboardManager {
         return obj.addScore(player, amount);
     }
 
-    /**
-     * Reset a player's scores across all objectives or a single objective
-     * @param {string} player 
-     * @param {string} [objectiveName=null] 
-     */
     resetPlayerScores(player, objectiveName = null) {
         if (objectiveName) {
             const obj = this.getObjective(objectiveName);
@@ -617,10 +407,6 @@ export class ScoreboardManager {
         }
     }
 
-    /**
-     * Get all unique player names with scores across all objectives
-     * @returns {string[]}
-     */
     getPlayers() {
         const set = new Set();
         for (const obj of this.objectives.values()) {
@@ -635,12 +421,6 @@ export class ScoreboardManager {
     // 5. TEAMS MANAGEMENT
     // ==========================================
 
-    /**
-     * Add a team
-     * @param {string} name 
-     * @param {string} [displayName=null] 
-     * @returns {ScoreboardTeam}
-     */
     addTeam(name, displayName = null) {
         if (!name || this.teams.has(name)) {
             throw new Error(`Team '${name}' already exists or invalid.`);
@@ -653,20 +433,10 @@ export class ScoreboardManager {
         return team;
     }
 
-    /**
-     * Get a team by name
-     * @param {string} name 
-     * @returns {ScoreboardTeam|null}
-     */
     getTeam(name) {
         return this.teams.get(name) || null;
     }
 
-    /**
-     * Remove a team
-     * @param {string} name 
-     * @returns {boolean}
-     */
     removeTeam(name) {
         if (this.teams.has(name)) {
             const team = this.teams.get(name);
@@ -678,11 +448,6 @@ export class ScoreboardManager {
         return false;
     }
 
-    /**
-     * Find the team a player belongs to
-     * @param {string} player 
-     * @returns {ScoreboardTeam|null}
-     */
     getPlayerTeam(player) {
         for (const team of this.teams.values()) {
             if (team.hasMember(player)) return team;
@@ -690,10 +455,6 @@ export class ScoreboardManager {
         return null;
     }
 
-    /**
-     * Get all teams
-     * @returns {ScoreboardTeam[]}
-     */
     getTeams() {
         return Array.from(this.teams.values());
     }
@@ -702,10 +463,6 @@ export class ScoreboardManager {
     // 6. SERIALIZATION
     // ==========================================
 
-    /**
-     * Serialize scoreboard to JSON-compatible object
-     * @returns {Object}
-     */
     toJSON() {
         const objData = [];
         for (const obj of this.objectives.values()) {
@@ -744,10 +501,6 @@ export class ScoreboardManager {
         };
     }
 
-    /**
-     * Restore scoreboard from serialized object
-     * @param {Object} data 
-     */
     fromJSON(data) {
         if (!data) return;
         this.clearObjectives();

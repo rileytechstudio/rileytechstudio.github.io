@@ -1,21 +1,4 @@
-/**
- * Inventory & Crafting System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - 36-slot player inventory (9 hotbar slots [0..8] + 27 main inventory slots [9..35])
- * - 4 Armor slots (Helmet, Chestplate, Leggings, Boots)
- * - 2x2 Player Inventory Crafting Grid + Output Slot (Minecraft 1.5 Survival Inventory)
- * - 3x3 Crafting Table Grid + Output Slot
- * - Minecraft 1.5 Crafting System engine powered by src/core/crafting.js
- * - Full mouse drag-and-drop between all inventory slots and crafting grid
- * - Left-click & Right-click drag painting (distribute stacks / drop 1 item per slot)
- * - Native HTML5 drag-and-drop events support
- * - Right-click half-stack splitting and single-item placement
- * - Shift-click fast transfer and batch crafting
- * - Floating cursor item stack
- * - Keybinds ('E' for inventory toggle, 'Escape' to close, returning items to inventory on close)
- * - Save/Load serialization for WorldStorage
- */
+
 
 import { BLOCKS } from "../core/chunk.js";
 import { getItemIconDataUri } from "./hud.js";
@@ -122,11 +105,6 @@ for (const item of Object.values(ITEM_TYPES)) {
     ITEM_LOOKUP.set(item.id, item);
 }
 
-/**
- * Retrieve item definition metadata by ID
- * @param {number} id 
- * @returns {Object}
- */
 export function getItemDef(id) {
     const numId = Number(id);
     if (ITEM_LOOKUP.has(numId)) {
@@ -135,13 +113,6 @@ export function getItemDef(id) {
     return { id: numId, name: `Item #${numId}`, maxStack: 64, isBlock: numId <= 255 };
 }
 
-/**
- * Helper to create an ItemStack instance
- * @param {number} id 
- * @param {number} [count=1] 
- * @param {Object} [metadata={}] 
- * @returns {Object|null}
- */
 export function createItemStack(id, count = 1, metadata = {}) {
     if (!id || count <= 0) return null;
     const numId = Number(id);
@@ -162,12 +133,6 @@ export function createItemStack(id, count = 1, metadata = {}) {
 // Re-export RECIPES from core/crafting.js
 export { RECIPES, CRAFTING_RECIPES };
 
-/**
- * Match a grid of input item stacks (2x2 or 3x3) using craft()
- * @param {Array<Object|null>} inputGrid 
- * @param {number} [gridDimension=2] 
- * @returns {Object|null}
- */
 export function matchRecipe(inputGrid, gridDimension = 2) {
     const result = craft(inputGrid);
     if (!result) return null;
@@ -234,7 +199,6 @@ const INVENTORY_CSS = `
     color: #fff;
 }
 
-/* Top Section: Survival Character Preview & 2x2 Crafting Grid */
 .inv-top-section {
     display: flex;
     justify-content: space-between;
@@ -423,11 +387,7 @@ const INVENTORY_CSS = `
 // ==========================================
 
 export class InventoryManager {
-    /**
-     * @param {Object} [options]
-     * @param {HUD} [options.hud] Attached HUD instance to synchronize hotbar
-     * @param {function(Array): void} [options.onInventoryChange]
-     */
+    
     constructor(options = {}) {
         this.hud = options.hud || null;
         this.onInventoryChange = options.onInventoryChange || null;
@@ -465,9 +425,6 @@ export class InventoryManager {
         this.populateDefaultItems();
     }
 
-    /**
-     * Mount GUI modal DOM
-     */
     initDOM() {
         if (typeof document === "undefined") return;
 
@@ -713,13 +670,6 @@ export class InventoryManager {
         return this.slots[index];
     }
 
-    /**
-     * Consume / decrement item count in a slot.
-     * Removes the item stack if count drops to 0.
-     * @param {number} index Slot index
-     * @param {number} [count=1] Number of items to consume
-     * @returns {boolean} True if consumed
-     */
     consumeSlot(index, count = 1) {
         if (index < 0 || index >= 36) return false;
         const slot = this.slots[index];

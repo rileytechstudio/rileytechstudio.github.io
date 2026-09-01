@@ -1,17 +1,4 @@
-/**
- * Dropped Item Entity for Minecraft 1.5 WebGL Engine
- *
- * Features:
- * - Authentic Minecraft 1.5 dropped items in world-space
- * - Tiny 3D BoxGeometry (0.28x0.28x0.28) textured via procedural atlas for 3D blocks
- * - THREE.Sprite with crisp pixel-art textures for 2D items, tools, weapons, food, and plants
- * - Gravity physics, air drag, terrain collision, and subtle ground bouncing
- * - Aesthetic floating bobbing (sinusoidal) and smooth 360-degree rotation animation
- * - Magnet pickup mechanics: attracts within 1.5 blocks of player, flies towards inventory,
- *   adds to inventory (inventory.addItem), plays 'pop' sound, and removes from scene
- * - Authentic block drop tables (e.g. Stone -> Cobblestone, Grass -> Dirt, Diamond Ore -> Diamond, etc.)
- * - Authentic mob loot drop tables (Pig -> Porkchop, Cow -> Beef/Leather, Skeleton -> Arrow/Bone, etc.)
- */
+
 
 import * as THREE from 'three';
 import { Entity, AABB } from './mob.js';
@@ -25,11 +12,6 @@ import { canHarvest } from '../core/mining.js';
 // Cache for 2D item sprite textures
 const ITEM_TEXTURE_CACHE = new Map();
 
-/**
- * Retrieve or create a THREE.Texture for a given 2D item ID.
- * @param {number|string} itemId
- * @returns {THREE.Texture}
- */
 export function getItemTexture(itemId) {
     const id = Number(itemId);
     if (ITEM_TEXTURE_CACHE.has(id)) {
@@ -51,12 +33,6 @@ export function getItemTexture(itemId) {
     return texture;
 }
 
-/**
- * Helper to set exact Atlas UV coordinates on a face of a THREE.BoxGeometry.
- * @param {THREE.BufferAttribute} uvAttr
- * @param {number} faceIndex 0..5
- * @param {{ uMin: number, vMin: number, uMax: number, vMax: number }} uvInfo
- */
 function applyBoxFaceUV(uvAttr, faceIndex, uvInfo) {
     const { uMin, vMin, uMax, vMax } = uvInfo;
     const base = faceIndex * 4;
@@ -67,14 +43,6 @@ function applyBoxFaceUV(uvAttr, faceIndex, uvInfo) {
     uvAttr.setXY(base + 3, uMax, vMin);
 }
 
-/**
- * Calculate the dropped item result when a block is broken in Minecraft 1.5.
- * Respects tool harvestability rules (canHarvest) and standard Minecraft drops.
- *
- * @param {number} blockId - ID of broken block
- * @param {number|string|Object|null} [toolId=null] - Held tool ID
- * @returns {{ id: number, count: number }|null} Item drop or null if nothing drops
- */
 export function getBlockDrop(blockId, toolId = null) {
     if (
         blockId === BLOCKS.AIR ||
@@ -128,11 +96,6 @@ export function getBlockDrop(blockId, toolId = null) {
     }
 }
 
-/**
- * Calculate mob loot drop upon death.
- * @param {string} mobType
- * @returns {Array<{ id: number, count: number }>}
- */
 export function getMobDrop(mobType) {
     const type = (mobType || '').toLowerCase().trim();
     switch (type) {
@@ -161,18 +124,8 @@ export function getMobDrop(mobType) {
     }
 }
 
-/**
- * DroppedItem Entity Class representing an item floating in the voxel world.
- */
 export class DroppedItem extends Entity {
-    /**
-     * @param {number|Object} itemIdOrOptions - Item/Block ID or Options object
-     * @param {number} [count=1] - Stack count
-     * @param {number} [x=0] - World X
-     * @param {number} [y=0] - World Y
-     * @param {number} [z=0] - World Z
-     * @param {Object} [options={}] - Extra parameters (velocity, pickupDelay, metadata, maxAge, etc.)
-     */
+    
     constructor(itemIdOrOptions, count = 1, x = 0, y = 0, z = 0, options = {}) {
         let itemId = itemIdOrOptions;
         let opts = options;
@@ -242,10 +195,6 @@ export class DroppedItem extends Entity {
         this.mesh.userData.item = this.item;
     }
 
-    /**
-     * Create the 3D BoxGeometry mesh or 2D Sprite visual.
-     * @returns {THREE.Group} Root visual group
-     */
     createVisualMesh() {
         const rootGroup = new THREE.Group();
         const innerGroup = new THREE.Group();
@@ -299,14 +248,6 @@ export class DroppedItem extends Entity {
         return rootGroup;
     }
 
-    /**
-     * Physics, magnet attraction, and bobbing/rotation update tick.
-     * @param {number} delta - Frame delta time in seconds
-     * @param {World|null} [world=null]
-     * @param {Player|null} [player=null]
-     * @param {InventoryManager|null} [inventory=null]
-     * @param {SoundManager|null} [audio=null]
-     */
     update(delta = 0.05, world = null, player = null, inventory = null, audio = null) {
         if (this.removed || this.isDead) return;
 
@@ -453,10 +394,6 @@ export class DroppedItem extends Entity {
         }
     }
 
-    /**
-     * Remove dropped item entity from scene and world.
-     * @param {World|null} [world=null]
-     */
     remove(world = null) {
         this.removed = true;
         this.isDead = true;
@@ -479,19 +416,6 @@ export class DroppedItem extends Entity {
     }
 }
 
-/**
- * Factory helper to spawn a DroppedItem in the world and scene.
- *
- * @param {number} itemId - Block or Item ID
- * @param {number} [count=1] - Number of items
- * @param {number} [x=0] - World X
- * @param {number} [y=0] - World Y
- * @param {number} [z=0] - World Z
- * @param {World|null} [world=null] - World instance
- * @param {THREE.Scene|null} [scene=null] - Scene instance
- * @param {Object} [options={}] - Additional spawn options
- * @returns {DroppedItem}
- */
 export function spawnDroppedItem(itemId, count = 1, x = 0, y = 0, z = 0, world = null, scene = null, options = {}) {
     const item = new DroppedItem(itemId, count, x, y, z, options);
 
@@ -508,19 +432,6 @@ export function spawnDroppedItem(itemId, count = 1, x = 0, y = 0, z = 0, world =
     return item;
 }
 
-/**
- * Calculate drop and spawn a dropped item when a block is destroyed.
- *
- * @param {number} blockId - Broken Block ID
- * @param {number|string|Object|null} [toolId=null] - Tool used to break block
- * @param {number} x - Block X coordinate
- * @param {number} y - Block Y coordinate
- * @param {number} z - Block Z coordinate
- * @param {World|null} [world=null] - World instance
- * @param {THREE.Scene|null} [scene=null] - Scene instance
- * @param {Object} [options={}] - Extra spawn options
- * @returns {DroppedItem|null}
- */
 export function spawnBlockDrop(blockId, toolId = null, x = 0, y = 0, z = 0, world = null, scene = null, options = {}) {
     const drop = getBlockDrop(blockId, toolId);
     if (!drop || !drop.id || drop.count <= 0) return null;

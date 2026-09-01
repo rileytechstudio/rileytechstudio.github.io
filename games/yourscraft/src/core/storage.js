@@ -1,10 +1,4 @@
-/**
- * IndexedDB Storage Layer for Minecraft 1.5 WebGL Engine
- * 
- * Provides high-performance asynchronous serialization, compression, and persistence
- * for modified chunks, player status (position, rotation, inventory, health),
- * and world metadata.
- */
+
 
 import { Chunk, CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_VOLUME } from './chunk.js';
 
@@ -20,14 +14,6 @@ export const STORES = Object.freeze({
 // 1. RUN-LENGTH ENCODING (RLE) COMPRESSION
 // ==========================================
 
-/**
- * Fast 16-bit Run-Length Encoding for voxel buffers.
- * Format: Each run consists of [Length (Uint16, 2 bytes), BlockID (Uint8, 1 byte)] = 3 bytes per run.
- * Reduces 65,536 bytes chunks (mostly air / stone / dirt runs) to 200 - 2,000 bytes.
- * 
- * @param {Uint8Array} blocks 
- * @returns {Uint8Array} Compressed binary buffer
- */
 export function encodeChunkRLE(blocks) {
     const len = blocks.length;
     if (len === 0) return new Uint8Array(0);
@@ -64,13 +50,6 @@ export function encodeChunkRLE(blocks) {
     return new Uint8Array(buffer);
 }
 
-/**
- * Decodes RLE compressed chunk buffer back to original Uint8Array.
- * 
- * @param {Uint8Array|ArrayBuffer} rleBuffer 
- * @param {number} [expectedLength=CHUNK_VOLUME] 
- * @returns {Uint8Array} Decompressed voxel array
- */
 export function decodeChunkRLE(rleBuffer, expectedLength = CHUNK_VOLUME) {
     if (!rleBuffer || rleBuffer.byteLength === 0) {
         return new Uint8Array(expectedLength);
@@ -109,10 +88,7 @@ export function decodeChunkRLE(rleBuffer, expectedLength = CHUNK_VOLUME) {
 // ==========================================
 
 export class WorldStorage {
-    /**
-     * @param {string} [dbName=DB_NAME]
-     * @param {number} [version=DB_VERSION]
-     */
+    
     constructor(dbName = DB_NAME, version = DB_VERSION) {
         this.dbName = dbName;
         this.version = version;
@@ -127,10 +103,6 @@ export class WorldStorage {
         };
     }
 
-    /**
-     * Initialize connection to IndexedDB
-     * @returns {Promise<IDBDatabase>}
-     */
     async init() {
         if (this.isReady && this.db) return this.db;
         if (this.initPromise) return this.initPromise;
@@ -189,12 +161,6 @@ export class WorldStorage {
         return this.initPromise;
     }
 
-    /**
-     * Helper to get chunk key string "x,z"
-     * @param {number} x 
-     * @param {number} z 
-     * @returns {string}
-     */
     getChunkKey(x, z) {
         return `${x},${z}`;
     }
@@ -203,13 +169,6 @@ export class WorldStorage {
     // 3. CHUNK PERSISTENCE METHODS
     // ==========================================
 
-    /**
-     * Save a single Chunk to storage.
-     * Automatically compresses voxel array with RLE before storing.
-     * 
-     * @param {Chunk} chunk 
-     * @returns {Promise<boolean>}
-     */
     async saveChunk(chunk) {
         await this.init();
         if (!chunk) return false;
@@ -249,13 +208,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Save multiple chunks in a single transaction.
-     * 
-     * @param {Chunk[]} chunks 
-     * @param {boolean} [dirtyOnly=true] Only save chunks where isDirty === true
-     * @returns {Promise<number>} Number of saved chunks
-     */
     async saveChunks(chunks, dirtyOnly = true) {
         await this.init();
         if (!Array.isArray(chunks) || chunks.length === 0) return 0;
@@ -313,15 +265,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Load a Chunk from storage.
-     * Decompresses RLE into a Chunk instance or populates the target chunk.
-     * 
-     * @param {number} x 
-     * @param {number} z 
-     * @param {Chunk} [targetChunk=null] Optional existing Chunk instance to populate
-     * @returns {Promise<Chunk|null>} Populated Chunk or null if not found
-     */
     async loadChunk(x, z, targetChunk = null) {
         await this.init();
         const key = this.getChunkKey(x, z);
@@ -355,13 +298,6 @@ export class WorldStorage {
         return chunk;
     }
 
-    /**
-     * Check if a chunk exists in storage.
-     * 
-     * @param {number} x 
-     * @param {number} z 
-     * @returns {Promise<boolean>}
-     */
     async hasChunk(x, z) {
         await this.init();
         const key = this.getChunkKey(x, z);
@@ -379,13 +315,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Delete a single chunk from storage.
-     * 
-     * @param {number} x 
-     * @param {number} z 
-     * @returns {Promise<boolean>}
-     */
     async deleteChunk(x, z) {
         await this.init();
         const key = this.getChunkKey(x, z);
@@ -403,10 +332,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Get all saved chunk keys in storage.
-     * @returns {Promise<string[]>} Array of "x,z" keys
-     */
     async getAllChunkKeys() {
         await this.init();
 
@@ -423,10 +348,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Load all saved chunks from storage into a Map keyed by "x,z".
-     * @returns {Promise<Map<string, Chunk>>}
-     */
     async loadAllChunks() {
         await this.init();
         const chunkMap = new Map();
@@ -467,13 +388,6 @@ export class WorldStorage {
     // 4. PLAYER STATE PERSISTENCE
     // ==========================================
 
-    /**
-     * Save Player state (position, rotation, health, hunger, inventory, hotbar selection)
-     * 
-     * @param {Object} playerData 
-     * @param {string} [playerId='main_player']
-     * @returns {Promise<boolean>}
-     */
     async savePlayer(playerData, playerId = 'main_player') {
         await this.init();
         if (!playerData) return false;
@@ -515,12 +429,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Load Player state
-     * 
-     * @param {string} [playerId='main_player']
-     * @returns {Promise<Object|null>}
-     */
     async loadPlayer(playerId = 'main_player') {
         await this.init();
 
@@ -541,13 +449,6 @@ export class WorldStorage {
     // 5. WORLD METADATA PERSISTENCE
     // ==========================================
 
-    /**
-     * Save World Metadata (seed, world time, day count, custom rules)
-     * 
-     * @param {Object} meta 
-     * @param {string} [metaId='meta']
-     * @returns {Promise<boolean>}
-     */
     async saveWorldMeta(meta, metaId = 'meta') {
         await this.init();
         if (!meta) return false;
@@ -580,12 +481,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Load World Metadata
-     * 
-     * @param {string} [metaId='meta']
-     * @returns {Promise<Object|null>}
-     */
     async loadWorldMeta(metaId = 'meta') {
         await this.init();
 
@@ -606,10 +501,6 @@ export class WorldStorage {
     // 6. CLEAR / EXPORT / IMPORT SAVE FILE
     // ==========================================
 
-    /**
-     * Clear all records in all object stores (world reset)
-     * @returns {Promise<boolean>}
-     */
     async clearWorld() {
         await this.init();
 
@@ -635,10 +526,6 @@ export class WorldStorage {
         });
     }
 
-    /**
-     * Export entire world as a single portable JSON string
-     * @returns {Promise<string>}
-     */
     async exportWorldJSON() {
         await this.init();
 
@@ -679,11 +566,6 @@ export class WorldStorage {
         return JSON.stringify(exportData, null, 2);
     }
 
-    /**
-     * Import entire world from exported JSON string
-     * @param {string} jsonString 
-     * @returns {Promise<boolean>}
-     */
     async importWorldJSON(jsonString) {
         await this.init();
         try {
@@ -723,15 +605,6 @@ export class WorldStorage {
     // 7. AUTOSAVE SYSTEM
     // ==========================================
 
-    /**
-     * Start background autosave loop
-     * 
-     * @param {Object} hooks
-     * @param {() => Chunk[]} hooks.getChunks - Function returning list of active chunks
-     * @param {() => Object} [hooks.getPlayer] - Function returning player state
-     * @param {() => Object} [hooks.getWorldMeta] - Function returning world metadata
-     * @param {number} [intervalMs=15000] - Interval between saves (default 15s)
-     */
     startAutoSave(hooks, intervalMs = 15000) {
         this.stopAutoSave();
 
@@ -768,9 +641,6 @@ export class WorldStorage {
         console.log(`[WorldStorage] Autosave active (interval: ${intervalMs / 1000}s).`);
     }
 
-    /**
-     * Stop background autosave loop
-     */
     stopAutoSave() {
         if (this.autoSaveTimer) {
             clearInterval(this.autoSaveTimer);

@@ -1,34 +1,6 @@
-/**
- * AI and Pathfinding System for Minecraft 1.5 WebGL Engine
- * Features:
- * - 3D Voxel A* Pathfinding with jump heights (1 block max up)
- * - Safe falling & drop height analysis (avoids lethal falls > 3 blocks unless water)
- * - Width and height clearance checking for different mob dimensions (Pig, Cow, Zombie, Skeleton, Creeper, Spider, Enderman, Ghast, ZombiePigman, WitherSkeleton)
- * - Liquid / Hazard avoidance (Lava, Fire, Cacti)
- * - Priority Queue (Binary Min-Heap) for O(log N) node selection
- * - Path Navigator with dynamic jump triggers and stuck detection
- * - Modular AI Goal System:
- *   - WanderGoal (random wandering)
- *   - ChaseTargetGoal (pathfinding pursuit)
- *   - MeleeAttackGoal (close combat)
- *   - FleeGoal (panic sprint away from damage)
- *   - RangedAttackGoal (Skeleton bow strafe & aim)
- *   - CreeperExplodeGoal (hiss, fuse, explode)
- *   - SpiderClimbGoal (wall climbing mechanics)
- *   - SpiderTargetGoal (daylight neutrality vs night hostility)
- *   - SpiderLeapGoal (pouncing attack leap)
- *   - EndermanStareGoal (crosshair eye-contact detection & aggro)
- *   - EndermanTeleportGoal (water avoidance, projectile evasion, combat ambushes)
- *   - GhastFlyGoal (3D floating / hovering flight dynamics)
- *   - GhastAttackGoal (long-range charging & fireball projectile barrage)
- *   - ZombiePigmanAngerGoal (neutral until attacked, horde pack aggression)
- */
+
 
 import { BLOCKS } from '../core/chunk.js';
-
-/* ========================================================================= */
-/* BLOCK CLASSIFICATION & COLLISION HELPERS                                  */
-/* ========================================================================= */
 
 // Set of all non-colliding, passable blocks (entities can walk through)
 const PASSABLE_BLOCKS = new Set([
@@ -62,11 +34,6 @@ const LIQUID_BLOCKS = new Set([
     BLOCKS.LAVA_FLOWING
 ]);
 
-/**
- * Check if a block ID is solid terrain
- * @param {number} blockId 
- * @returns {boolean}
- */
 export function isBlockSolid(blockId) {
     if (blockId === undefined || blockId === null || blockId === BLOCKS.AIR) return false;
     if (PASSABLE_BLOCKS.has(blockId)) return false;
@@ -74,43 +41,19 @@ export function isBlockSolid(blockId) {
     return true;
 }
 
-/**
- * Check if a block ID is passable (can occupy without colliding)
- * @param {number} blockId 
- * @returns {boolean}
- */
 export function isBlockPassable(blockId) {
     if (blockId === undefined || blockId === null || blockId === BLOCKS.AIR) return true;
     return PASSABLE_BLOCKS.has(blockId);
 }
 
-/**
- * Check if a block is liquid
- * @param {number} blockId 
- * @returns {boolean}
- */
 export function isBlockLiquid(blockId) {
     return LIQUID_BLOCKS.has(blockId);
 }
 
-/**
- * Check if a block is hazardous (lava, fire, cactus)
- * @param {number} blockId 
- * @returns {boolean}
- */
 export function isBlockHazardous(blockId) {
     return HAZARD_BLOCKS.has(blockId);
 }
 
-/**
- * Helper to safely query block from different world representations
- * (supports Chunk, World instance, or custom accessor function)
- * @param {Object|Function} world 
- * @param {number} x 
- * @param {number} y 
- * @param {number} z 
- * @returns {number} Block ID
- */
 export function getBlockAt(world, x, y, z) {
     if (!world) return BLOCKS.AIR;
     if (y < 0 || y >= 256) return BLOCKS.AIR;
@@ -123,16 +66,6 @@ export function getBlockAt(world, x, y, z) {
     return BLOCKS.AIR;
 }
 
-/**
- * Check vertical and horizontal clearance for a mob at block position (x, y, z)
- * @param {Object} world 
- * @param {number} x Block X
- * @param {number} y Block Y (feet position)
- * @param {number} z Block Z
- * @param {number} mobWidth Width in blocks
- * @param {number} mobHeight Height in blocks
- * @returns {boolean} True if mob can stand at (x, y, z)
- */
 export function checkClearance(world, x, y, z, mobWidth = 0.6, mobHeight = 1.8) {
     const requiredHeight = Math.max(1, Math.ceil(mobHeight));
 
@@ -178,29 +111,16 @@ export function checkClearance(world, x, y, z, mobWidth = 0.6, mobHeight = 1.8) 
     return true;
 }
 
-/* ========================================================================= */
-/* BINARY MIN-HEAP PRIORITY QUEUE                                            */
-/* ========================================================================= */
-
-/**
- * High-performance Binary Min-Heap Priority Queue for A*
- */
 export class PriorityQueue {
     constructor() {
         this.heap = [];
     }
 
-    /**
-     * @param {PathNode} node 
-     */
     push(node) {
         this.heap.push(node);
         this._bubbleUp(this.heap.length - 1);
     }
 
-    /**
-     * @returns {PathNode|null}
-     */
     pop() {
         if (this.heap.length === 0) return null;
         const top = this.heap[0];
@@ -212,23 +132,14 @@ export class PriorityQueue {
         return top;
     }
 
-    /**
-     * @returns {PathNode|null}
-     */
     peek() {
         return this.heap.length > 0 ? this.heap[0] : null;
     }
 
-    /**
-     * @returns {boolean}
-     */
     isEmpty() {
         return this.heap.length === 0;
     }
 
-    /**
-     * @returns {number}
-     */
     size() {
         return this.heap.length;
     }
@@ -282,22 +193,8 @@ export class PriorityQueue {
     }
 }
 
-/* ========================================================================= */
-/* A* PATHFINDING ON 3D VOXEL GRID                                           */
-/* ========================================================================= */
-
-/**
- * Search Node for A* Graph
- */
 export class PathNode {
-    /**
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
-     * @param {number} [g=0] Cost from start
-     * @param {number} [h=0] Estimated cost to goal
-     * @param {PathNode|null} [parent=null] 
-     */
+    
     constructor(x, y, z, g = 0, h = 0, parent = null) {
         this.x = x;
         this.y = y;
@@ -310,13 +207,8 @@ export class PathNode {
     }
 }
 
-/**
- * 3D Voxel A* Pathfinder
- */
 export class AStarPathfinder {
-    /**
-     * @param {Object} [options={}]
-     */
+    
     constructor(options = {}) {
         this.maxNodes = options.maxNodes || 1200; // Max node expansions
         this.maxJumpHeight = options.maxJumpHeight || 1; // 1 block max jump in Minecraft
@@ -325,16 +217,6 @@ export class AStarPathfinder {
         this.heuristicWeight = options.heuristicWeight || 1.05; // Slightly greedy for speed
     }
 
-    /**
-     * Compute 3D distance heuristic (Euclidean with vertical penalty)
-     * @param {number} x1 
-     * @param {number} y1 
-     * @param {number} z1 
-     * @param {number} x2 
-     * @param {number} y2 
-     * @param {number} z2 
-     * @returns {number}
-     */
     heuristic(x1, y1, z1, x2, y2, z2) {
         const dx = Math.abs(x1 - x2);
         const dy = Math.abs(y1 - y2);
@@ -344,18 +226,6 @@ export class AStarPathfinder {
         return Math.hypot(dx, dy * 1.2, dz) * this.heuristicWeight;
     }
 
-    /**
-     * Find path from start position to goal position
-     * @param {Object} world World / Chunk instance with getBlock(x,y,z)
-     * @param {{x: number, y: number, z: number}} start Start position (feet)
-     * @param {{x: number, y: number, z: number}} goal Target position (feet)
-     * @param {Object} [mobConfig={}] Mob dimensions & parameters
-     * @param {number} [mobConfig.width=0.6]
-     * @param {number} [mobConfig.height=1.8]
-     * @param {number} [mobConfig.maxDropHeight=3]
-     * @param {number} [mobConfig.maxJumpHeight=1]
-     * @returns {Array<{x: number, y: number, z: number}>|null} Array of waypoint coordinates
-     */
     findPath(world, start, goal, mobConfig = {}) {
         const mobWidth = mobConfig.width || 0.6;
         const mobHeight = mobConfig.height || 1.8;
@@ -509,10 +379,6 @@ export class AStarPathfinder {
         return null;
     }
 
-    /**
-     * Scan candidate heights in neighbor column (nx, nz) for flat walk, 1-block jump, or safe drop
-     * @private
-     */
     _getValidSteps(world, curX, curY, curZ, nx, nz, mobWidth, mobHeight, maxJump, maxDrop) {
         const steps = [];
         const requiredHeight = Math.max(1, Math.ceil(mobHeight));
@@ -570,10 +436,6 @@ export class AStarPathfinder {
         return steps;
     }
 
-    /**
-     * Snap floating starting Y to nearest solid ground beneath
-     * @private
-     */
     _snapToGround(world, x, y, z, mobWidth, mobHeight) {
         for (let dy = 0; dy <= 4; dy++) {
             const checkY = y - dy;
@@ -585,10 +447,6 @@ export class AStarPathfinder {
         return y;
     }
 
-    /**
-     * Search 1-block radius for a valid nearby standable position
-     * @private
-     */
     _findNearbyStandable(world, x, y, z, mobWidth, mobHeight) {
         for (let dx = -1; dx <= 1; dx++) {
             for (let dz = -1; dz <= 1; dz++) {
@@ -602,10 +460,6 @@ export class AStarPathfinder {
         return null;
     }
 
-    /**
-     * Reconstruct path from end node to start, inserting center coordinates
-     * @private
-     */
     _reconstructPath(endNode, finalGoal) {
         const waypoints = [];
         let curr = endNode;
@@ -636,10 +490,6 @@ export class AStarPathfinder {
         return smoothed;
     }
 
-    /**
-     * Smooth path by skipping intermediate redundant waypoints on flat straight lines
-     * @private
-     */
     _smoothPath(waypoints) {
         if (waypoints.length <= 2) return waypoints;
 
@@ -688,18 +538,8 @@ export class AStarPathfinder {
     }
 }
 
-/* ========================================================================= */
-/* PATH NAVIGATOR & MOVEMENT CONTROLLER                                      */
-/* ========================================================================= */
-
-/**
- * PathNavigator drives an entity smoothly along an A* path
- */
 export class PathNavigator {
-    /**
-     * @param {Object} entity LivingEntity or Mob
-     * @param {AStarPathfinder} [pathfinder=null] 
-     */
+    
     constructor(entity, pathfinder = null) {
         this.entity = entity;
         this.pathfinder = pathfinder || new AStarPathfinder();
@@ -716,12 +556,6 @@ export class PathNavigator {
         this.lastPos = { x: 0, y: 0, z: 0 };
     }
 
-    /**
-     * Request path to target destination
-     * @param {Object} world 
-     * @param {{x: number, y: number, z: number}} targetPos 
-     * @returns {boolean} True if path found
-     */
     moveTo(world, targetPos) {
         this.targetPos = targetPos;
         const mobConfig = {
@@ -745,10 +579,6 @@ export class PathNavigator {
         return false;
     }
 
-    /**
-     * Set explicit waypoint list
-     * @param {Array<{x: number, y: number, z: number}>} path 
-     */
     setPath(path) {
         this.path = path;
         this.waypointIndex = 0;
@@ -756,35 +586,19 @@ export class PathNavigator {
         this.stuckTimer = 0;
     }
 
-    /**
-     * Clear active path
-     */
     clearPath() {
         this.path = null;
         this.waypointIndex = 0;
     }
 
-    /**
-     * Check if navigator has active path
-     * @returns {boolean}
-     */
     hasPath() {
         return this.path !== null && this.waypointIndex < this.path.length;
     }
 
-    /**
-     * Check if navigation finished
-     * @returns {boolean}
-     */
     isFinished() {
         return !this.path || this.waypointIndex >= this.path.length;
     }
 
-    /**
-     * Update navigation physics and entity steering
-     * @param {number} dt 
-     * @param {Object} world 
-     */
     update(dt = 0.05, world = null) {
         if (!this.hasPath()) return;
 
@@ -847,17 +661,8 @@ export class PathNavigator {
     }
 }
 
-/* ========================================================================= */
-/* AI BEHAVIOR GOALS                                                         */
-/* ========================================================================= */
-
-/**
- * Base AI Goal
- */
 export class Goal {
-    /**
-     * @param {Mob} mob 
-     */
+    
     constructor(mob) {
         this.mob = mob;
     }
@@ -869,15 +674,8 @@ export class Goal {
     tick(dt, world) {}
 }
 
-/**
- * WanderGoal: Roam around randomly within radius
- */
 export class WanderGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [wanderRadius=8] 
-     * @param {number} [interval=5] 
-     */
+    
     constructor(mob, wanderRadius = 8, interval = 5) {
         super(mob);
         this.wanderRadius = wanderRadius;
@@ -914,14 +712,8 @@ export class WanderGoal extends Goal {
     }
 }
 
-/**
- * ChaseTargetGoal: Track and pathfind towards target entity
- */
 export class ChaseTargetGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [repathInterval=0.6] 
-     */
+    
     constructor(mob, repathInterval = 0.6) {
         super(mob);
         this.repathInterval = repathInterval;
@@ -954,13 +746,8 @@ export class ChaseTargetGoal extends Goal {
     }
 }
 
-/**
- * MeleeAttackGoal: Deal damage when close to target
- */
 export class MeleeAttackGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     */
+    
     constructor(mob) {
         super(mob);
     }
@@ -982,13 +769,8 @@ export class MeleeAttackGoal extends Goal {
     }
 }
 
-/**
- * FleeGoal: Panic and sprint away from danger source
- */
 export class FleeGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     */
+    
     constructor(mob) {
         super(mob);
         this.repathTimer = 0;
@@ -1020,13 +802,8 @@ export class FleeGoal extends Goal {
     }
 }
 
-/**
- * RangedAttackGoal (Skeleton): Maintain distance, strafe, and shoot arrows
- */
 export class RangedAttackGoal extends Goal {
-    /**
-     * @param {Skeleton} mob 
-     */
+    
     constructor(mob) {
         super(mob);
         this.repathTimer = 0;
@@ -1084,15 +861,8 @@ export class RangedAttackGoal extends Goal {
     }
 }
 
-/**
- * CreeperExplodeGoal: Approach target, hiss fuse when close, detonate
- */
 export class CreeperExplodeGoal extends Goal {
-    /**
-     * @param {Creeper} mob 
-     * @param {number} [fuseDistance=3.0] 
-     * @param {number} [defuseDistance=5.0] 
-     */
+    
     constructor(mob, fuseDistance = 3.0, defuseDistance = 5.0) {
         super(mob);
         this.fuseDistance = fuseDistance;
@@ -1125,14 +895,8 @@ export class CreeperExplodeGoal extends Goal {
     }
 }
 
-/**
- * SpiderClimbGoal: Allows Spiders to scale vertical walls when colliding with blocks
- */
 export class SpiderClimbGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [climbSpeed=3.5] 
-     */
+    
     constructor(mob, climbSpeed = 3.5) {
         super(mob);
         this.climbSpeed = climbSpeed;
@@ -1167,13 +931,8 @@ export class SpiderClimbGoal extends Goal {
     }
 }
 
-/**
- * SpiderTargetGoal: Spiders are hostile in darkness / at night, but neutral in bright daylight unless attacked
- */
 export class SpiderTargetGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     */
+    
     constructor(mob) {
         super(mob);
         this.checkTimer = 0;
@@ -1225,14 +984,8 @@ export class SpiderTargetGoal extends Goal {
     }
 }
 
-/**
- * SpiderLeapGoal: Pounces / leaps forward at target when in range (2-6 blocks)
- */
 export class SpiderLeapGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [leapInterval=4.0] 
-     */
+    
     constructor(mob, leapInterval = 4.0) {
         super(mob);
         this.leapInterval = leapInterval;
@@ -1265,14 +1018,8 @@ export class SpiderLeapGoal extends Goal {
     }
 }
 
-/**
- * EndermanStareGoal: Enderman becomes aggressive when a player/entity stares directly into its eyes
- */
 export class EndermanStareGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [stareDistance=64.0] 
-     */
+    
     constructor(mob, stareDistance = 64.0) {
         super(mob);
         this.stareDistance = stareDistance;
@@ -1347,14 +1094,8 @@ export class EndermanStareGoal extends Goal {
     }
 }
 
-/**
- * EndermanTeleportGoal: Teleports away on water/rain contact, projectile evasion, or combat ambushes
- */
 export class EndermanTeleportGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [teleportInterval=7.0] 
-     */
+    
     constructor(mob, teleportInterval = 7.0) {
         super(mob);
         this.teleportInterval = teleportInterval;
@@ -1395,15 +1136,8 @@ export class EndermanTeleportGoal extends Goal {
     }
 }
 
-/**
- * GhastFlyGoal: 3D hovering and air navigation for Ghasts (Nether aerial mob)
- */
 export class GhastFlyGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [hoverAltitude=16.0] 
-     * @param {number} [wanderRadius=24.0] 
-     */
+    
     constructor(mob, hoverAltitude = 16.0, wanderRadius = 24.0) {
         super(mob);
         this.hoverAltitude = hoverAltitude;
@@ -1469,14 +1203,8 @@ export class GhastFlyGoal extends Goal {
     }
 }
 
-/**
- * GhastAttackGoal: Targets entities at long range, charges for 1s, and shoots explosive fireballs
- */
 export class GhastAttackGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     * @param {number} [attackRange=64.0] 
-     */
+    
     constructor(mob, attackRange = 64.0) {
         super(mob);
         this.attackRange = attackRange;
@@ -1555,13 +1283,8 @@ export class GhastAttackGoal extends Goal {
     }
 }
 
-/**
- * ZombiePigmanAngerGoal: Manages neutrality until provoked, then enrages and pursues target
- */
 export class ZombiePigmanAngerGoal extends Goal {
-    /**
-     * @param {Mob} mob 
-     */
+    
     constructor(mob) {
         super(mob);
     }
@@ -1596,9 +1319,6 @@ export class ZombiePigmanAngerGoal extends Goal {
     }
 }
 
-/**
- * NearestAttackableTargetGoal: Hostile mobs passively scan for targets within follow range
- */
 export class NearestAttackableTargetGoal extends Goal {
     constructor(mob, targetType = 'player', searchInterval = 1.0) {
         super(mob);

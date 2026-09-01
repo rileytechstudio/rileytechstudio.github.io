@@ -1,16 +1,4 @@
-/**
- * Enchanting Table UI & Enchantment System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - Minecraft 1.5 authentic Enchanting Table GUI with Standard Galactic Alphabet runes
- * - 3-tier dynamic enchantment offers based on item type and player level
- * - Supported items: Swords, Tools (Pickaxe, Axe, Shovel), Armor, Bows, Books (-> Enchanted Books)
- * - Detailed Minecraft 1.5 Enchantment registry (Sharpness, Protection, Efficiency, Unbreaking, Fortune, Silk Touch, Flame, Power, etc.)
- * - XP level spending & level deduction
- * - Enchantment visual glow / glint metadata
- * - Full drag-and-drop, shift-click transfer, and player inventory integration
- * - Return items to inventory on close
- */
+
 
 import { BLOCKS } from '../core/chunk.js';
 import { getItemDef, createItemStack, ITEM_TYPES } from './inventory.js';
@@ -356,14 +344,7 @@ const ENCHANTING_CSS = `
 // ==========================================
 
 export class EnchantingUI {
-    /**
-     * @param {Object} [options]
-     * @param {InventoryManager} [options.inventory]
-     * @param {HUD} [options.hud]
-     * @param {SoundManager} [options.audio]
-     * @param {ParticleSystem} [options.particles]
-     * @param {World} [options.world]
-     */
+    
     constructor(options = {}) {
         this.inventory = options.inventory || null;
         this.hud = options.hud || (options.inventory ? options.inventory.hud : null);

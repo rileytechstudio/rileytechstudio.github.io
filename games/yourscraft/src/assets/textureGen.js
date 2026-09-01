@@ -1,22 +1,9 @@
 import * as THREE from 'three';
 
-/**
- * Procedural Pixel-Art Texture Generator for Minecraft 1.5 WebGL
- * 
- * Generates 16x16 retro pixel-art textures for blocks using HTML5 Canvas 2D.
- * Supports exporting as HTML5 Canvas, base64 Data URIs, and Three.js CanvasTextures
- * with crisp nearest-neighbor filtering (THREE.NearestFilter).
- */
-
 // ==========================================
 // 1. PSEUDO-RANDOM NUMBER GENERATOR (PRNG)
 // ==========================================
 
-/**
- * Mulberry32 32-bit PRNG for deterministic procedural textures.
- * @param {number} seed 
- * @returns {() => number} Returns float in range [0, 1)
- */
 export function createRNG(seed = 12345678) {
     let s = (seed >>> 0) || 1;
     return function () {
@@ -31,12 +18,6 @@ export function createRNG(seed = 12345678) {
 // 2. CANVAS & COLOR UTILITIES
 // ==========================================
 
-/**
- * Create a new 16x16 offscreen HTML5 Canvas.
- * @param {number} width 
- * @param {number} height 
- * @returns {{canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D}}
- */
 export function createPixelCanvas(width = 16, height = 16) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -46,25 +27,16 @@ export function createPixelCanvas(width = 16, height = 16) {
     return { canvas, ctx };
 }
 
-/**
- * Clamp a number between min and max.
- */
 function clamp(val, min = 0, max = 255) {
     return Math.max(min, Math.min(max, val));
 }
 
-/**
- * Convert RGB array to CSS string.
- */
 function rgb(r, g, b, a = 1.0) {
     return a < 1.0 
         ? `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})` 
         : `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 }
 
-/**
- * Apply random color noise / jitter to base RGB values.
- */
 function jitter(rgbArr, amount, rng = Math.random) {
     const delta = (rng() * 2 - 1) * amount;
     return [
@@ -74,9 +46,6 @@ function jitter(rgbArr, amount, rng = Math.random) {
     ];
 }
 
-/**
- * Pick a random color from a weighted palette list.
- */
 function pickWeighted(palette, rng = Math.random) {
     const rand = rng();
     let accumulated = 0;
@@ -89,9 +58,6 @@ function pickWeighted(palette, rng = Math.random) {
     return palette[palette.length - 1].color;
 }
 
-/**
- * Draw a single pixel (1x1 unit) onto the 2D canvas context.
- */
 function setPixel(ctx, x, y, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, 1, 1);
@@ -101,9 +67,6 @@ function setPixel(ctx, x, y, color) {
 // 3. PROCEDURAL TEXTURE GENERATORS
 // ==========================================
 
-/**
- * Procedural 16x16 Dirt Texture
- */
 export function generateDirtCanvas(seed = 42) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -128,9 +91,6 @@ export function generateDirtCanvas(seed = 42) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Grass Top Texture
- */
 export function generateGrassTopCanvas(seed = 101) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -154,9 +114,6 @@ export function generateGrassTopCanvas(seed = 101) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Grass Side Texture
- */
 export function generateGrassSideCanvas(seed = 202) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -193,9 +150,6 @@ export function generateGrassSideCanvas(seed = 202) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Stone Texture
- */
 export function generateStoneCanvas(seed = 303) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -219,9 +173,6 @@ export function generateStoneCanvas(seed = 303) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Cobblestone Texture
- */
 export function generateCobblestoneCanvas(seed = 404) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -256,9 +207,6 @@ export function generateCobblestoneCanvas(seed = 404) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Oak Wood Planks Texture
- */
 export function generatePlanksCanvas(seed = 505) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -294,9 +242,6 @@ export function generatePlanksCanvas(seed = 505) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Oak Log (Side Bark) Texture
- */
 export function generateLogSideCanvas(seed = 606) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -319,9 +264,6 @@ export function generateLogSideCanvas(seed = 606) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Oak Log (Top Rings) Texture
- */
 export function generateLogTopCanvas(seed = 707) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -354,9 +296,6 @@ export function generateLogTopCanvas(seed = 707) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Sand Texture
- */
 export function generateSandCanvas(seed = 808) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -379,9 +318,6 @@ export function generateSandCanvas(seed = 808) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Bedrock Texture
- */
 export function generateBedrockCanvas(seed = 909) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -404,9 +340,6 @@ export function generateBedrockCanvas(seed = 909) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Glass Texture
- */
 export function generateGlassCanvas() {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     ctx.clearRect(0, 0, 16, 16);
@@ -434,9 +367,6 @@ export function generateGlassCanvas() {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Leaves Texture
- */
 export function generateLeavesCanvas(seed = 1111) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -462,9 +392,6 @@ export function generateLeavesCanvas(seed = 1111) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Brick Texture
- */
 export function generateBrickCanvas(seed = 1212) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -495,9 +422,6 @@ export function generateBrickCanvas(seed = 1212) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Ore Texture
- */
 export function generateOreCanvas(oreType = "redstone", seed = 1313) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -535,9 +459,6 @@ export function generateOreCanvas(oreType = "redstone", seed = 1313) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Animated/Liquid Water Texture
- */
 export function generateWaterCanvas(seed = 1414) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -559,9 +480,6 @@ export function generateWaterCanvas(seed = 1414) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Animated/Liquid Lava Texture
- */
 export function generateLavaCanvas(seed = 1515) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -584,9 +502,6 @@ export function generateLavaCanvas(seed = 1515) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Gravel Texture
- */
 export function generateGravelCanvas(seed = 1616) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -607,9 +522,6 @@ export function generateGravelCanvas(seed = 1616) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Sandstone Side Texture
- */
 export function generateSandstoneSideCanvas(seed = 1717) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -627,9 +539,6 @@ export function generateSandstoneSideCanvas(seed = 1717) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Sandstone Top Texture
- */
 export function generateSandstoneTopCanvas(seed = 1718) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -648,16 +557,10 @@ export function generateSandstoneTopCanvas(seed = 1718) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Sandstone Bottom Texture
- */
 export function generateSandstoneBottomCanvas(seed = 1719) {
     return generateSandstoneTopCanvas(seed + 10);
 }
 
-/**
- * Procedural 16x16 Snow Texture
- */
 export function generateSnowCanvas(seed = 1818) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -677,9 +580,6 @@ export function generateSnowCanvas(seed = 1818) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Ice Texture
- */
 export function generateIceCanvas(seed = 1919) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -700,9 +600,6 @@ export function generateIceCanvas(seed = 1919) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Cactus Side Texture
- */
 export function generateCactusSideCanvas(seed = 2020) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -725,9 +622,6 @@ export function generateCactusSideCanvas(seed = 2020) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Cactus Top Texture
- */
 export function generateCactusTopCanvas(seed = 2021) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -744,9 +638,6 @@ export function generateCactusTopCanvas(seed = 2021) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Clay Texture
- */
 export function generateClayCanvas(seed = 2121) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -765,9 +656,6 @@ export function generateClayCanvas(seed = 2121) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Obsidian Texture
- */
 export function generateObsidianCanvas(seed = 2222) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -787,9 +675,6 @@ export function generateObsidianCanvas(seed = 2222) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Sponge Texture
- */
 export function generateSpongeCanvas(seed = 2323) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -809,9 +694,6 @@ export function generateSpongeCanvas(seed = 2323) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 TNT Side Texture
- */
 export function generateTNTSideCanvas(seed = 2424) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const red = "#c82518";
@@ -831,9 +713,6 @@ export function generateTNTSideCanvas(seed = 2424) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 TNT Top Texture
- */
 export function generateTNTTopCanvas(seed = 2425) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -851,9 +730,6 @@ export function generateTNTTopCanvas(seed = 2425) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Bookshelf Texture
- */
 export function generateBookshelfCanvas(seed = 2525) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -879,9 +755,6 @@ export function generateBookshelfCanvas(seed = 2525) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Crafting Table Top
- */
 export function generateCraftingTableTopCanvas(seed = 2626) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const planks = generatePlanksCanvas(seed);
@@ -897,9 +770,6 @@ export function generateCraftingTableTopCanvas(seed = 2626) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Crafting Table Side
- */
 export function generateCraftingTableSideCanvas(seed = 2627) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const planks = generatePlanksCanvas(seed);
@@ -911,9 +781,6 @@ export function generateCraftingTableSideCanvas(seed = 2627) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Furnace Front
- */
 export function generateFurnaceFrontCanvas(seed = 2727) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const stone = generateCobblestoneCanvas(seed);
@@ -925,9 +792,6 @@ export function generateFurnaceFrontCanvas(seed = 2727) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Pumpkin Side
- */
 export function generatePumpkinSideCanvas(seed = 2828) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -944,9 +808,6 @@ export function generatePumpkinSideCanvas(seed = 2828) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Pumpkin Top
- */
 export function generatePumpkinTopCanvas(seed = 2829) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -962,9 +823,6 @@ export function generatePumpkinTopCanvas(seed = 2829) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Pumpkin Face
- */
 export function generatePumpkinFaceCanvas(seed = 2830) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const pumpkin = generatePumpkinSideCanvas(seed);
@@ -979,9 +837,6 @@ export function generatePumpkinFaceCanvas(seed = 2830) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Netherrack
- */
 export function generateNetherrackCanvas(seed = 2929) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1001,9 +856,6 @@ export function generateNetherrackCanvas(seed = 2929) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Soul Sand
- */
 export function generateSoulSandCanvas(seed = 3030) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1022,9 +874,6 @@ export function generateSoulSandCanvas(seed = 3030) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Glowstone
- */
 export function generateGlowstoneCanvas(seed = 3131) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1044,9 +893,6 @@ export function generateGlowstoneCanvas(seed = 3131) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Nether Quartz Ore Texture
- */
 export function generateQuartzOreCanvas(seed = 2930) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1079,9 +925,6 @@ export function generateQuartzOreCanvas(seed = 2930) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Block of Quartz Texture
- */
 export function generateQuartzBlockCanvas(seed = 3535) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1102,9 +945,6 @@ export function generateQuartzBlockCanvas(seed = 3535) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Quartz Pillar Side Texture
- */
 export function generateQuartzPillarSideCanvas(seed = 3536) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1134,9 +974,6 @@ export function generateQuartzPillarSideCanvas(seed = 3536) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Quartz Pillar Top Texture
- */
 export function generateQuartzPillarTopCanvas(seed = 3537) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1163,9 +1000,6 @@ export function generateQuartzPillarTopCanvas(seed = 3537) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Chiseled Quartz Block Texture
- */
 export function generateQuartzChiseledCanvas(seed = 3538) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1201,9 +1035,6 @@ export function generateQuartzChiseledCanvas(seed = 3538) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Mossy Cobblestone
- */
 export function generateMossyCobblestoneCanvas(seed = 3232) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1227,9 +1058,6 @@ export function generateMossyCobblestoneCanvas(seed = 3232) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Solid Metal / Mineral Block
- */
 export function generateSolidMineralBlockCanvas(type = "gold", seed = 3333) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1254,9 +1082,6 @@ export function generateSolidMineralBlockCanvas(type = "gold", seed = 3333) {
     return canvas;
 }
 
-/**
- * Procedural 16x16 Wool Texture
- */
 export function generateWoolCanvas(seed = 3434) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const rng = createRNG(seed);
@@ -1274,7 +1099,6 @@ export function generateWoolCanvas(seed = 3434) {
     }
     return canvas;
 }
-
 
 export function generateDispenserFrontCanvas(seed = 4001) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
@@ -1362,7 +1186,6 @@ export function generateBedTopCanvas(seed = 4008) {
     return canvas;
 }
 
-
 export function generateWoodenDoorCanvas(seed = 4010) {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     const wood = generatePlanksCanvas(seed);
@@ -1400,12 +1223,6 @@ export function generateBedSideCanvas(seed = 4009) {
 // 4. THREE.JS TEXTURE INTEGRATION
 // ==========================================
 
-/**
- * Wraps an HTML5 Canvas into a Three.js CanvasTexture with pixel-art settings.
- * Applies NearestFilter so textures remain sharp voxels without linear blur.
- * @param {HTMLCanvasElement} canvas 
- * @returns {THREE.CanvasTexture}
- */
 export function createThreeCanvasTexture(canvas) {
     const texture = new THREE.CanvasTexture(canvas);
     texture.magFilter = THREE.NearestFilter;
@@ -1417,14 +1234,6 @@ export function createThreeCanvasTexture(canvas) {
     texture.needsUpdate = true;
     return texture;
 }
-
-/**
- * Map of texture generator functions by block name.
- */
-
-/**
- * Procedural 16x16 Destroy Stage Canvas (0-9)
- */
 
 export function generateFlowerCanvas(type = "dandelion", seed = 9999) {
     const { canvas, ctx } = createPixelCanvas();
@@ -1704,12 +1513,6 @@ export const GENERATORS = {
     iron_door: generateIronDoorCanvas
 };
 
-/**
- * Generate an HTML5 Canvas for a specific texture name.
- * @param {string} name 
- * @param {number} [seed] 
- * @returns {HTMLCanvasElement}
- */
 export function getTextureCanvas(name, seed) {
     const gen = GENERATORS[name.toLowerCase()];
     if (!gen) {
@@ -1719,33 +1522,16 @@ export function getTextureCanvas(name, seed) {
     return gen(seed);
 }
 
-/**
- * Export a texture as a base64 Data URI (image/png).
- * @param {string} name 
- * @param {number} [seed] 
- * @returns {string} base64 Data URI
- */
 export function getTextureDataURI(name, seed) {
     const canvas = getTextureCanvas(name, seed);
     return canvas.toDataURL("image/png");
 }
 
-/**
- * Get a Three.js CanvasTexture for a block type.
- * @param {string} name 
- * @param {number} [seed] 
- * @returns {THREE.CanvasTexture}
- */
 export function getCanvasTexture(name, seed) {
     const canvas = getTextureCanvas(name, seed);
     return createThreeCanvasTexture(canvas);
 }
 
-/**
- * Generate an object map of all available textures as Three.js CanvasTextures.
- * @param {number} [seed] 
- * @returns {Record<string, THREE.CanvasTexture>}
- */
 export function getAllCanvasTextures(seed) {
     const textures = {};
     for (const key of Object.keys(GENERATORS)) {
@@ -1754,11 +1540,6 @@ export function getAllCanvasTextures(seed) {
     return textures;
 }
 
-/**
- * Generate an object map of all available textures as Base64 Data URIs.
- * @param {number} [seed] 
- * @returns {Record<string, string>}
- */
 export function getAllDataURIs(seed) {
     const uris = {};
     for (const key of Object.keys(GENERATORS)) {
@@ -1767,11 +1548,6 @@ export function getAllDataURIs(seed) {
     return uris;
 }
 
-/**
- * Helper to build standard 6-sided materials array for a voxel block.
- * @param {string} blockType 
- * @returns {THREE.MeshLambertMaterial[] | THREE.MeshBasicMaterial[]}
- */
 export function createBlockMaterials(blockType) {
     const textures = {
         top: null,
@@ -1814,11 +1590,6 @@ export function createBlockMaterials(blockType) {
     ];
 }
 
-/**
- * Procedural Texture Atlas Generator
- * Compiles all block textures into a single texture sheet with UV coordinates.
- * Extremely efficient for voxel chunk meshing.
- */
 export function generateTextureAtlas(blockList = Object.keys(GENERATORS), seed) {
     const count = blockList.length;
     const cols = Math.ceil(Math.sqrt(count));

@@ -1,15 +1,4 @@
-/**
- * Anvil UI & Repair/Rename System for Minecraft 1.5 WebGL Engine
- * 
- * Features:
- * - Minecraft 1.5 authentic Anvil GUI with 3D beveled stone/metal styling
- * - Item renaming with custom text input and XP cost
- * - Item repairing (combining two damaged items with bonus durability, or using raw materials)
- * - Combining enchantments from sacrifice items or Enchanted Books
- * - Experience level cost calculation & deduction
- * - Full drag-and-drop, shift-click transfer, right-click splitting with player inventory
- * - Return items to inventory on close
- */
+
 
 import { BLOCKS } from '../core/chunk.js';
 import { getItemDef, createItemStack, ITEM_TYPES } from './inventory.js';
@@ -341,13 +330,7 @@ const ANVIL_CSS = `
 // ==========================================
 
 export class AnvilUI {
-    /**
-     * @param {Object} [options]
-     * @param {InventoryManager} [options.inventory]
-     * @param {HUD} [options.hud]
-     * @param {SoundManager} [options.audio]
-     * @param {ParticleSystem} [options.particles]
-     */
+    
     constructor(options = {}) {
         this.inventory = options.inventory || null;
         this.hud = options.hud || (options.inventory ? options.inventory.hud : null);
