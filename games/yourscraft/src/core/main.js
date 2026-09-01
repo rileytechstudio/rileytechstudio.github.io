@@ -242,8 +242,8 @@ world.on('entityAdd', (entity) => {
         renderer = createMobRenderer(entity);
     }
     
-    if (renderer && renderer.group) {
-        entity.mesh = renderer.group;
+    if (renderer && (renderer.group || renderer.mesh)) {
+        entity.mesh = renderer.group || renderer.mesh;
         scene.add(entity.mesh);
         
         // Save the update function to be called per frame

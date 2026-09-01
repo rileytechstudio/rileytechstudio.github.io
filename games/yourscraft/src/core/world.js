@@ -584,20 +584,31 @@ export class World {
         if (!this.isSolid(spawnX, spawnY, spawnZ)) return;
         if (blockId === BLOCKS.WATER || blockId === BLOCKS.LAVA) return; // don't spawn in liquid
 
-        const lightLevel = this.getLight(spawnX, spawnY + 1, spawnZ);
+        const rawLight = this.getLight(spawnX, spawnY + 1, spawnZ);
+        const skyLight = (rawLight >> 4) & 15;
+        const blockLight = rawLight & 15;
+        
+        let sunLevel = 1.0;
+        if (typeof window !== 'undefined' && window.MinecraftEngine && window.MinecraftEngine.dayNightCycle) {
+            sunLevel = window.MinecraftEngine.dayNightCycle.sunIntensity || 1.0;
+        }
+        
+        // Calculate the actual current light level (0-15) incorporating the sun
+        const currentSkyLight = Math.floor(skyLight * sunLevel);
+        const actualLight = Math.max(currentSkyLight, blockLight);
         
         let mobTypeToSpawn = null;
 
         // Passive mobs: exclusively on Grass Blocks under direct sky light
-        if (blockId === BLOCKS.GRASS && lightLevel === 15) {
+        if (blockId === BLOCKS.GRASS && skyLight === 15 && actualLight > 7) {
             if (Math.random() < 0.2) {
                 const passives = ['pig', 'cow', 'sheep'];
                 mobTypeToSpawn = passives[Math.floor(Math.random() * passives.length)];
             }
         }
         
-        // Hostile mobs: solid blocks where light level <= 7
-        if (lightLevel <= 7) {
+        // Hostile mobs: solid blocks where actual light level <= 7
+        if (actualLight <= 7) {
             if (Math.random() < 0.5) {
                 const hostiles = ['zombie', 'skeleton', 'creeper', 'spider'];
                 mobTypeToSpawn = hostiles[Math.floor(Math.random() * hostiles.length)];
