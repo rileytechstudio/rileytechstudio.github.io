@@ -1035,13 +1035,12 @@ export class HUD {
 
         // Show item name tooltip
         const activeItem = this.hotbar[this.selectedSlot];
+        
         if (activeItem && activeItem.name) {
             this.showTooltip(activeItem.name);
-        } else {
-            this.hideTooltip();
         }
 
-        if (this.onSelectSlot) {
+        if (typeof this.onSelectSlot === 'function') {
             this.onSelectSlot(this.selectedSlot, activeItem);
         }
     }

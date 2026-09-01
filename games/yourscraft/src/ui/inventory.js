@@ -105,12 +105,29 @@ for (const item of Object.values(ITEM_TYPES)) {
     ITEM_LOOKUP.set(item.id, item);
 }
 
+let DYNAMIC_NAMES = null;
+
+function getDynamicName(id) {
+    if (!DYNAMIC_NAMES) {
+        DYNAMIC_NAMES = new Map();
+        for (const [key, value] of Object.entries(BLOCKS)) {
+            const name = key.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            DYNAMIC_NAMES.set(value, name);
+        }
+        for (const [key, value] of Object.entries(ITEM_IDS)) {
+            const name = key.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            DYNAMIC_NAMES.set(value, name);
+        }
+    }
+    return DYNAMIC_NAMES.get(id) || `Item #${id}`;
+}
+
 export function getItemDef(id) {
     const numId = Number(id);
     if (ITEM_LOOKUP.has(numId)) {
         return ITEM_LOOKUP.get(numId);
     }
-    return { id: numId, name: `Item #${numId}`, maxStack: 64, isBlock: numId <= 255 };
+    return { id: numId, name: getDynamicName(numId), maxStack: 64, isBlock: numId <= 255 };
 }
 
 export function createItemStack(id, count = 1, metadata = {}) {
@@ -380,6 +397,21 @@ const INVENTORY_CSS = `
     font-weight: bold;
     text-shadow: 1px 1px 0 #000000;
 }
+
+#inv-tooltip {
+    position: fixed;
+    background: rgba(16, 0, 16, 0.95);
+    border: 2px solid #37007a;
+    color: #ffffff;
+    padding: 6px 10px;
+    font-size: 14px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 1001;
+    display: none;
+    white-space: nowrap;
+    text-shadow: 1px 1px 0 #000;
+}
 `;
 
 // ==========================================
@@ -552,6 +584,47 @@ export class InventoryManager {
         cursorItem.innerHTML = `<img id="inv-cursor-img"><span id="inv-cursor-count"></span>`;
         document.body.appendChild(cursorItem);
 
+        const tooltip = document.createElement("div");
+        tooltip.id = "inv-tooltip";
+        document.body.appendChild(tooltip);
+
+        // Global mouse tracking for cursor item AND tooltip
+        modal.onmousemove = (e) => {
+            if (this.heldItem) {
+                cursorItem.style.left = e.clientX + "px";
+                cursorItem.style.top = e.clientY + "px";
+                tooltip.style.display = "none"; // Hide tooltip while dragging
+            } else if (tooltip.style.display === "block") {
+                tooltip.style.left = (e.clientX + 15) + "px";
+                tooltip.style.top = (e.clientY + 15) + "px";
+            }
+        };
+
+        modal.onmouseover = (e) => {
+            const slotEl = e.target.closest('.inv-slot');
+            if (slotEl) {
+                // Determine item from slot type
+                let item = null;
+                if (slotEl.dataset.index !== undefined) item = this.slots[slotEl.dataset.index];
+                else if (slotEl.dataset.armorIndex !== undefined) item = this.armor[slotEl.dataset.armorIndex];
+                else if (slotEl.dataset.craftIndex !== undefined) item = this.mode === 'crafting_table' ? this.crafting3x3[slotEl.dataset.craftIndex] : this.crafting2x2[slotEl.dataset.craftIndex];
+                else if (slotEl.classList.contains('craft-output')) item = this.craftOutput;
+
+                if (item && item.name) {
+                    tooltip.textContent = item.name;
+                    tooltip.style.display = "block";
+                    tooltip.style.left = (e.clientX + 15) + "px";
+                    tooltip.style.top = (e.clientY + 15) + "px";
+                }
+            }
+        };
+
+        modal.onmouseout = (e) => {
+            if (e.target.closest('.inv-slot')) {
+                tooltip.style.display = "none";
+            }
+        };
+
         document.body.appendChild(modal);
 
         this.dom = {
@@ -562,6 +635,7 @@ export class InventoryManager {
             craftGridContainer,
             craftOutputSlot,
             cursorItem,
+            tooltip,
             cursorImg: cursorItem.querySelector("#inv-cursor-img"),
             cursorCount: cursorItem.querySelector("#inv-cursor-count"),
             armorSlotEls,

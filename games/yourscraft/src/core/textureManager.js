@@ -162,13 +162,12 @@ export function getAtlasMaterial(options = {}) {
     float blockLight = vColor.r;
     float skyLight = vColor.g * sunLevel;
     
-    // Minecraft-style exponential light curve
-    // Torches (blockLight) are massively boosted at the source and fall off sharply
-    float bBright = pow(blockLight, 2.0) * 2.5;
+    // Smooth out torch lighting so it casts a much wider, useful radius
+    float bBright = pow(blockLight, 1.3) * 1.6;
     float sBright = pow(skyLight, 1.5) * 1.1;
     
     // Warm overdriven tint for torches, neutral for sky
-    vec3 bColor = bBright * vec3(1.3, 1.0, 0.7);
+    vec3 bColor = bBright * vec3(1.15, 0.95, 0.7);
     vec3 sColor = sBright * vec3(1.0, 1.0, 1.0);
     
     // Combine light
