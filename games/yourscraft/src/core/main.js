@@ -225,6 +225,20 @@ const lightingEngine = new LightingEngine(world);
 
 world.on('chunkLoad', (chunk) => {
     lightingEngine.initializeChunkLighting(chunk);
+    lightingEngine.propagateLightFromNeighbors(chunk);
+    
+    // Flag adjacent chunks for remeshing to remove border shadow artifacts
+    const neighbors = [
+        world.getChunk(chunk.x - 1, chunk.z),
+        world.getChunk(chunk.x + 1, chunk.z),
+        world.getChunk(chunk.x, chunk.z - 1),
+        world.getChunk(chunk.x, chunk.z + 1)
+    ];
+    for (const n of neighbors) {
+        if (n && n.userData && n.userData.mesh) {
+            n.isDirty = true;
+        }
+    }
 });
 world.on('blockChange', (e) => {
     if (e.newBlock === 0) lightingEngine.onBlockRemoved(e.x, e.y, e.z);
@@ -392,39 +406,9 @@ world.on('chunkUnload', (chunk) => {
     }
 });
 
+// Handle block changes to dynamically rebuild chunk meshes
 world.on('blockChange', (data) => {
-    // 1. Rebuild the modified chunk
-    const { cx, cz } = world.worldToChunkCoords ? world.worldToChunkCoords(data.x, data.z) : { cx: Math.floor(data.x / CHUNK_SIZE_X), cz: Math.floor(data.z / CHUNK_SIZE_Z) };
-    const chunk = world.getChunk(cx, cz);
-    if (chunk) {
-        if (chunk.userData && chunk.userData.mesh) {
-             scene.remove(chunk.userData.mesh);
-             if (chunk.userData.mesh.type === 'Group') {
-                 chunk.userData.mesh.children.forEach(c => c.geometry && c.geometry.dispose());
-             } else if (chunk.userData.mesh.geometry) {
-                 chunk.userData.mesh.geometry.dispose();
-             }
-        }
-        chunk.userData.mesh = createChunkMesh(chunk, world);
-        scene.add(chunk.userData.mesh);
-        redstone.updateBlock && redstone.updateBlock(data.x, data.y, data.z);
-        chunk.isDirty = false;
-    }
-    
-    // 2. Rebuild neighbor chunks if they were marked dirty (edge modification)
-    world.chunks.forEach((c) => {
-        if (c.isDirty && c.userData && c.userData.mesh) {
-            scene.remove(c.userData.mesh);
-            if (c.userData.mesh.type === 'Group') {
-                c.userData.mesh.children.forEach(child => child.geometry && child.geometry.dispose());
-            } else if (c.userData.mesh.geometry) {
-                c.userData.mesh.geometry.dispose();
-            }
-            c.userData.mesh = createChunkMesh(c, world);
-            scene.add(c.userData.mesh);
-            c.isDirty = false;
-        }
-    });
+    redstone.updateBlock && redstone.updateBlock(data.x, data.y, data.z);
 });
 
 
@@ -947,6 +931,24 @@ function animate() {
     
     // Process chunk streaming and terrain generation
     world.update(camera.position.x, camera.position.z, renderDistance);
+    
+    // Rebuild 1 dirty chunk per frame to prevent stutter while walking
+    let rebuiltCount = 0;
+    for (const [key, c] of world.chunks.entries()) {
+        if (c.isDirty && c.userData && c.userData.mesh) {
+            scene.remove(c.userData.mesh);
+            if (c.userData.mesh.type === 'Group') {
+                c.userData.mesh.children.forEach(child => child.geometry && child.geometry.dispose());
+            } else if (c.userData.mesh.geometry) {
+                c.userData.mesh.geometry.dispose();
+            }
+            c.userData.mesh = createChunkMesh(c, world);
+            scene.add(c.userData.mesh);
+            c.isDirty = false;
+            rebuiltCount++;
+            if (rebuiltCount >= 1) break;
+        }
+    }
     
     // Process mob spawning and entity updates
     if (typeof world.spawnMobs === 'function') {

@@ -182,6 +182,47 @@ export class LightingEngine {
         this.processLightAddition();
     }
 
+    propagateLightFromNeighbors(chunk) {
+        const startX = chunk.x * CHUNK_SIZE_X;
+        const startZ = chunk.z * CHUNK_SIZE_Z;
+        
+        // Scan X boundaries (-1 and +16)
+        for (let z = 0; z < CHUNK_SIZE_Z; z++) {
+            for (let y = 0; y < CHUNK_SIZE_Y; y++) {
+                // Left neighbor (x = -1)
+                let lx = startX - 1;
+                let lz = startZ + z;
+                let bLight = this.getBlockLight(lx, y, lz);
+                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
+                
+                // Right neighbor (x = 16)
+                lx = startX + CHUNK_SIZE_X;
+                bLight = this.getBlockLight(lx, y, lz);
+                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
+            }
+        }
+        
+        // Scan Z boundaries (-1 and +16)
+        for (let x = 0; x < CHUNK_SIZE_X; x++) {
+            for (let y = 0; y < CHUNK_SIZE_Y; y++) {
+                // Top neighbor (z = -1)
+                let lx = startX + x;
+                let lz = startZ - 1;
+                let bLight = this.getBlockLight(lx, y, lz);
+                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
+                
+                // Bottom neighbor (z = 16)
+                lz = startZ + CHUNK_SIZE_Z;
+                bLight = this.getBlockLight(lx, y, lz);
+                if (bLight > 1) this.addQueue.push({ x: lx, y, z: lz, isSky: false });
+            }
+        }
+        
+        if (this.addQueue.length > 0) {
+            this.processLightAddition();
+        }
+    }
+
     onBlockPlaced(x, y, z, blockId) {
         const opacity = BLOCK_LIGHT_OPACITY[blockId] !== undefined ? BLOCK_LIGHT_OPACITY[blockId] : 15;
         const emission = BLOCK_LIGHT_EMISSION[blockId] !== undefined ? BLOCK_LIGHT_EMISSION[blockId] : 0;
