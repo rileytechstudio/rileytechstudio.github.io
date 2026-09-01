@@ -23,9 +23,11 @@ import { FurnaceUI } from '../ui/furnace.js';
 import { isFoodItem, getFoodProperties, ITEM_IDS } from './crafting.js';
 import { SoundManager } from './audio.js';
 import { ParticleSystem } from './particles.js';
+import { Minecart, MinecartTNT, MinecartHopper, isRailBlock } from '../entity/minecart.js';
 import { Arrow } from '../entity/arrow.js';
 import { createMob } from '../entity/mob.js';
 import { createMobRenderer } from '../entity/mobRenderer.js';
+import { createMinecartRenderer } from "../entity/minecartRenderer.js";
 import { WeatherSystem, WEATHER_TYPES, PRECIPITATION_TYPES } from '../environment/weather.js';
 import { DroppedItem, spawnDroppedItem, spawnBlockDrop, getMobDrop } from '../entity/droppedItem.js';
 console.log("Minecraft 1.5 WebGL Engine Initializing Phase 2...");
@@ -231,33 +233,42 @@ world.on('blockChange', (e) => {
     if (e.newBlock === 0) lightingEngine.onBlockRemoved(e.x, e.y, e.z);
     else lightingEngine.onBlockPlaced(e.x, e.y, e.z, e.newBlock);
 });
+world.on('entityAdd', (entity) => {
+    if (entity.type === 'item' || entity.type === 'arrow') return;
+    
+    let renderer = null;
+    if (entity.type.includes('minecart') || entity.type === 'hopper' || entity.type === 'tnt') {
+        renderer = createMinecartRenderer(entity);
+    } else if (typeof createMobRenderer === 'function') {
+        renderer = createMobRenderer(entity);
+    }
+    
+    if (renderer && renderer.group) {
+        entity.mesh = renderer.group;
+        scene.add(entity.mesh);
+        
+        // Save the update function to be called per frame
+        if (typeof renderer.update === 'function') {
+            entity.meshUpdate = renderer.update.bind(renderer);
+        }
+    }
+});
+world.on('entityRemove', (entity) => {
+    if (entity.mesh) {
+        scene.remove(entity.mesh);
+        entity.mesh.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        });
+        entity.mesh = null;
+    }
+});
 
 world.scene = scene;
 world.dayNightCycle = dayNightCycle;
-world.spawnMobs = function(player, delta) {
-    if (!this.lastMobSpawn) this.lastMobSpawn = 0;
-    this.lastMobSpawn += delta;
-    if (this.lastMobSpawn > 5.0) {
-        this.lastMobSpawn = 0;
-        if (this.entities.size < 10) {
-            const angle = Math.random() * Math.PI * 2;
-            const dist = 15 + Math.random() * 10;
-            const tx = player.position.x + Math.cos(angle) * dist;
-            const tz = player.position.z + Math.sin(angle) * dist;
-            for (let ty = 200; ty > 10; ty--) {
-                const b = this.getBlock(Math.floor(tx), ty, Math.floor(tz));
-                if (b !== 0 && b !== BLOCKS.WATER && b !== BLOCKS.WATER_FLOWING) {
-                    const mobType = Math.random() < 0.5 ? 'zombie' : 'pig';
-                    const mob = createMob(mobType, tx, ty + 1, tz);
-                    const renderer = createMobRenderer(mob);
-                    mob.mesh = renderer.group;
-                    this.addEntity(mob);
-                    break;
-                }
-            }
-        }
-    }
-};
 const player = new Player(8, 150, 8); // spawn high up, gravity will pull down
 const redstone = new RedstoneSimulator(world);
 
@@ -578,6 +589,24 @@ document.addEventListener('mousedown', (event) => {
     } else if (event.button === 2) { // Right click: Interactive blocks OR Bow charge OR Eat food OR Place block
         const heldItem = inventory.getSlot(hud.selectedSlot);
 
+        // First check if we're targeting an entity to interact with (e.g. minecart)
+        const target = findTargetMob(4.0);
+        if (target && target.mob) {
+            const entity = target.mob;
+            if (entity.type && (entity.type.includes('minecart') || entity.type === 'hopper' || entity.type === 'tnt')) {
+                if (typeof entity.mount === 'function') {
+                    if (entity.mount(player)) {
+                        return; // Successfully mounted
+                    }
+                }
+            } else if (entity.type === 'pig') {
+                if (typeof entity.mount === 'function' && heldItem && heldItem.id === ITEM_IDS.SADDLE) { // assuming 329 is saddle, but we can just let it mount for fun if no saddle
+                    entity.mount(player);
+                    return;
+                }
+            }
+        }
+
         // Raycast to check for targeted block first
         raycaster.setFromCamera(center, camera);
         const intersects = raycaster.intersectObjects(getMeshes(), true);
@@ -630,6 +659,32 @@ document.addEventListener('mousedown', (event) => {
                 hud.setHunger(player.foodLevel);
                 hud.setHealth(player.health);
                 return;
+            }
+        }
+
+        // 2.5 Check if holding Minecart and clicking rail
+        if (heldItem && (heldItem.id === ITEM_IDS.MINECART || heldItem.id === ITEM_IDS.MINECART_TNT || heldItem.id === ITEM_IDS.MINECART_HOPPER)) {
+            raycaster.setFromCamera(center, camera);
+            const intersects = raycaster.intersectObjects(getMeshes(), true);
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                const hitX = Math.floor(hit.point.x - hit.face.normal.x * 0.01);
+                const hitY = Math.floor(hit.point.y - hit.face.normal.y * 0.01);
+                const hitZ = Math.floor(hit.point.z - hit.face.normal.z * 0.01);
+                const clickedBlock = world.getBlock(hitX, hitY, hitZ);
+                
+                if (isRailBlock(clickedBlock)) {
+                    // Spawn minecart
+                    let mcType = 'minecart';
+                    if (heldItem.id === ITEM_IDS.MINECART_TNT) mcType = 'minecart_tnt';
+                    else if (heldItem.id === ITEM_IDS.MINECART_HOPPER) mcType = 'minecart_hopper';
+                    
+                    const mc = new (mcType === 'minecart_tnt' ? MinecartTNT : mcType === 'minecart_hopper' ? MinecartHopper : Minecart)(mcType, hitX + 0.5, hitY + 0.5, hitZ + 0.5);
+                    
+                    world.addEntity(mc);
+                    inventory.consumeSlot(hud.selectedSlot, 1);
+                    return;
+                }
             }
         }
 
@@ -968,9 +1023,13 @@ function animate() {
                 if (!entity.mesh.parent && scene) {
                     scene.add(entity.mesh);
                 }
-                entity.mesh.position.set(entity.position.x, entity.position.y, entity.position.z);
-                if (entity.rotation && entity.type !== 'arrow' && entity.type !== 'item') {
-                    entity.mesh.rotation.y = entity.rotation.yaw || 0;
+                if (typeof entity.meshUpdate === 'function') {
+                    entity.meshUpdate(delta, entity.position.x, entity.position.y, entity.position.z, entity.rotation ? entity.rotation.yaw : 0, entity.rotation ? entity.rotation.pitch : 0);
+                } else {
+                    entity.mesh.position.set(entity.position.x, entity.position.y, entity.position.z);
+                    if (entity.rotation && entity.type !== 'arrow' && entity.type !== 'item') {
+                        entity.mesh.rotation.y = entity.rotation.yaw || 0;
+                    }
                 }
             }
         }

@@ -712,6 +712,21 @@ export class World {
             if (entity.removed || (entity.isDead && entity.deathTime > 1.0)) {
                 this.removeEntity(entity);
             }
+            
+            // Player pushing minecarts
+            if (player && entity.type && entity.type.includes('minecart') && !entity.passenger) {
+                const dx = entity.position.x - player.position.x;
+                const dy = entity.position.y - player.position.y;
+                const dz = entity.position.z - player.position.z;
+                const distSq = dx*dx + dy*dy + dz*dz;
+                // If player is within 1 block
+                if (distSq < 1.0) {
+                    const dist = Math.sqrt(distSq);
+                    // Push away from player
+                    entity.velocity.x += (dx / dist) * 2.0 * dt;
+                    entity.velocity.z += (dz / dist) * 2.0 * dt;
+                }
+            }
         }
     }
 
@@ -790,8 +805,11 @@ export class World {
         if (this.spawnTimer > 0) return;
         this.spawnTimer = 2.0; // Try spawning every 2 seconds
 
-        // Don't spawn if too many entities
-        if (this.entities.size > 100) return;
+        let mobCount = 0;
+        for (const e of this.entities) {
+            if (e.type !== 'item' && e.type !== 'arrow') mobCount++;
+        }
+        if (mobCount > 40) return;
 
         // Pick a random location around player (radius 24 to 64 blocks)
         const angle = Math.random() * Math.PI * 2;

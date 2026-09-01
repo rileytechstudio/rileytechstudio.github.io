@@ -14,6 +14,9 @@ import { BLOCKS } from './chunk.js';
 // ==========================================
 
 export const ITEM_IDS = Object.freeze({
+    MINECART: 328,
+    MINECART_TNT: 407,
+    MINECART_HOPPER: 408,
     // Food & Materials
     COAL: 263,
     DIAMOND: 264,

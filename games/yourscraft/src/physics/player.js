@@ -1222,6 +1222,29 @@ export class Player {
 
         // 1. Process Input Controls
         const input = moveState || {};
+        
+        // Handle Riding an Entity (e.g., Minecart, Pig)
+        if (this.riding) {
+            if (this.riding.removed || this.riding.isDead) {
+                this.riding.dismount();
+                this.riding = null;
+            } else {
+                // Sync position to vehicle
+                this.position.set(this.riding.position.x, this.riding.position.y + 0.5, this.riding.position.z);
+                this.velocity.set(0, 0, 0);
+                if (input.yaw !== undefined) this.rotation.yaw = input.yaw;
+                if (input.pitch !== undefined) this.rotation.pitch = input.pitch;
+                
+                // Allow dismounting via shift
+                if (input.down) {
+                    this.riding.dismount();
+                    this.riding = null;
+                    // Pop player up slightly so they don't clip inside the cart immediately
+                    this.position.y += 1.0; 
+                }
+                return; // Skip standard physics
+            }
+        }
         if (input.yaw !== undefined) this.rotation.yaw = input.yaw;
         if (input.pitch !== undefined) this.rotation.pitch = input.pitch;
 

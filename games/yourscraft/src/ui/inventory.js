@@ -691,11 +691,16 @@ export class InventoryManager {
         this.setSlot(1, createItemStack(BLOCKS.COBBLESTONE, 32));
         this.setSlot(2, createItemStack(BLOCKS.OAK_LOG, 16));
         this.setSlot(3, createItemStack(BLOCKS.TORCH, 16));
-        this.setSlot(4, createItemStack(ITEM_IDS.WOODEN_PICKAXE, 1));
-        this.setSlot(5, createItemStack(ITEM_IDS.APPLE, 8));
-        this.setSlot(6, createItemStack(ITEM_IDS.BREAD, 12));
-        this.setSlot(7, createItemStack(ITEM_IDS.COOKED_PORKCHOP, 6));
-        this.setSlot(8, createItemStack(ITEM_IDS.WHEAT, 9));
+        this.setSlot(4, createItemStack(ITEM_IDS.MINECART, 1));
+        this.setSlot(5, createItemStack(BLOCKS.RAIL, 64));
+        this.setSlot(6, createItemStack(BLOCKS.POWERED_RAIL, 64));
+        this.setSlot(7, createItemStack(BLOCKS.HOPPER, 64));
+        this.setSlot(8, createItemStack(BLOCKS.DROPPER, 64));
+        this.setSlot(9, createItemStack(ITEM_IDS.APPLE, 8));
+        this.setSlot(10, createItemStack(ITEM_IDS.BREAD, 12));
+        this.setSlot(11, createItemStack(BLOCKS.REDSTONE_BLOCK, 64));
+        this.setSlot(12, createItemStack(ITEM_IDS.MINECART_TNT, 1));
+        this.setSlot(13, createItemStack(ITEM_IDS.MINECART_HOPPER, 1));
         this.syncHUD();
     }
 

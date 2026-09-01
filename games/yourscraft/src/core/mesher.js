@@ -334,6 +334,65 @@ export function generateChunkGeometry(chunk, options = {}) {
                 if (options.filter === 'opaque' && (blockId === 8 || blockId === 9)) continue;
                 if (options.filter === 'translucent' && blockId !== 8 && blockId !== 9) continue;
 
+                // Custom Meshing for Rails (Flat transparent quads)
+                if (blockId === 66 || blockId === 27 || blockId === 28 || blockId === 157) {
+                    const lightVal = getLight(x, y, z);
+                    const skyLight = (lightVal >> 4) & 0x0F;
+                    const blockLight = lightVal & 0x0F;
+                    const shade = [blockLight / 15.0, skyLight / 15.0, 1.0];
+                    
+                    const uvInfo = getBlockFaceUV(blockId, 'all', '', atlas);
+                    
+                    // Basic rotation based on neighbors (BONUS)
+                    const isRail = (id) => id === 66 || id === 27 || id === 28 || id === 157;
+                    const rn = isRail(getVoxel(x, y, z - 1));
+                    const rs = isRail(getVoxel(x, y, z + 1));
+                    const re = isRail(getVoxel(x + 1, y, z));
+                    const rw = isRail(getVoxel(x - 1, y, z));
+                    
+                    let rot = 0; // 0 = N/S, 1 = E/W
+                    if (re || rw) rot = 1;
+                    if ((rn || rs) && !re && !rw) rot = 0;
+                    
+                    const yOffset = 0.05; // slightly above block below
+                    
+                    let uMin = uvInfo.uMin, uMax = uvInfo.uMax;
+                    let vMin = uvInfo.vMin, vMax = uvInfo.vMax;
+                    
+                    let u1 = uMin, v1 = vMax; // bottom-left
+                    let u2 = uMax, v2 = vMax; // bottom-right
+                    let u3 = uMax, v3 = vMin; // top-right
+                    let u4 = uMin, v4 = vMin; // top-left
+                    
+                    if (rot === 1) {
+                        // rotate UVs 90 degrees
+                        u1 = uMax; v1 = vMax;
+                        u2 = uMax; v2 = vMin;
+                        u3 = uMin; v3 = vMin;
+                        u4 = uMin; v4 = vMax;
+                    }
+                    
+                    // Top face
+                    positions.push(
+                        x, y + yOffset, z + 1,
+                        x + 1, y + yOffset, z + 1,
+                        x + 1, y + yOffset, z,
+                        x, y + yOffset, z
+                    );
+                    normals.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
+                    uvs.push(
+                        u1, v1,
+                        u2, v2,
+                        u3, v3,
+                        u4, v4
+                    );
+                    colors.push(...shade, ...shade, ...shade, ...shade);
+                    indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+                    vertexCount += 4;
+                    
+                    continue;
+                }
+
                 // Custom Meshing for Sprite Blocks (Crossed Squares)
                 if (SPRITE_BLOCKS.has(blockId)) {
                     const lightVal = getLight(x, y, z);

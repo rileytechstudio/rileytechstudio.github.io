@@ -17,6 +17,10 @@ let cachedMaterial = null;
  * Specifies textures for specific faces ('top', 'bottom', 'side', or direction names 'north', 'south', 'east', 'west').
  */
 export const BLOCK_TEXTURE_MAP = Object.freeze({
+    [BLOCKS.RAIL]: { all: "rail_normal" },
+    [BLOCKS.POWERED_RAIL]: { all: "rail_golden" },
+    [BLOCKS.DETECTOR_RAIL]: { all: "rail_detector" },
+    [BLOCKS.ACTIVATOR_RAIL]: { all: "rail_activator" },
     [BLOCKS.STONE]: { all: 'stone' },
     [BLOCKS.GRASS]: { top: 'grass_top', bottom: 'dirt', side: 'grass_side' },
     [BLOCKS.DIRT]: { all: 'dirt' },
