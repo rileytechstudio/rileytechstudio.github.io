@@ -226,19 +226,6 @@ const lightingEngine = new LightingEngine(world);
 world.on('chunkLoad', (chunk) => {
     lightingEngine.initializeChunkLighting(chunk);
     lightingEngine.propagateLightFromNeighbors(chunk);
-    
-    // Flag adjacent chunks for remeshing to remove border shadow artifacts
-    const neighbors = [
-        world.getChunk(chunk.x - 1, chunk.z),
-        world.getChunk(chunk.x + 1, chunk.z),
-        world.getChunk(chunk.x, chunk.z - 1),
-        world.getChunk(chunk.x, chunk.z + 1)
-    ];
-    for (const n of neighbors) {
-        if (n && n.userData && n.userData.mesh) {
-            n.isDirty = true;
-        }
-    }
 });
 world.on('blockChange', (e) => {
     if (e.newBlock === 0) lightingEngine.onBlockRemoved(e.x, e.y, e.z);

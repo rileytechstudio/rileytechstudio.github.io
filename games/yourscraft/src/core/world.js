@@ -510,7 +510,9 @@ export class World {
         if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return 15 << 4;
         const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
         const chunk = this.getChunk(cx, cz);
-        if (!chunk) return 0;
+        if (!chunk) {
+            return 15 << 4;
+        }
         return chunk.getLight(lx, ly, lz);
     }
 
