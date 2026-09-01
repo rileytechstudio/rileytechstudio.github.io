@@ -677,6 +677,23 @@ document.addEventListener('mousedown', (event) => {
                 const targetBlock = world.getBlock(px, py, pz);
                 if ((targetBlock === BLOCKS.AIR || targetBlock === 78 || targetBlock === 9 || targetBlock === 8 || targetBlock === 31) && !intersectsPlayer) {
                     world.setBlock(px, py, pz, blockIdToPlace, true);
+                    
+                    // Furnace Directional Metadata
+                    if (blockIdToPlace === 61 || blockIdToPlace === 62) {
+                        // Calculate standard MC direction (2=North, 3=South, 4=West, 5=East)
+                        // Player yaw: 0 = South, PI/2 = West, PI = North, -PI/2 = East
+                        let dir = 3; // South default
+                        let normYaw = player.yaw;
+                        while (normYaw < 0) normYaw += Math.PI * 2;
+                        normYaw = normYaw % (Math.PI * 2);
+                        
+                        if (normYaw >= Math.PI * 0.25 && normYaw < Math.PI * 0.75) dir = 4; // West
+                        else if (normYaw >= Math.PI * 0.75 && normYaw < Math.PI * 1.25) dir = 2; // North
+                        else if (normYaw >= Math.PI * 1.25 && normYaw < Math.PI * 1.75) dir = 5; // East
+                        
+                        world.setMetadata(px, py, pz, dir);
+                    }
+                    
                     inventory.consumeSlot(hud.selectedSlot, 1);
                     syncActiveItem();
                     audio.play('pop', new THREE.Vector3(px, py, pz));

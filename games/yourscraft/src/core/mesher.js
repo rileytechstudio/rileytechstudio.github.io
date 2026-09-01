@@ -388,7 +388,18 @@ export function generateChunkGeometry(chunk, options = {}) {
                     if (blockId === neighborId) continue;
 
                     if (transparentCheck(neighborId)) {
-                        const uvBounds = getBlockFaceUV(blockId, face.type, face.name, atlas);
+                        let effectiveFaceName = face.name;
+                        if (blockId === 61 || blockId === 62) {
+                            const meta = chunk.getMetadata ? chunk.getMetadata(x, y, z) : 0;
+                            // meta: 2=North, 3=South, 4=West, 5=East (default North logic is used for the front texture key)
+                            if (meta === 2 && face.name === 'north') effectiveFaceName = 'north';
+                            else if (meta === 3 && face.name === 'south') effectiveFaceName = 'north';
+                            else if (meta === 4 && face.name === 'west') effectiveFaceName = 'north';
+                            else if (meta === 5 && face.name === 'east') effectiveFaceName = 'north';
+                            else effectiveFaceName = 'side';
+                        }
+                        
+                        const uvBounds = getBlockFaceUV(blockId, face.type, effectiveFaceName, atlas);
                         const faceAoScores = [3, 3, 3, 3];
 
                         // Air space position directly in front of the face

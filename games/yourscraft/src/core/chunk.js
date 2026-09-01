@@ -106,6 +106,7 @@ export class Chunk {
         this.blocks = new Uint8Array(sizeX * sizeY * sizeZ);
         // Light map: upper 4 bits = sky light (0-15), lower 4 bits = block light (0-15)
         this.light = new Uint8Array(sizeX * sizeY * sizeZ);
+        this.metadata = new Uint8Array(sizeX * sizeY * sizeZ);
         this.isDirty = true;
         this.mesh = null;
         this.lightDirty = true; // Flag for lighting engine
@@ -156,6 +157,22 @@ export class Chunk {
         if (idx === -1) return false;
         if (this.light[idx] !== lightValue) {
             this.light[idx] = lightValue;
+            this.isDirty = true;
+        }
+        return true;
+    }
+
+    getMetadata(x, y, z) {
+        const idx = this.getIndex(x, y, z);
+        if (idx === -1) return 0;
+        return this.metadata[idx];
+    }
+
+    setMetadata(x, y, z, val) {
+        const idx = this.getIndex(x, y, z);
+        if (idx === -1) return false;
+        if (this.metadata[idx] !== val) {
+            this.metadata[idx] = val;
             this.isDirty = true;
         }
         return true;

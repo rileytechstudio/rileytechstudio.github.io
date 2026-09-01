@@ -279,7 +279,12 @@ export class PauseMenu {
                     chunkData.push({ key, blocks: Array.from(chunk.blocks) });
                 });
 
-                localStorage.setItem('minecraft_save', JSON.stringify({ player: playerData, chunks: chunkData }));
+                try {
+                    localStorage.setItem('minecraft_save', JSON.stringify({ player: playerData, chunks: chunkData }));
+                } catch (e) {
+                    console.warn("Could not save full chunks to localStorage:", e);
+                    localStorage.setItem('minecraft_save', JSON.stringify({ player: playerData, chunks: [] }));
+                }
             }
             if (this.onQuit) this.onQuit();
         });

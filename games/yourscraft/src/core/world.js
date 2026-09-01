@@ -525,6 +525,22 @@ export class World {
         return chunk.setLight(lx, ly, lz, lightValue);
     }
 
+    getMetadata(worldX, worldY, worldZ) {
+        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return 0;
+        const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
+        const chunk = this.getChunk(cx, cz);
+        if (!chunk) return 0;
+        return chunk.getMetadata(lx, ly, lz);
+    }
+
+    setMetadata(worldX, worldY, worldZ, meta) {
+        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) return false;
+        const { cx, cz, lx, ly, lz } = this.worldToLocalCoords(worldX, worldY, worldZ);
+        const chunk = this.getChunk(cx, cz);
+        if (!chunk) return false;
+        return chunk.setMetadata(lx, ly, lz, meta);
+    }
+
     /**
      * Alias for setBlock.
      */
