@@ -17,20 +17,21 @@ export class MainMenu {
         container.style.height = '100vh';
         container.style.zIndex = '100';
         container.style.backgroundColor = '#5c5c5c'; 
-        container.style.backgroundImage = `url("${GENERATORS.dirt().toDataURL()}")`;
+        container.style.backgroundImage = `url("${GENERATORS.stone().toDataURL()}")`;
         container.style.backgroundSize = '64px 64px';
         container.style.imageRendering = 'pixelated';
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
         container.style.alignItems = 'center';
         container.style.justifyContent = 'center';
-        container.style.fontFamily = 'monospace'; 
+        container.style.fontFamily = '"MedievalSharp", fantasy, monospace'; 
 
         const title = document.createElement('h1');
-        title.textContent = 'MINECRAFT';
-        title.style.color = 'white';
+        title.textContent = 'CUBIC REALM';
+        title.style.color = '#ffd700'; // goldish color for fantasy
         title.style.textShadow = '4px 4px 0px #333';
-        title.style.fontSize = '48px';
+        title.style.fontSize = '64px'; // slightly larger
+        title.style.letterSpacing = '4px';
         title.style.marginBottom = '40px';
         container.appendChild(title);
 
@@ -42,8 +43,8 @@ export class MainMenu {
             border: 2px solid;
             border-color: #a8a8a8 #3b3b3b #3b3b3b #a8a8a8;
             color: white;
-            font-size: 16px;
-            font-family: monospace;
+            font-size: 18px;
+            font-family: "MedievalSharp", fantasy, monospace;
             text-shadow: 2px 2px 0px #333;
             cursor: pointer;
         `;
@@ -104,7 +105,7 @@ export class MainMenu {
         overlay.style.flexDirection = 'column';
         overlay.style.alignItems = 'center';
         overlay.style.justifyContent = 'center';
-        overlay.style.fontFamily = 'monospace';
+        overlay.style.fontFamily = '"MedievalSharp", fantasy, monospace';
 
         const dialog = document.createElement('div');
         dialog.style.backgroundColor = '#5c5c5c';
@@ -118,7 +119,7 @@ export class MainMenu {
 
         const msgEl = document.createElement('p');
         msgEl.textContent = message;
-        msgEl.style.fontSize = '16px';
+        msgEl.style.fontSize = '18px';
         msgEl.style.lineHeight = '1.5';
         msgEl.style.marginBottom = '30px';
         dialog.appendChild(msgEl);
@@ -136,7 +137,7 @@ export class MainMenu {
             border-color: #a8a8a8 #3b3b3b #3b3b3b #a8a8a8;
             color: white;
             font-size: 16px;
-            font-family: monospace;
+            font-family: "MedievalSharp", fantasy, monospace;
             text-shadow: 2px 2px 0px #333;
             cursor: pointer;
         `;

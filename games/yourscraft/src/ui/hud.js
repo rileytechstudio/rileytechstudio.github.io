@@ -429,6 +429,54 @@ export function getItemIconDataUri(blockOrItemId) {
             ctx.fillStyle = '#ffffff'; // bone
             ctx.fillRect(23, 11, 3, 3);
             break;
+        case 37: // Dandelion (Yellow Flower)
+            ctx.fillStyle = '#68a834'; ctx.fillRect(15, 16, 2, 8); // stem
+            ctx.fillStyle = '#ffd700'; // yellow petals
+            ctx.beginPath(); ctx.arc(16, 12, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ccaa00'; ctx.beginPath(); ctx.arc(16, 12, 3, 0, Math.PI * 2); ctx.fill();
+            break;
+        case 38: // Poppy (Red Flower)
+            ctx.fillStyle = '#68a834'; ctx.fillRect(15, 16, 2, 8); // stem
+            ctx.fillStyle = '#ff2222'; // red petals
+            ctx.beginPath(); ctx.arc(16, 12, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#aa0000'; ctx.beginPath(); ctx.arc(16, 12, 3, 0, Math.PI * 2); ctx.fill();
+            break;
+        case 59:
+        case 296: // Wheat Item
+            ctx.fillStyle = '#d4c063'; // wheat gold
+            ctx.fillRect(10, 8, 12, 16);
+            ctx.fillStyle = '#ab9430'; // dark stalks
+            ctx.fillRect(12, 6, 2, 20);
+            ctx.fillRect(16, 4, 2, 22);
+            ctx.fillRect(20, 6, 2, 20);
+            break;
+        case 295: // Seeds
+            ctx.fillStyle = '#395c1c'; ctx.fillRect(12, 16, 4, 4); // green seed
+            ctx.fillStyle = '#558230'; ctx.fillRect(13, 17, 2, 2);
+            ctx.fillStyle = '#395c1c'; ctx.fillRect(18, 18, 4, 4);
+            ctx.fillStyle = '#558230'; ctx.fillRect(19, 19, 2, 2);
+            break;
+        case 66: // Rail
+        case 27: // Powered Rail
+        case 28: // Detector Rail
+        case 157: // Activator Rail
+            const isGold = (id === 27 || id === 157);
+            const railColor = isGold ? '#ffcc00' : '#888888';
+            // Wood planks
+            ctx.fillStyle = '#6b4c2a';
+            ctx.fillRect(6, 10, 20, 2);
+            ctx.fillRect(6, 16, 20, 2);
+            ctx.fillRect(6, 22, 20, 2);
+            // Rails
+            ctx.fillStyle = railColor;
+            ctx.fillRect(8, 6, 2, 22);
+            ctx.fillRect(22, 6, 2, 22);
+            if (id === 27 || id === 28) {
+                // Redstone / pressure plate element
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(14, 15, 4, 4);
+            }
+            break;
         case 364: // Steak
             ctx.fillStyle = '#6e2617';
             ctx.fillRect(8, 10, 16, 12);
