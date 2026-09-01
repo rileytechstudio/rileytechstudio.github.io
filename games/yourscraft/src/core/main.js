@@ -306,8 +306,8 @@ document.addEventListener('keydown', (e) => {
         }
     }
     
-    // F2 to take screenshot
-    if (e.code === 'F2') {
+    // F2 or 'C' to take screenshot
+    if (e.code === 'F2' || e.code === 'KeyC') {
         e.preventDefault();
         window.takeScreenshot = true;
     }
