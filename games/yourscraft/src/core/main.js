@@ -375,7 +375,7 @@ syncActiveItem();
 world.on('chunkLoad', (chunk) => {
     if (!chunk.userData) chunk.userData = {};
     if (chunk.userData.mesh) return; // already meshed
-    const mesh = createChunkMesh(chunk);
+    const mesh = createChunkMesh(chunk, world);
     chunk.userData.mesh = mesh;
     scene.add(mesh);
 });
@@ -405,7 +405,7 @@ world.on('blockChange', (data) => {
                  chunk.userData.mesh.geometry.dispose();
              }
         }
-        chunk.userData.mesh = createChunkMesh(chunk);
+        chunk.userData.mesh = createChunkMesh(chunk, world);
         scene.add(chunk.userData.mesh);
         redstone.updateBlock && redstone.updateBlock(data.x, data.y, data.z);
         chunk.isDirty = false;
@@ -420,7 +420,7 @@ world.on('blockChange', (data) => {
             } else if (c.userData.mesh.geometry) {
                 c.userData.mesh.geometry.dispose();
             }
-            c.userData.mesh = createChunkMesh(c);
+            c.userData.mesh = createChunkMesh(c, world);
             scene.add(c.userData.mesh);
             c.isDirty = false;
         }
