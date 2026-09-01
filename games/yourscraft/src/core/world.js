@@ -171,13 +171,25 @@ export class World {
             this.deferredBlocks.delete(key);
         }
 
-        chunk.isDirty = true;
-
         // Create Three.js mesh if scene and autoMesh are enabled
         if (this.scene && this.autoMesh) {
-            const mesh = createChunkMesh(chunk, this.material);
+            // Pass 'this' (the world) so mesher can query neighboring chunk lighting
+            const mesh = createChunkMesh(chunk, this);
             this.scene.add(mesh);
         }
+
+        // Notify neighbors that a new chunk has loaded so they can update their border lighting
+        const n1 = this.chunks.get(this.getChunkKey(cx - 1, cz));
+        if (n1) n1.isDirty = true;
+        const n2 = this.chunks.get(this.getChunkKey(cx + 1, cz));
+        if (n2) n2.isDirty = true;
+        const n3 = this.chunks.get(this.getChunkKey(cx, cz - 1));
+        if (n3) n3.isDirty = true;
+        const n4 = this.chunks.get(this.getChunkKey(cx, cz + 1));
+        if (n4) n4.isDirty = true;
+        
+        // Ensure this chunk itself eventually gets remeshed if neighbors load later
+        chunk.isDirty = true;
 
         this.emit('chunkLoad', chunk);
         return chunk;
