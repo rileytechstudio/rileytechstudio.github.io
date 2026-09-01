@@ -258,7 +258,7 @@ export class WeatherSystem {
         geometry.setAttribute("velocity", new THREE.BufferAttribute(velocities, 3));
 
         this.rainMaterial = new THREE.PointsMaterial({
-            size: 3.2,
+            size: 1.0,
             map: this.rainTexture,
             transparent: true,
             opacity: 0.0,
@@ -306,7 +306,7 @@ export class WeatherSystem {
         geometry.setAttribute("fallSpeed", new THREE.BufferAttribute(fallSpeeds, 1));
 
         this.snowMaterial = new THREE.PointsMaterial({
-            size: 5.0,
+            size: 1.2,
             map: this.snowTexture,
             transparent: true,
             opacity: 0.0,
@@ -916,6 +916,14 @@ export class WeatherSystem {
             pos[i3 + 1] += vel[i3 + 1] * delta;
             pos[i3 + 2] += (vel[i3 + 2] + windZ) * delta;
 
+            // Height check to prevent raining underground
+            if (this.world && typeof this.world.getHighestBlockY === "function") {
+                const ceiling = this.world.getHighestBlockY(pos[i3], pos[i3 + 2]);
+                if (pos[i3 + 1] < ceiling) {
+                    pos[i3 + 1] += this.particleHeight;
+                }
+            }
+
             // Wrap Y around camera
             if (pos[i3 + 1] < camPos.y - 6.0) {
                 pos[i3 + 1] = camPos.y + h - 4.0 + Math.random() * 4.0;
@@ -966,6 +974,14 @@ export class WeatherSystem {
             pos[i3]     += (wobbleX + windX) * delta;
             pos[i3 + 1] -= spd * delta;
             pos[i3 + 2] += (wobbleZ + windZ) * delta;
+
+            // Height check to prevent snowing underground
+            if (this.world && typeof this.world.getHighestBlockY === "function") {
+                const ceiling = this.world.getHighestBlockY(pos[i3], pos[i3 + 2]);
+                if (pos[i3 + 1] < ceiling) {
+                    pos[i3 + 1] += this.particleHeight;
+                }
+            }
 
             // Wrap Y around camera
             if (pos[i3 + 1] < camPos.y - 6.0) {

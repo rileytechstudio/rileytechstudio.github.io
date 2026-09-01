@@ -157,6 +157,7 @@ export class LightingEngine {
                         let lightVal = chunk.getLight(x, y, z);
                         lightVal = (lightVal & 0x0F) | (currentSkyLight << 4);
                         chunk.setLight(x, y, z, lightVal);
+                        this.addQueue.push({ x: chunk.x * CHUNK_SIZE_X + x, y, z: chunk.z * CHUNK_SIZE_Z + z, isSky: true });
                     }
                 }
             }
@@ -172,10 +173,13 @@ export class LightingEngine {
                         let lightVal = chunk.getLight(x, y, z);
                         lightVal = (lightVal & 0xF0) | emission;
                         chunk.setLight(x, y, z, lightVal);
+                        this.addQueue.push({ x: chunk.x * CHUNK_SIZE_X + x, y, z: chunk.z * CHUNK_SIZE_Z + z, isSky: false });
                     }
                 }
             }
         }
+        
+        this.processLightAddition();
     }
 
     onBlockPlaced(x, y, z, blockId) {
