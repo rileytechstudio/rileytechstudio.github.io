@@ -157,7 +157,7 @@ export class LightingEngine {
                         let lightVal = chunk.getLight(x, y, z);
                         lightVal = (lightVal & 0x0F) | (currentSkyLight << 4);
                         chunk.setLight(x, y, z, lightVal);
-                        this.addQueue.push({ x: chunk.x * CHUNK_SIZE_X + x, y, z: chunk.z * CHUNK_SIZE_Z + z, isSky: true });
+                        // Sunlight propagation sideways is too slow to calculate synchronously for every block
                     }
                 }
             }

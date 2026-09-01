@@ -391,7 +391,7 @@ export class World {
         if (toLoad.length > 0) {
             toLoad.sort((a, b) => a.dist - b.dist);
             // Time-slice: generate closest chunks this frame
-            const maxPerFrame = Math.min(2, toLoad.length);
+            const maxPerFrame = 1;
             for (let i = 0; i < maxPerFrame; i++) {
                 const closest = toLoad[i];
                 const chunk = this.loadChunk(closest.cx, closest.cz);
