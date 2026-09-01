@@ -198,18 +198,19 @@ export function getAtlasMaterial(options = {}) {
     float blockLight = vColor.r;
     float skyLight = vColor.g * sunLevel;
     
-    // Smoother brightness curve
-    float bBright = pow(blockLight, 1.2);
-    float sBright = pow(skyLight, 1.2);
+    // Minecraft-style exponential light curve
+    // Torches (blockLight) are massively boosted at the source and fall off sharply
+    float bBright = pow(blockLight, 2.0) * 2.5;
+    float sBright = pow(skyLight, 1.5) * 1.1;
     
     // Warm overdriven tint for torches, neutral for sky
-    vec3 bColor = bBright * vec3(1.2, 1.0, 0.75);
+    vec3 bColor = bBright * vec3(1.3, 1.0, 0.7);
     vec3 sColor = sBright * vec3(1.0, 1.0, 1.0);
     
     // Combine light
     vec3 finalLight = bColor + sColor;
-    finalLight = min(finalLight, vec3(1.5)); // Allow some over-exposure for torches
-    finalLight = max(finalLight, vec3(0.05)); // Min ambient light 0.05
+    finalLight = min(finalLight, vec3(1.6)); // Allow high over-exposure for bright center
+    finalLight = max(finalLight, vec3(0.02)); // Deep darkness in caves
     
     // Ambient Occlusion
     float ao = vColor.b;
