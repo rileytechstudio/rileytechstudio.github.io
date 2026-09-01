@@ -547,16 +547,6 @@ export class World {
         return Array.from(this.chunks.values());
     }
 
-    getLight(x, y, z) {
-        for (let checkY = Math.floor(y); checkY < 256; checkY++) {
-            const blockId = this.getBlock(x, checkY, z);
-            if (blockId !== BLOCKS.AIR && blockId !== BLOCKS.GLASS) {
-                return 0; // Shadowed
-            }
-        }
-        return 15; // Direct sky light
-    }
-
     spawnMobs(player, dt) {
         if (!this.spawnTimer) this.spawnTimer = 0;
         this.spawnTimer -= dt;
