@@ -1343,6 +1343,30 @@ export function generateRailNormalCanvas() {
     return canvas;
 }
 
+export function generateRailCurvedCanvas() {
+    const { canvas, ctx } = createPixelCanvas(16, 16);
+    
+    // Wood planks (diagonal)
+    ctx.fillStyle = "#5c4028";
+    ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(4, 12); ctx.lineTo(6, 10); ctx.lineTo(2, 6); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(4, 4); ctx.lineTo(10, 10); ctx.lineTo(12, 8); ctx.lineTo(6, 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(14, 6); ctx.lineTo(16, 4); ctx.lineTo(10, -2); ctx.fill();
+
+    // Curved rails (center at 0,0 - top left)
+    ctx.strokeStyle = "#888888";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI / 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI / 2); ctx.stroke();
+    
+    // Highlight
+    ctx.strokeStyle = "#cccccc";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI / 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 10.5, 0, Math.PI / 2); ctx.stroke();
+    
+    return canvas;
+}
+
 export function generateRailGoldenCanvas() {
     const { canvas, ctx } = createPixelCanvas(16, 16);
     ctx.fillStyle = "#5c4028";
@@ -1410,6 +1434,7 @@ export function generateRailActivatorCanvas() {
 
 export const GENERATORS = {
     rail_normal: generateRailNormalCanvas,
+    rail_curved: generateRailCurvedCanvas,
     rail_golden: generateRailGoldenCanvas,
     rail_golden_powered: generateRailGoldenPoweredCanvas,
     rail_detector: generateRailDetectorCanvas,

@@ -282,50 +282,77 @@ export function generateChunkGeometry(chunk, options = {}) {
                     const blockLight = lightVal & 0x0F;
                     const shade = [blockLight / 15.0, skyLight / 15.0, 1.0];
                     
-                    const uvInfo = getBlockFaceUV(blockId, 'all', '', atlas);
+                    let uvInfo = getBlockFaceUV(blockId, 'all', '', atlas);
                     
-                    // Basic rotation based on neighbors (BONUS)
                     const isRail = (id) => id === 66 || id === 27 || id === 28 || id === 157;
-                    const rn = isRail(getVoxel(x, y, z - 1));
-                    const rs = isRail(getVoxel(x, y, z + 1));
-                    const re = isRail(getVoxel(x + 1, y, z));
-                    const rw = isRail(getVoxel(x - 1, y, z));
+                    const checkRail = (dx, dz) => {
+                        if (isRail(getVoxel(x + dx, y, z + dz))) return { dy: 0 };
+                        if (isRail(getVoxel(x + dx, y + 1, z + dz))) return { dy: 1 };
+                        if (isRail(getVoxel(x + dx, y - 1, z + dz))) return { dy: -1 };
+                        return null;
+                    };
+                    const rn = checkRail(0, -1);
+                    const rs = checkRail(0, 1);
+                    const re = checkRail(1, 0);
+                    const rw = checkRail(-1, 0);
                     
-                    let rot = 0; // 0 = N/S, 1 = E/W
-                    if (re || rw) rot = 1;
-                    if ((rn || rs) && !re && !rw) rot = 0;
+                    let shape = 'ns'; 
+                    let isCurve = false;
+                    let rot = 0;
                     
-                    const yOffset = 0.05; // slightly above block below
+                    if (re || rw) { shape = 'ew'; rot = 90; }
+                    if ((rn || rs) && !re && !rw) { shape = 'ns'; rot = 0; }
+                    
+                    if (rs && re && !rn && !rw) { shape = 'se'; rot = 180; isCurve = true; }
+                    if (rs && rw && !rn && !re) { shape = 'sw'; rot = 270; isCurve = true; }
+                    if (rn && re && !rs && !rw) { shape = 'ne'; rot = 90; isCurve = true; }
+                    if (rn && rw && !rs && !re) { shape = 'nw'; rot = 0; isCurve = true; }
+                    
+                    // Slopes override curves
+                    let yN = 0, yS = 0, yE = 0, yW = 0;
+                    if (rn && rn.dy === 1) { shape = 'ns'; rot = 0; isCurve = false; yN = 1.0; }
+                    else if (rs && rs.dy === 1) { shape = 'ns'; rot = 0; isCurve = false; yS = 1.0; }
+                    else if (re && re.dy === 1) { shape = 'ew'; rot = 90; isCurve = false; yE = 1.0; }
+                    else if (rw && rw.dy === 1) { shape = 'ew'; rot = 90; isCurve = false; yW = 1.0; }
+                    
+                    if (isCurve) {
+                        const customUV = typeof atlas.getUV === 'function' ? atlas.getUV('rail_curved') : null;
+                        if (customUV) uvInfo = customUV;
+                    }
+                    
+                    let ySW = 0.05, ySE = 0.05, yNE = 0.05, yNW = 0.05;
+                    if (yN === 1.0) { yNE = 1.05; yNW = 1.05; }
+                    if (yS === 1.0) { ySE = 1.05; ySW = 1.05; }
+                    if (yE === 1.0) { yNE = 1.05; ySE = 1.05; }
+                    if (yW === 1.0) { yNW = 1.05; ySW = 1.05; }
                     
                     let uMin = uvInfo.uMin, uMax = uvInfo.uMax;
                     let vMin = uvInfo.vMin, vMax = uvInfo.vMax;
                     
-                    let u1 = uMin, v1 = vMax; // bottom-left
-                    let u2 = uMax, v2 = vMax; // bottom-right
-                    let u3 = uMax, v3 = vMin; // top-right
-                    let u4 = uMin, v4 = vMin; // top-left
-                    
-                    if (rot === 1) {
-                        // rotate UVs 90 degrees
-                        u1 = uMax; v1 = vMax;
-                        u2 = uMax; v2 = vMin;
-                        u3 = uMin; v3 = vMin;
-                        u4 = uMin; v4 = vMax;
+                    let uSW, vSW, uSE, vSE, uNE, vNE, uNW, vNW;
+                    if (rot === 0) {
+                        uSW = uMin; vSW = vMax; uSE = uMax; vSE = vMax; uNE = uMax; vNE = vMin; uNW = uMin; vNW = vMin;
+                    } else if (rot === 90) {
+                        uSW = uMax; vSW = vMax; uSE = uMax; vSE = vMin; uNE = uMin; vNE = vMin; uNW = uMin; vNW = vMax;
+                    } else if (rot === 180) {
+                        uSW = uMax; vSW = vMin; uSE = uMin; vSE = vMin; uNE = uMin; vNE = vMax; uNW = uMax; vNW = vMax;
+                    } else if (rot === 270) {
+                        uSW = uMin; vSW = vMin; uSE = uMin; vSE = vMax; uNE = uMax; vNE = vMax; uNW = uMax; vNW = vMin;
                     }
                     
                     // Top face
                     positions.push(
-                        x, y + yOffset, z + 1,
-                        x + 1, y + yOffset, z + 1,
-                        x + 1, y + yOffset, z,
-                        x, y + yOffset, z
+                        x, y + ySW, z + 1,
+                        x + 1, y + ySE, z + 1,
+                        x + 1, y + yNE, z,
+                        x, y + yNW, z
                     );
                     normals.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
                     uvs.push(
-                        u1, v1,
-                        u2, v2,
-                        u3, v3,
-                        u4, v4
+                        uSW, vSW,
+                        uSE, vSE,
+                        uNE, vNE,
+                        uNW, vNW
                     );
                     colors.push(...shade, ...shade, ...shade, ...shade);
                     indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
