@@ -244,6 +244,7 @@ world.on('entityAdd', (entity) => {
     
     if (renderer && (renderer.group || renderer.mesh)) {
         entity.mesh = renderer.group || renderer.mesh;
+        entity.mesh.userData.entity = entity;
         scene.add(entity.mesh);
         
         // Save the update function to be called per frame

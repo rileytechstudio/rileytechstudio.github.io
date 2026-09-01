@@ -119,6 +119,12 @@ export function getMobDrop(mobType) {
             return [{ id: ITEM_IDS.GUNPOWDER, count: 1 + Math.floor(Math.random() * 2) }];
         case 'spider':
             return [{ id: ITEM_IDS.STICK, count: 1 + Math.floor(Math.random() * 2) }];
+        case 'minecart':
+            return [{ id: ITEM_IDS.MINECART, count: 1 }];
+        case 'minecart_tnt':
+            return [{ id: ITEM_IDS.MINECART_TNT, count: 1 }];
+        case 'minecart_hopper':
+            return [{ id: ITEM_IDS.MINECART_HOPPER, count: 1 }];
         default:
             return [];
     }

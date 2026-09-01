@@ -25,8 +25,8 @@ export class Minecart extends Entity {
         this.eyeHeight = 0.35;
 
         // Health & Damage
-        this.maxHealth = 40;
-        this.health = 40;
+        this.maxHealth = 2;
+        this.health = 2;
         this.damage = 0;
 
         // Movement & Physics
