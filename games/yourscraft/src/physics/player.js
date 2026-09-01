@@ -921,6 +921,13 @@ export class Player {
                     this.riding = null;
                     // Pop player up slightly so they don't clip inside the cart immediately
                     this.position.y += 1.0; 
+                } else if (input.forward) {
+                    // Propel the minecart slightly if the user holds W
+                    const fx = -Math.sin(this.rotation.yaw);
+                    const fz = -Math.cos(this.rotation.yaw);
+                    if (typeof this.riding.push === 'function') {
+                        this.riding.push(fx, fz, dt * 2.0);
+                    }
                 }
                 return; // Skip standard physics
             }

@@ -165,7 +165,7 @@ export function isBlockTransparent(blockId) {
     return blockId === 20 || blockId === 8 || blockId === 9 || blockId === 10 || blockId === 11 ||
            blockId === 18 || blockId === 6 || blockId === 31 || blockId === 32 || blockId === 37 || blockId === 38 ||
            blockId === 39 || blockId === 40 || blockId === 50 || blockId === 51 || blockId === 59 ||
-           blockId === 78 || blockId === 83;
+           blockId === 78 || blockId === 83 || blockId === 66 || blockId === 27 || blockId === 28 || blockId === 157;
 }
 
 export function isBlockOccluding(blockId) {
