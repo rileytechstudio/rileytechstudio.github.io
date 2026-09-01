@@ -295,6 +295,22 @@ document.addEventListener('keydown', (e) => {
         const next = weather.toggleWeather();
         console.log('[Weather] Toggled to: ' + next);
     }
+    
+    // F1 to toggle HUD
+    if (e.code === 'F1') {
+        e.preventDefault();
+        const hudEl = document.getElementById('minecraft-hud');
+        if (hudEl) {
+            window.hideHud = !window.hideHud;
+            hudEl.style.visibility = window.hideHud ? 'hidden' : 'visible';
+        }
+    }
+    
+    // F2 to take screenshot
+    if (e.code === 'F2') {
+        e.preventDefault();
+        window.takeScreenshot = true;
+    }
 });
 
 // KeyQ item drop shortcut
@@ -989,6 +1005,20 @@ function animate() {
     
     prevTime = time;
     renderer.render(scene, camera);
+    
+    if (window.takeScreenshot) {
+        window.takeScreenshot = false;
+        try {
+            const dataUrl = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `screenshot_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+            link.href = dataUrl;
+            link.click();
+            console.log('[Screenshot] Saved!');
+        } catch (e) {
+            console.error('[Screenshot] Failed to save screenshot. Ensure preserveDrawingBuffer is true if not rendering in the same tick.', e);
+        }
+    }
 }
 animate();
 
