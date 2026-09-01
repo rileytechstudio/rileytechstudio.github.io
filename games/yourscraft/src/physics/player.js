@@ -898,6 +898,16 @@ export class Player {
     }
 
     updateStep(dt, world, moveState = {}) {
+        // Halt physics if the chunk we are in isn't loaded yet (prevents falling through world on load)
+        if (world) {
+            const cx = Math.floor(this.position.x / 16);
+            const cz = Math.floor(this.position.z / 16);
+            if (typeof world.getChunkKey === 'function' && !world.chunks.has(world.getChunkKey(cx, cz))) {
+                this.velocity.set(0, 0, 0);
+                return;
+            }
+        }
+        
         this.prevPosition.set(this.position.x, this.position.y, this.position.z);
 
         // 1. Process Input Controls

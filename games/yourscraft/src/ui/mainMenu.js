@@ -64,8 +64,21 @@ export class MainMenu {
             return btn;
         };
 
-        const singleplayerBtn = createButton('Singleplayer', this.onStartGame);
-        const loadGameBtn = createButton('Load Game', this.onLoadGame);
+        const singleplayerBtn = createButton('Singleplayer', () => {
+            if (localStorage.getItem('minecraft_save')) {
+                if (!confirm('A saved game exists. Starting a new game will overwrite it. Are you sure?')) {
+                    return;
+                }
+            }
+            this.onStartGame();
+        });
+        const loadGameBtn = createButton('Load Game', () => {
+            if (!localStorage.getItem('minecraft_save')) {
+                alert('No save game found!');
+                return;
+            }
+            this.onLoadGame();
+        });
         const optionsBtn = createButton('Options', this.onOptions);
         const quitBtn = createButton('Quit Game', this.onQuit);
 

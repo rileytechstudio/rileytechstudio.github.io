@@ -437,6 +437,31 @@ export function getItemIconDataUri(blockOrItemId) {
             ctx.fillStyle = '#c2a688'; // bone
             ctx.fillRect(6, 14, 3, 4);
             break;
+        case 328: // Minecart
+            ctx.fillStyle = '#5c5c5c';
+            ctx.fillRect(6, 16, 20, 8);
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(8, 14, 16, 2);
+            ctx.fillRect(6, 14, 2, 8);
+            ctx.fillRect(24, 14, 2, 8);
+            break;
+        case 407: // Minecart TNT
+            // Base cart
+            ctx.fillStyle = '#5c5c5c'; ctx.fillRect(6, 16, 20, 8);
+            ctx.fillStyle = '#3a3a3a'; ctx.fillRect(8, 14, 16, 2); ctx.fillRect(6, 14, 2, 8); ctx.fillRect(24, 14, 2, 8);
+            // TNT payload
+            ctx.fillStyle = '#e53935'; ctx.fillRect(10, 8, 12, 8);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(10, 12, 12, 2);
+            ctx.fillStyle = '#000000'; ctx.font = '6px monospace'; ctx.fillText('T', 12, 14); ctx.fillText('N', 15, 14); ctx.fillText('T', 18, 14);
+            break;
+        case 408: // Minecart Hopper
+            // Base cart
+            ctx.fillStyle = '#5c5c5c'; ctx.fillRect(6, 16, 20, 8);
+            ctx.fillStyle = '#3a3a3a'; ctx.fillRect(8, 14, 16, 2); ctx.fillRect(6, 14, 2, 8); ctx.fillRect(24, 14, 2, 8);
+            // Hopper payload
+            ctx.fillStyle = '#424242'; ctx.fillRect(10, 8, 12, 6);
+            ctx.fillStyle = '#212121'; ctx.fillRect(12, 10, 8, 4);
+            break;
         default:
             drawIsometricCube('#9e9e9e', '#757575', '#545454');
             break;
