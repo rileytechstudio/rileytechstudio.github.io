@@ -324,47 +324,49 @@ export class TerrainGenerator {
     getOreBlock(wx, wy, wz) {
         if (!this.config.enableOres) return BLOCKS.STONE;
 
-        // Fast seeded 3D ore noise evaluation
-        const sample = this.oreNoise.get3D(wx * 0.15, wy * 0.15, wz * 0.15);
+        // Use higher frequency for smaller, tighter vein clusters
+        const sample = this.oreNoise.get3D(wx * 0.25, wy * 0.25, wz * 0.25);
+        
+        // Dirt/Gravel pockets (don't thin these out with the patch logic)
+        if (wy >= 10 && wy <= 80) {
+            if (sample > 0.50 && sample < 0.55) return BLOCKS.GRAVEL;
+            if (sample < -0.52 && sample > -0.58) return BLOCKS.DIRT;
+        }
+
+        // Secondary noise to break up solid ore blobs into patchy, realistic veins
+        const patch = this.oreNoise.get3D(wx * 0.9, wy * 0.9, wz * 0.9);
+        
+        // Thins out the vein by ~40% so it's not a solid cube
+        if (patch < -0.2) return BLOCKS.STONE;
 
         // Diamond Ore: Y 1 to 16, very rare
-        if (wy <= 16 && sample > 0.84) {
+        if (wy <= 16 && sample > 0.86) {
             return BLOCKS.DIAMOND_ORE;
         }
 
         // Redstone Ore: Y 1 to 16, rare
-        if (wy <= 16 && sample < -0.80) {
+        if (wy <= 16 && sample < -0.84) {
             return BLOCKS.REDSTONE_ORE;
         }
 
         // Gold Ore: Y 1 to 32
-        if (wy <= 32 && sample > 0.77) {
+        if (wy <= 32 && sample > 0.81) {
             return BLOCKS.GOLD_ORE;
         }
 
         // Lapis Lazuli Ore: Y 14 to 32
-        if (wy >= 14 && wy <= 32 && sample < -0.76) {
+        if (wy >= 14 && wy <= 32 && sample < -0.79) {
             return BLOCKS.LAPIS_ORE;
         }
 
         // Iron Ore: Y 1 to 64, common
-        if (wy <= 64 && sample > 0.65) {
+        if (wy <= 64 && sample > 0.72) {
             return BLOCKS.IRON_ORE;
         }
 
         // Coal Ore: Y 1 to 120, abundant
-        if (wy <= 120 && (sample < -0.62 || (sample > 0.55 && sample < 0.63))) {
+        if (wy <= 120 && (sample < -0.68 || (sample > 0.62 && sample < 0.70))) {
             return BLOCKS.COAL_ORE;
-        }
-
-        // Gravel pockets: Y 10 to 80
-        if (wy >= 10 && wy <= 80 && sample > 0.50 && sample < 0.55) {
-            return BLOCKS.GRAVEL;
-        }
-
-        // Dirt pockets: Y 10 to 80
-        if (wy >= 10 && wy <= 80 && sample < -0.52 && sample > -0.58) {
-            return BLOCKS.DIRT;
         }
 
         return BLOCKS.STONE;
