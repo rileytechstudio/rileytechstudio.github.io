@@ -77,7 +77,22 @@ let world;
 let audio;
 
 const mainMenu = new MainMenu(
-    () => { controls.lock(); }, // onStartGame
+    () => { 
+        if (window.inventory) {
+            window.inventory.slots.fill(null);
+            window.inventory.armor.fill(null);
+            window.inventory.addItem(ITEM_IDS.BREAD, 8);
+            if (typeof window.inventory.syncHUD === 'function') window.inventory.syncHUD();
+            if (typeof window.inventory.renderAllSlots === 'function') window.inventory.renderAllSlots();
+        }
+        if (window.player) {
+            window.player.setHealth(20);
+            window.player.foodLevel = 20;
+            window.player.foodSaturationLevel = 5.0;
+            window.player.isDead = false;
+        }
+        controls.lock(); 
+    }, // onStartGame
     () => {
         // onLoadGame
         const savedData = localStorage.getItem('minecraft_save');
