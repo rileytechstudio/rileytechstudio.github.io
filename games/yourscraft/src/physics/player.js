@@ -203,6 +203,16 @@ export class AABB {
         if (other.maxY <= this.minY || other.minY >= this.maxY) return dx;
         if (other.maxZ <= this.minZ || other.minZ >= this.maxZ) return dx;
 
+        if (other.maxX > this.minX && other.minX < this.maxX) {
+            const overlapPos = this.maxX - other.minX;
+            const overlapNeg = other.maxX - this.minX;
+            if (overlapPos < overlapNeg) {
+                if (dx < overlapPos) return overlapPos;
+            } else {
+                if (dx > -overlapNeg) return -overlapNeg;
+            }
+        }
+
         if (dx > 0 && other.maxX <= this.minX) {
             const maxOffset = this.minX - other.maxX;
             if (maxOffset < dx) dx = maxOffset;
@@ -217,6 +227,18 @@ export class AABB {
         if (other.maxX <= this.minX || other.minX >= this.maxX) return dy;
         if (other.maxZ <= this.minZ || other.minZ >= this.maxZ) return dy;
 
+        // Intersection recovery: If already overlapping vertically, push out!
+        if (other.maxY > this.minY && other.minY < this.maxY) {
+            // We are intersecting! Push up if we're mostly above, push down if mostly below
+            const overlapUp = this.maxY - other.minY; // How far to push player up
+            const overlapDown = other.maxY - this.minY; // How far to push player down
+            if (overlapUp < overlapDown) {
+                if (dy < overlapUp) return overlapUp;
+            } else {
+                if (dy > -overlapDown) return -overlapDown;
+            }
+        }
+
         if (dy > 0 && other.maxY <= this.minY) {
             const maxOffset = this.minY - other.maxY;
             if (maxOffset < dy) dy = maxOffset;
@@ -230,6 +252,16 @@ export class AABB {
     calculateZOffset(other, dz) {
         if (other.maxX <= this.minX || other.minX >= this.maxX) return dz;
         if (other.maxY <= this.minY || other.minY >= this.maxY) return dz;
+
+        if (other.maxZ > this.minZ && other.minZ < this.maxZ) {
+            const overlapPos = this.maxZ - other.minZ;
+            const overlapNeg = other.maxZ - this.minZ;
+            if (overlapPos < overlapNeg) {
+                if (dz < overlapPos) return overlapPos;
+            } else {
+                if (dz > -overlapNeg) return -overlapNeg;
+            }
+        }
 
         if (dz > 0 && other.maxZ <= this.minZ) {
             const maxOffset = this.minZ - other.maxZ;
