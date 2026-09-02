@@ -918,6 +918,8 @@ export class Player {
             if (this.riding.removed || this.riding.isDead) {
                 this.riding.dismount();
                 this.riding = null;
+                this.setPosition(this.position.x, this.position.y + 0.1, this.position.z);
+                this.velocity.set(0, 0, 0);
             } else {
                 // Sync position to vehicle
                 this.position.set(this.riding.position.x, this.riding.position.y + 0.5, this.riding.position.z);
@@ -929,12 +931,9 @@ export class Player {
                 if (input.down) {
                     this.riding.dismount();
                     this.riding = null;
-                    // Eject player to the side so they don't get stuck on the cart hitbox
-                    const sideX = -Math.cos(this.rotation.yaw);
-                    const sideZ = Math.sin(this.rotation.yaw);
-                    this.position.x += sideX * 1.2;
-                    this.position.z += sideZ * 1.2;
-                    this.position.y += 0.5; 
+                    // Eject player slightly up to stand on the vehicle without clipping walls
+                    this.setPosition(this.position.x, this.position.y + 0.1, this.position.z);
+                    this.velocity.set(0, 0, 0);
                 } else if (input.forward) {
                     // Propel the minecart slightly if the user holds W
                     const fx = -Math.sin(this.rotation.yaw);
