@@ -2,15 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#2a1b4e">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
-  <title>Riley Tech Studio</title>
+  <title>Touch Table Games - Riley Tech Studio</title>
   <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at center, #2a1b4e 0%, #0d091e 100%);
+      --font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -21,71 +28,60 @@
       user-select: none;
     }
 
-    html, body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background: radial-gradient(circle at center, #2a1b4e 0%, #0d091e 100%);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      touch-action: none;
+    html {
+      width: 100%;
+      height: 100%;
+      background: #0d091e;
     }
 
     body {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-      gap: 1.8vw;
-      padding: 1.8vw;
+      width: 100%;
+      font-family: var(--font-family);
+      background: var(--bg-gradient);
+      color: #ffffff;
+      touch-action: manipulation;
     }
 
     .tile {
       text-decoration: none;
-      border-radius: 32px;
+      border-radius: 28px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       align-items: center;
-      padding: 1.2rem;
+      padding: 1.25rem 1rem;
       position: relative;
-      /* Playful 3D button effect for kids */
-      box-shadow: 0 14px 0 rgba(0, 0, 0, 0.28), 0 20px 30px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 12px 0 rgba(0, 0, 0, 0.28), 0 18px 25px rgba(0, 0, 0, 0.35);
       border: 4px solid rgba(255, 255, 255, 0.25);
-      transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.12s ease, border-color 0.12s ease;
       cursor: pointer;
       touch-action: manipulation;
     }
 
-    /* Tactile press effect on touch */
-    .tile:active,
-    .tile.active-touch {
-      transform: translateY(8px) scale(0.97);
-      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.28), 0 10px 15px rgba(0, 0, 0, 0.3);
+    /* Tactile press effect */
+    .tile:active {
+      transform: translateY(6px) scale(0.97);
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.28), 0 8px 15px rgba(0, 0, 0, 0.3);
+      border-color: rgba(255, 255, 255, 0.45);
     }
 
-    /* Bright Vibrant Gradients */
-    .tile-cheskers {
-      background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+    .tile:focus-visible {
+      outline: 3px solid #38bdf8;
+      outline-offset: 4px;
     }
-    .tile-codyfrog {
-      background: linear-gradient(135deg, #10ac84 0%, #2ed573 100%);
-    }
-    .tile-musicgrid {
-      background: linear-gradient(135deg, #8854d0 0%, #a55eea 100%);
-    }
-    .tile-pixelplay {
-      background: linear-gradient(135deg, #ff9f1a 0%, #ffaf40 100%);
-    }
-    .tile-traingame {
-      background: linear-gradient(135deg, #ff5252 0%, #ff793f 100%);
-    }
-    .tile-watertable {
-      background: linear-gradient(135deg, #00a8ff 0%, #00d2d3 100%);
-    }
+
+    /* Vibrant Gradients */
+    .tile-cheskers { background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%); }
+    .tile-codyfrog { background: linear-gradient(135deg, #10ac84 0%, #2ed573 100%); }
+    .tile-musicgrid { background: linear-gradient(135deg, #8854d0 0%, #a55eea 100%); }
+    .tile-pixelplay { background: linear-gradient(135deg, #ff9f1a 0%, #ffaf40 100%); }
+    .tile-traingame { background: linear-gradient(135deg, #ff5252 0%, #ff793f 100%); }
+    .tile-watertable { background: linear-gradient(135deg, #00a8ff 0%, #00d2d3 100%); }
 
     .label {
-      font-size: 2.3rem;
+      font-size: clamp(1.4rem, 3.5vw, 2.3rem);
       font-weight: 900;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
       color: #ffffff;
       text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -104,11 +100,13 @@
       flex-grow: 1;
       width: 100%;
       pointer-events: none;
+      padding: 0.5rem 0;
     }
 
     .icon-container svg {
-      width: 56%;
-      max-width: 220px;
+      width: 50%;
+      max-width: 200px;
+      min-width: 60px;
       height: auto;
       stroke: #ffffff;
       fill: none;
@@ -119,131 +117,225 @@
       transition: transform 0.15s ease;
     }
 
-    .tile:active .icon-container svg,
-    .tile.active-touch .icon-container svg {
-      transform: scale(1.12);
+    .tile:active .icon-container svg {
+      transform: scale(1.1);
+    }
+
+    /* Back Link to Main Portal */
+    .portal-bar {
+      position: fixed;
+      top: calc(12px + var(--safe-top));
+      left: 12px;
+      z-index: 100;
+    }
+
+    .portal-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      background: rgba(13, 9, 30, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      touch-action: manipulation;
+    }
+
+    .portal-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* --- MOBILE / PORTRAIT RESPONSIVE MODE --- */
+    @media (max-width: 900px), (orientation: portrait) {
+      body {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        padding-top: calc(3.5rem + var(--safe-top));
+        padding-bottom: calc(1.5rem + var(--safe-bottom));
+        padding-left: 1rem;
+        padding-right: 1rem;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        display: block;
+      }
+
+      .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.25rem;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .tile {
+        min-height: 170px;
+        padding: 1.25rem;
+      }
+
+      .label.flipped {
+        display: none; /* Hide upside-down tabletop label on phones */
+      }
+
+      .icon-container svg {
+        width: 70px;
+        height: 70px;
+      }
+    }
+
+    /* --- LARGE LANDSCAPE / TOUCH TABLE KIOSK MODE --- */
+    @media (min-width: 901px) and (orientation: landscape) {
+      html, body {
+        height: 100vh;
+        overflow: hidden;
+        touch-action: none;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .games-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 1.8vw;
+        padding: 1.8vw;
+        width: 100vw;
+        height: 100vh;
+        flex-grow: 1;
+      }
+
+      .tile {
+        height: 100%;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- CHESKERS -->
-  <a href="cheskers.html" class="tile tile-cheskers">
-    <div class="label flipped">Cheskers</div>
-    <div class="icon-container">
-      <svg viewBox="0 0 64 64">
-        <circle cx="32" cy="46" r="10" />
-        <path d="M18 34h28l4-18-10 6-8-12-8 12-10-6z" />
+  <!-- Top Navigation back to Main Portal -->
+  <div class="portal-bar">
+    <a href="../index.html" class="portal-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
       </svg>
-    </div>
-    <div class="label">Cheskers</div>
-  </a>
+      Main Portal
+    </a>
+  </div>
 
-  <!-- CODY FROG -->
-  <a href="codyfrog.html" class="tile tile-codyfrog">
-    <div class="label flipped">Cody Frog</div>
-    <div class="icon-container">
-      <svg viewBox="0 0 64 64">
-        <circle cx="22" cy="22" r="6" />
-        <circle cx="42" cy="22" r="6" />
-        <circle cx="22" cy="22" r="2.5" fill="#ffffff" />
-        <circle cx="42" cy="22" r="2.5" fill="#ffffff" />
-        <path d="M14 30c0 12 8 18 18 18s18-6 18-18C50 26 14 26 14 30z" />
-        <path d="M24 38c4 3 12 3 16 0" />
-      </svg>
-    </div>
-    <div class="label">Cody Frog</div>
-  </a>
+  <main class="games-grid">
+    <!-- CHESKERS -->
+    <a href="cheskers.html" class="tile tile-cheskers">
+      <div class="label flipped">Cheskers</div>
+      <div class="icon-container">
+        <svg viewBox="0 0 64 64">
+          <circle cx="32" cy="46" r="10" />
+          <path d="M18 34h28l4-18-10 6-8-12-8 12-10-6z" />
+        </svg>
+      </div>
+      <div class="label">Cheskers</div>
+    </a>
 
-  <!-- MUSIC GRID -->
-  <a href="musicgrid.html" class="tile tile-musicgrid">
-    <div class="label flipped">Music Grid</div>
-    <div class="icon-container">
-      <svg viewBox="0 0 64 64">
-        <rect x="12" y="12" width="10" height="10" rx="2" fill="#ffffff" />
-        <rect x="27" y="12" width="10" height="10" rx="2" />
-        <rect x="42" y="12" width="10" height="10" rx="2" />
-        <rect x="12" y="27" width="10" height="10" rx="2" />
-        <rect x="27" y="27" width="10" height="10" rx="2" fill="#ffffff" />
-        <rect x="42" y="27" width="10" height="10" rx="2" />
-        <rect x="12" y="42" width="10" height="10" rx="2" />
-        <rect x="27" y="42" width="10" height="10" rx="2" />
-        <rect x="42" y="42" width="10" height="10" rx="2" fill="#ffffff" />
-      </svg>
-    </div>
-    <div class="label">Music Grid</div>
-  </a>
+    <!-- CODY FROG -->
+    <a href="codyfrog.html" class="tile tile-codyfrog">
+      <div class="label flipped">Cody Frog</div>
+      <div class="icon-container">
+        <svg viewBox="0 0 64 64">
+          <circle cx="22" cy="22" r="6" />
+          <circle cx="42" cy="22" r="6" />
+          <circle cx="22" cy="22" r="2.5" fill="#ffffff" />
+          <circle cx="42" cy="22" r="2.5" fill="#ffffff" />
+          <path d="M14 30c0 12 8 18 18 18s18-6 18-18C50 26 14 26 14 30z" />
+          <path d="M24 38c4 3 12 3 16 0" />
+        </svg>
+      </div>
+      <div class="label">Cody Frog</div>
+    </a>
 
-  <!-- PIXEL PLAY (PAINT PALETTE) -->
-  <a href="pixelplay.html" class="tile tile-pixelplay">
-    <div class="label flipped">Pixel Play</div>
-    <div class="icon-container">
-      <svg viewBox="0 0 64 64">
-        <path d="M32 12C18.7 12 8 21.8 8 34c0 11.2 8 18 18 18 3.5 0 6-2.5 6-5.5 0-2.5 1.5-4 4-4h3c11 0 17-7.8 17-16.5C56 20.2 45.3 12 32 12z" />
-        <circle cx="42" cy="36" r="3.5" fill="#ffffff" />
-        <circle cx="20" cy="25" r="3" fill="#ffffff" />
-        <circle cx="31" cy="20" r="3" fill="#ffffff" />
-        <circle cx="42" cy="23" r="3" fill="#ffffff" />
-        <circle cx="17" cy="36" r="3" fill="#ffffff" />
-      </svg>
-    </div>
-    <div class="label">Pixel Play</div>
-  </a>
+    <!-- MUSIC GRID -->
+    <a href="musicgrid.html" class="tile tile-musicgrid">
+      <div class="label flipped">Music Grid</div>
+      <div class="icon-container">
+        <svg viewBox="0 0 64 64">
+          <rect x="12" y="12" width="10" height="10" rx="2" fill="#ffffff" />
+          <rect x="27" y="12" width="10" height="10" rx="2" />
+          <rect x="42" y="12" width="10" height="10" rx="2" />
+          <rect x="12" y="27" width="10" height="10" rx="2" />
+          <rect x="27" y="27" width="10" height="10" rx="2" fill="#ffffff" />
+          <rect x="42" y="27" width="10" height="10" rx="2" />
+          <rect x="12" y="42" width="10" height="10" rx="2" />
+          <rect x="27" y="42" width="10" height="10" rx="2" />
+          <rect x="42" y="42" width="10" height="10" rx="2" fill="#ffffff" />
+        </svg>
+      </div>
+      <div class="label">Music Grid</div>
+    </a>
 
-  <!-- TRAIN GAME (STEAM ENGINE) -->
-  <a href="traingame.html" class="tile tile-traingame">
-    <div class="label flipped">Train Game</div>
-    <div class="icon-container">
-      <svg viewBox="0 0 64 64">
-        <path d="M46 12c-1-3 2-6 5-4 2-2 6 0 4 3 3 1 2 4-2 4" />
-        <path d="M42 22l-2-6h10l-2 6" />
-        <path d="M12 22h14v22H12z" />
-        <path d="M16 27h6v8h-6z" />
-        <path d="M10 22h18" />
-        <path d="M26 28h22v16H26z" />
-        <path d="M48 44l6 0-2-6" />
-        <circle cx="18" cy="48" r="4" fill="#ffffff" />
-        <circle cx="30" cy="48" r="4" fill="#ffffff" />
-        <circle cx="42" cy="48" r="4" fill="#ffffff" />
-        <path d="M18 48h24" />
-        <path d="M8 54h48" />
-      </svg>
-    </div>
-    <div class="label">Train Game</div>
-  </a>
+    <!-- PIXEL PLAY (PAINT PALETTE) -->
+    <a href="pixelplay.html" class="tile tile-pixelplay">
+      <div class="label flipped">Pixel Play</div>
+      <div class="icon-container">
+        <svg viewBox="0 0 64 64">
+          <path d="M32 12C18.7 12 8 21.8 8 34c0 11.2 8 18 18 18 3.5 0 6-2.5 6-5.5 0-2.5 1.5-4 4-4h3c11 0 17-7.8 17-16.5C56 20.2 45.3 12 32 12z" />
+          <circle cx="42" cy="36" r="3.5" fill="#ffffff" />
+          <circle cx="20" cy="25" r="3" fill="#ffffff" />
+          <circle cx="31" cy="20" r="3" fill="#ffffff" />
+          <circle cx="42" cy="23" r="3" fill="#ffffff" />
+          <circle cx="17" cy="36" r="3" fill="#ffffff" />
+        </svg>
+      </div>
+      <div class="label">Pixel Play</div>
+    </a>
 
-  <!-- WATER TABLE -->
-  <a href="watertable.html" class="tile tile-watertable">
-    <div class="label flipped">Water Table</div>
-    <div class="icon-container">
-      <svg viewBox="0 0 64 64">
-        <path d="M12 22c6-4 12 4 18 0s12-4 18 0" />
-        <path d="M12 32c6-4 12 4 18 0s12-4 18 0" />
-        <path d="M12 42c6-4 12 4 18 0s12-4 18 0" />
-      </svg>
-    </div>
-    <div class="label">Water Table</div>
-  </a>
+    <!-- TRAIN GAME (STEAM ENGINE) -->
+    <a href="traingame.html" class="tile tile-traingame">
+      <div class="label flipped">Train Game</div>
+      <div class="icon-container">
+        <svg viewBox="0 0 64 64">
+          <path d="M46 12c-1-3 2-6 5-4 2-2 6 0 4 3 3 1 2 4-2 4" />
+          <path d="M42 22l-2-6h10l-2 6" />
+          <path d="M12 22h14v22H12z" />
+          <path d="M16 27h6v8h-6z" />
+          <path d="M10 22h18" />
+          <path d="M26 28h22v16H26z" />
+          <path d="M48 44l6 0-2-6" />
+          <circle cx="18" cy="48" r="4" fill="#ffffff" />
+          <circle cx="30" cy="48" r="4" fill="#ffffff" />
+          <circle cx="42" cy="48" r="4" fill="#ffffff" />
+          <path d="M18 48h24" />
+          <path d="M8 54h48" />
+        </svg>
+      </div>
+      <div class="label">Train Game</div>
+    </a>
+
+    <!-- WATER TABLE -->
+    <a href="watertable.html" class="tile tile-watertable">
+      <div class="label flipped">Water Table</div>
+      <div class="icon-container">
+        <svg viewBox="0 0 64 64">
+          <path d="M12 22c6-4 12 4 18 0s12-4 18 0" />
+          <path d="M12 32c6-4 12 4 18 0s12-4 18 0" />
+          <path d="M12 42c6-4 12 4 18 0s12-4 18 0" />
+        </svg>
+      </div>
+      <div class="label">Water Table</div>
+    </a>
+  </main>
 
   <script>
-    // Disable tabletop gestures and pull-to-refresh
-    document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    // Prevent context menu on touch tables
     document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    // Instant touch visual feedback
-    const tiles = document.querySelectorAll('.tile');
-
-    tiles.forEach(tile => {
-      tile.addEventListener('pointerdown', () => {
-        tile.classList.add('active-touch');
-      });
-
-      const removeActive = () => tile.classList.remove('active-touch');
-
-      tile.addEventListener('pointerup', removeActive);
-      tile.addEventListener('pointerleave', removeActive);
-      tile.addEventListener('pointercancel', removeActive);
-    });
 
     // Register Service Worker for PWA offline support
     if ('serviceWorker' in navigator) {

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Sky Invaders">
@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#0f0c1b">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <title>Sky Invaders PWA - Game Launcher</title>
+  <title>Game Arcade - Riley Tech Studio</title>
   <style>
     :root {
       --bg-color: #0f0c1b;
@@ -36,13 +36,47 @@
       background: radial-gradient(circle at 50% 0%, #2b1754 0%, #0f0c1b 70%);
       font-family: var(--font-family);
       color: #ffffff;
-      padding-top: calc(1rem + var(--safe-top));
+      padding-top: calc(3.5rem + var(--safe-top));
       padding-bottom: calc(2rem + var(--safe-bottom));
       padding-left: 1rem;
       padding-right: 1rem;
       overflow-x: hidden;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      touch-action: manipulation;
+    }
+
+    /* Back Link to Main Portal */
+    .portal-bar {
+      position: fixed;
+      top: calc(12px + var(--safe-top));
+      left: 12px;
+      z-index: 100;
+    }
+
+    .portal-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      background: rgba(15, 12, 27, 0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      touch-action: manipulation;
+    }
+
+    .portal-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.25);
     }
 
     /* Mobile-first Header */
@@ -85,7 +119,7 @@
     /* Mobile-first Games Grid */
     .games-grid {
       display: grid;
-      grid-template-columns: 1fr; /* Single column on smallest mobile screens */
+      grid-template-columns: 1fr;
       gap: 1.25rem;
       max-width: 1000px;
       margin: 0 auto;
@@ -115,35 +149,12 @@
       border-color: rgba(255, 255, 255, 0.4);
     }
 
+    .game-card:focus-visible {
+      outline: 3px solid #38bdf8;
+      outline-offset: 4px;
+    }
+
     /* Accent themes per game */
-    .game-cheskers {
-      background: linear-gradient(135deg, rgba(255, 71, 87, 0.35) 0%, rgba(206, 30, 48, 0.15) 100%);
-      border-color: rgba(255, 107, 129, 0.4);
-    }
-    .game-codyfrog {
-      background: linear-gradient(135deg, rgba(16, 172, 132, 0.35) 0%, rgba(10, 120, 92, 0.15) 100%);
-      border-color: rgba(46, 213, 115, 0.4);
-    }
-    .game-musicgrid {
-      background: linear-gradient(135deg, rgba(136, 84, 208, 0.35) 0%, rgba(90, 50, 145, 0.15) 100%);
-      border-color: rgba(165, 94, 234, 0.4);
-    }
-    .game-pixelplay {
-      background: linear-gradient(135deg, rgba(255, 159, 26, 0.35) 0%, rgba(200, 120, 10, 0.15) 100%);
-      border-color: rgba(255, 175, 64, 0.4);
-    }
-    .game-traingame {
-      background: linear-gradient(135deg, rgba(255, 82, 82, 0.35) 0%, rgba(180, 40, 40, 0.15) 100%);
-      border-color: rgba(255, 121, 63, 0.4);
-    }
-    .game-watertable {
-      background: linear-gradient(135deg, rgba(0, 168, 255, 0.35) 0%, rgba(0, 110, 170, 0.15) 100%);
-      border-color: rgba(0, 210, 211, 0.4);
-    }
-    .game-mobiletest {
-      background: linear-gradient(135deg, rgba(113, 88, 226, 0.35) 0%, rgba(70, 50, 160, 0.15) 100%);
-      border-color: rgba(156, 136, 255, 0.4);
-    }
     .game-skyblaster {
       background: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(129, 140, 248, 0.15) 100%);
       border-color: rgba(56, 189, 248, 0.4);
@@ -152,25 +163,29 @@
       background: linear-gradient(135deg, rgba(250, 204, 21, 0.35) 0%, rgba(239, 68, 68, 0.15) 100%);
       border-color: rgba(250, 204, 21, 0.4);
     }
+    .game-yourscraft {
+      background: linear-gradient(135deg, rgba(76, 175, 80, 0.35) 0%, rgba(46, 125, 50, 0.15) 100%);
+      border-color: rgba(102, 187, 106, 0.4);
+    }
 
     /* Icon Container */
     .card-icon {
-      width: 64px;
-      height: 64px;
-      min-width: 64px;
+      width: 60px;
+      height: 60px;
+      min-width: 60px;
       border-radius: 16px;
       background: rgba(255, 255, 255, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 1.2rem;
+      margin-right: 1.1rem;
       border: 1px solid rgba(255, 255, 255, 0.2);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
     .card-icon svg {
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       stroke: #ffffff;
       fill: none;
       stroke-width: 2.5;
@@ -184,7 +199,7 @@
     }
 
     .card-title {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: #ffffff;
       letter-spacing: -0.2px;
@@ -220,36 +235,10 @@
       margin-left: 2px;
     }
 
-    /* Navigation Footer */
-    .footer {
-      text-align: center;
-      margin-top: 2rem;
-    }
-
-    .home-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border-radius: 50px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 700;
-      transition: background 0.2s, transform 0.1s;
-    }
-
-    .home-link:active {
-      transform: scale(0.95);
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    /* Responsive Breakpoints (Tablet & Desktop) */
+    /* Responsive Breakpoints */
     @media (min-width: 600px) {
       body {
-        padding-top: calc(2rem + var(--safe-top));
+        padding-top: calc(4rem + var(--safe-top));
         padding-left: 2rem;
         padding-right: 2rem;
       }
@@ -269,12 +258,19 @@
         grid-template-columns: repeat(3, 1fr);
       }
     }
-
-    .game-yourscraft { background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); }
-    .game-yourscraft:hover { background: linear-gradient(135deg, #66bb6a 0%, #388e3c 100%); }
   </style>
 </head>
 <body>
+
+  <!-- Top Navigation back to Main Portal -->
+  <div class="portal-bar">
+    <a href="../index.html" class="portal-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Main Portal
+    </a>
+  </div>
 
   <!-- Header -->
   <header class="header">
@@ -319,7 +315,6 @@
         <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>
       </div>
     </a>
-
 
     <!-- YOURSCRAFT -->
     <a href="yourscraft/public/index.html" class="game-card game-yourscraft">
