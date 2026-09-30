@@ -1,26 +1,36 @@
 #!/usr/bin/env bash
 
-# Prevent display from turning off or sleeping
+# Wait for the desktop and network stack to fully settle
+sleep 8
+
+# Disable display blanking / power saving
 xset s off 2>/dev/null
 xset -dpms 2>/dev/null
 xset s noblank 2>/dev/null
 
-# Hide the mouse cursor after 0.5s idle
+# Hide mouse cursor
 unclutter -idle 0.5 -root &
 
-# Reset crash bubble flags in Chromium profile so it launches cleanly without "Restore pages" popups
+# Clear crash flags so restore dialogs never trigger
 sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' ~/.config/chromium/'Local State' 2>/dev/null
 sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' ~/.config/chromium/Default/Preferences 2>/dev/null
 
-# Start Chromium in fullscreen kiosk mode
-chromium-browser \
+# Detect correct Chromium binary (chromium vs chromium-browser)
+BROWSER_BIN=$(command -v chromium-browser || command -v chromium)
+
+# Launch with flags tuned for Pi 3B+ / Canva embeds
+$BROWSER_BIN \
+  --kiosk \
   --noerrdialogs \
   --disable-infobars \
-  --kiosk \
-  --check-for-update-interval=31536000 \
   --disable-session-crashed-bubble \
   --disable-translate \
   --disable-features=Translate \
+  --no-first-run \
   --fast \
   --fast-start \
-  "https://rileytechstudio.github.io/signage"
+  --disable-pinch \
+  --overscroll-history-navigation=0 \
+  --enable-features=OverlayScrollbar \
+  --gpu-memory-buffer-compositor-resources \
+  "https://rileytechstudio.github.io/signage" > ~/kiosk.log 2>&1
