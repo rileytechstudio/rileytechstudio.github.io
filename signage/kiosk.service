@@ -1,0 +1,16 @@
+[Unit]
+Description=Canva Signage Kiosk
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+Environment=WAYLAND_DISPLAY=wayland-1
+Environment=DISPLAY=:0
+ExecStartPre=/bin/sleep 5
+ExecStart=/bin/bash /home/sign/kiosk.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
