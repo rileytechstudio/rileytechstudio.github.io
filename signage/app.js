@@ -47,40 +47,67 @@ function extractCanvaUrl(input) {
 }
 
 var cycleTimer = null;
+var cycleStartTimeout = null;
+var cycleStarted = false;
 var currentSlide = 1;
 
 function loadIframe(url, config) {
+    if (cycleTimer) {
+        clearTimeout(cycleTimer);
+        cycleTimer = null;
+    }
+    if (cycleStartTimeout) {
+        clearTimeout(cycleStartTimeout);
+        cycleStartTimeout = null;
+    }
+    cycleStarted = false;
+
     var container = document.getElementById('container');
     container.innerHTML = ''; // Clear existing
     
     var iframe = document.createElement('iframe');
     var baseSrc = extractCanvaUrl(url);
     
-    // Remove any existing hash
+    // Remove any existing hash so Canva's initial cold load is clean
     baseSrc = baseSrc.split('#')[0];
-    
-    // Auto-cycle start at slide 1
-    if (config && config.autoCycleSlides && config.totalSlides > 1) {
-        iframe.src = baseSrc + '#' + currentSlide;
-    } else {
-        iframe.src = baseSrc;
-    }
+    currentSlide = 1;
+    iframe.src = baseSrc;
     
     iframe.setAttribute('allowfullscreen', 'allowfullscreen');
     iframe.setAttribute('allow', 'fullscreen; autoplay');
     container.appendChild(iframe);
     
-    if (config && config.autoCycleSlides && config.totalSlides > 1) {
-        if (cycleTimer) clearInterval(cycleTimer);
+    // Safety watchdog: if the iframe fails to load or stalls for 120s, automatically retry
+    var iframeWatchdog = setTimeout(function() {
+        console.warn('Iframe load watchdog timeout: checking network and refreshing...');
+        checkNetworkAndRefresh();
+    }, 120000);
+    
+    iframe.onload = function() {
+        clearTimeout(iframeWatchdog);
+        if (cycleStarted) return;
+        cycleStarted = true;
         
-        var slideMs = (config.slideTimeSeconds || 10) * 1000;
-        cycleTimer = setInterval(function() {
-            currentSlide++;
-            if (currentSlide > config.totalSlides) currentSlide = 1;
-            // Hack: Changing only the hash forces Canva to change slides
-            iframe.src = baseSrc + '#' + currentSlide;
-        }, slideMs);
-    }
+        // Only start auto-cycling AFTER Canva has fully mounted and initialized
+        if (config && config.autoCycleSlides && config.totalSlides > 1) {
+            if (cycleStartTimeout) clearTimeout(cycleStartTimeout);
+            if (cycleTimer) clearTimeout(cycleTimer);
+            var slideMs = (config.slideTimeSeconds || 12) * 1000;
+
+            function scheduleNextSlide() {
+                cycleTimer = setTimeout(function() {
+                    currentSlide++;
+                    if (currentSlide > config.totalSlides) currentSlide = 1;
+                    // Hash change to advance Canva presentation
+                    iframe.src = baseSrc + '#' + currentSlide;
+                    scheduleNextSlide();
+                }, slideMs);
+            }
+
+            // Allow 45s initial settle buffer on Pi before first slide advance
+            cycleStartTimeout = setTimeout(scheduleNextSlide, 45000);
+        }
+    };
 }
 
 function updateOfflineIndicator(isOffline) {
